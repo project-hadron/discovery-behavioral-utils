@@ -33,11 +33,11 @@ def find_version(*file_paths):
 
 
 setup(
-    name='discovery-generator-utils',
+    name='discovery-behavioral-utils',
     version=find_version('ds_behavioral', '__init__.py'),
-    description='Advanced generator synthetic data generation and simulation tools for ML and Data engineers',
+    description='Advanced behavioral synthetic data generation and simulation tools for ML and Data engineers',
     long_description=read('README.rst'),
-    url='http://github.com/gigas64/discovery-generator-utils',
+    url='http://github.com/gigas64/discovery-behavioral-utils',
     author='Gigas64',
     author_email='gigas64@opengrass.net',
     classifiers=[
