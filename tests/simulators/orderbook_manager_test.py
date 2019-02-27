@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import unittest
 from datetime import datetime
 
-from ds_behavioral.simulators.trade_orderbook.orderbook_manager import OrderbookManager
+from ds_behavioral.simulator.orderbook_manager import OrderbookManager
 
 
 class OrderbookManagerTest(unittest.TestCase):

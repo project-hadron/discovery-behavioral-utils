@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from ds_behavioral.simulators.trade_orderbook.orderbook import Orderbook
+from ds_behavioral.simulator.orderbook import Orderbook
 
 
 class MyTestCase(unittest.TestCase):

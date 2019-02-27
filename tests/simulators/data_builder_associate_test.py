@@ -1,9 +1,6 @@
 import matplotlib
 matplotlib.use("TkAgg")
 
-from ds_behavioral.simulators.data_build_samples.sample_data import ProfileSample
-
-
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -11,10 +8,10 @@ import unittest
 import os
 import warnings
 
-from ds_behavioral.simulators.data_builder import DataBuilder, DataBuilderTools
+from ds_behavioral.generator.data_builder import DataBuilder, DataBuilderTools
 from ds_behavioral.config.properties import AbstractPropertiesManager
-from ds_behavioral.transition.discovery import DataDiscovery as discover
-from ds_behavioral.transition.cleaners import ColumnCleaners as cleaner
+from ds_discovery.transition.discovery import DataDiscovery as discover
+from ds_discovery.transition.cleaners import ColumnCleaners as cleaner
 
 
 def ignore_warnings(test_func):

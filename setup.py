@@ -33,23 +33,23 @@ def find_version(*file_paths):
 
 
 setup(
-    name='discovery-behavioral-utils',
+    name='discovery-generator-utils',
     version=find_version('ds_behavioral', '__init__.py'),
-    description='Advanced behavioral synthetic data generation and simulation tools for ML and Data engineers',
+    description='Advanced generator synthetic data generation and simulation tools for ML and Data engineers',
     long_description=read('README.rst'),
-    url='http://github.com/gigas64/discovery-behavioral-utils',
+    url='http://github.com/gigas64/discovery-generator-utils',
     author='Gigas64',
     author_email='gigas64@opengrass.net',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3.6',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Scientific/Engineering :: Visualization',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    keywords='Synthetic data simulator behavioral',
+    keywords='Synthetic data simulator generator',
     packages=find_packages(exclude=['tests', 'guides', 'data', 'jupyter']),
     license='BSD',
     include_package_data=True,
@@ -58,6 +58,7 @@ setup(
         '': ['*.yaml', '*.csv'],
     },
     install_requires=[
+        'discovery-transitioning-utils',
         'pyyaml',
         'pandas',
         'numpy',
