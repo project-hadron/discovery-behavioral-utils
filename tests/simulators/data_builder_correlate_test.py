@@ -59,7 +59,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
         values = [1,2,3,4,5,6,7,8,9,0]
         control = [1, 2, 3, 4, 5, 6, 7, 8, None, 0]
-        result = tools.correlate_numbers(values, quantity=0.9, seed=31)
+        result = tools.correlate_numbers(values, quantity=0.9, seed=31, precision=0)
         self.assertEqual(control, result)
         values = [1,None,5,5,np.nan,5,3,'None',3,3]
         control = [1, 3, 5, 5, 3, 5, 3, 5, 3, 3]
@@ -67,7 +67,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
         values = [0,0,0,1,0,2,4,0,1]
         control = [0, 0, 0, -2, 0, 7, 7, 0, -1]
-        result = tools.correlate_numbers(values, spread=2, keep_zero=True, seed=99)
+        result = tools.correlate_numbers(values, spread=2, keep_zero=True, seed=99, precision=0)
         self.assertEqual(control, result)
         values = [None, None, 1]
         control = [11,11,11]
