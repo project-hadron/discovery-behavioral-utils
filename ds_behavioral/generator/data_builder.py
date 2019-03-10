@@ -11,7 +11,7 @@ import pandas as pd
 from pandas.tseries.offsets import Week
 import matplotlib.dates as mdates
 
-from ds_behavioral.config.properties import AbstractPropertiesManager, AbstractKeys
+from ds_discovery.config.properties import AbstractPropertiesManager
 from ds_behavioral.sample.sample_data import ProfileSample
 from ds_discovery.transition.cleaners import ColumnCleaners as Cleaner
 
@@ -21,38 +21,12 @@ __author__ = 'Darryl Oatridge'
 class DataBuilderPropertyManager(AbstractPropertiesManager):
 
     def __init__(self, build_name: str):
-        super().__init__('data_builder')
-        self._keys = self.Keys(self._manager, build_name)
         if build_name is None or not build_name or not isinstance(build_name, str):
             assert TypeError("The build_name can't be None or of zero length. '{}' passed".format(build_name))
-        if not self.is_key(self.KEY.builder):
-            self.set(self.KEY.builder, {})
-
-    class Keys(AbstractKeys):
-
-        def __init__(self, manager: str, group: str):
-            super().__init__(manager)
-            self._group = group
-
-        @property
-        def group(self) -> str:
-            return self.join(self.manager, self._group)
-
-        @property
-        def builder(self) -> str:
-            return self.group
-
-        @property
-        def columns(self) -> str:
-            return self.join(self.group, 'columns.get')
-
-        @property
-        def correlate(self) -> str:
-            return self.join(self.group, 'columns.correlate')
-
-        @property
-        def associate(self) -> str:
-            return self.join(self.group, 'columns.associate')
+        keys = ['columns', 'correlate', 'associate']
+        super().__init__(manager='data_builder', contract=build_name, keys=keys)
+        if not self.is_key(self.KEY.contract_key):
+            self.set(self.KEY.contract_key, {})
 
     @property
     def KEY(self):
@@ -61,37 +35,37 @@ class DataBuilderPropertyManager(AbstractPropertiesManager):
     @property
     def builder(self):
         """returns true if the key exists"""
-        if self.is_key(self.KEY.builder):
-            return self.get(self.KEY.builder)
+        if self.is_key(self.KEY.contract_key):
+            return self.get(self.KEY.contract_key)
         return {}
 
     @property
     def columns(self):
         """returns a list of columns"""
         rtn_col = []
-        if self.is_key(self.KEY.columns):
-            rtn_col.extend(self.get(self.KEY.columns).keys())
-        if self.is_key(self.KEY.correlate):
-            rtn_col.extend(self.get(self.KEY.correlate).keys())
+        if self.is_key(self.KEY.columns_key):
+            rtn_col.extend(self.get(self.KEY.columns_key).keys())
+        if self.is_key(self.KEY.correlate_key):
+            rtn_col.extend(self.get(self.KEY.correlate_key).keys())
         return rtn_col
 
     def get_column(self, name: str):
-        _column_key = self.join(self.KEY.columns, name)
-        _association_key = self.join(self.KEY.correlate, name)
+        _column_key = self.join(self.KEY.columns_key, name)
+        _association_key = self.join(self.KEY.correlate_key, name)
         for _key in [_column_key, _association_key]:
             if self.is_key(_key):
                 return self.get(_key)
         return {}
 
     def set_column(self, label: str, etype: str, **kwargs):
-        _key = self.join(self.KEY.columns, label)
+        _key = self.join(self.KEY.columns_key, label)
         self.set(self.join(_key, 'etype'), etype)
         self.set(self.join(_key, 'kwargs'), {})
         for k, v in kwargs.items():
             self.set(self.join(_key, 'kwargs', k), v)
 
     def set_association(self, label: str, associate: [str, list], etype: str, **kwargs):
-        _key = self.join(self.KEY.correlate, label)
+        _key = self.join(self.KEY.correlate_key, label)
         associate = self.list_formatter(associate)
         self.set(self.join(_key, 'associate'), associate)
         self.set(self.join(_key, 'etype'), etype)

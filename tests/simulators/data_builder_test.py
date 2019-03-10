@@ -27,7 +27,7 @@ class FileBuilderTest(unittest.TestCase):
 
     def tearDown(self):
         _tmp = DataBuilder(self.name).fbpm
-        _tmp.remove(_tmp.KEY.manager)
+        _tmp.remove(_tmp.KEY.manager_key)
         try:
             os.remove('config_data_builder.yaml')
             os.remove('customer.csv')

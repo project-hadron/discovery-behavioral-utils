@@ -3,7 +3,7 @@ import unittest
 import os
 import string
 
-from ds_behavioral.simulators.data_builder import DataBuilder
+from ds_behavioral import DataBuilder
 
 
 class MyTestCase(unittest.TestCase):
@@ -15,7 +15,7 @@ class MyTestCase(unittest.TestCase):
 
     def tearDown(self):
         _tmp = DataBuilder(self.name).fbpm
-        _tmp.remove(_tmp.builder_key)
+        _tmp.remove(_tmp.KEY.contract_key)
         try:
             os.remove('config_data_builder.yaml')
             # os.remove('customer.csv')
@@ -29,7 +29,7 @@ class MyTestCase(unittest.TestCase):
     def test_case(self):
         fb = DataBuilder('case')
         # clear out the previous configuration
-        _ = fb.fbpm.remove(fb.fbpm.builder_key)
+        _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
         account_ids = fb.tools.unique_identifiers(from_value=1000000, to_value=9999999, seed=101, size=100)
         portfolio_ids = fb.tools.unique_identifiers(from_value=1000, to_value=9999, seed=101, size=100)
@@ -73,7 +73,7 @@ class MyTestCase(unittest.TestCase):
     def test_Comms(self):
         fb = DataBuilder('Comms')
         # clear out the previous configuration
-        _ = fb.fbpm.remove(fb.fbpm.builder_key)
+        _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
         # create Account id's
         account_ids = fb.tools.unique_identifiers(from_value=1000000, to_value=9999999, seed=101, size=100)
@@ -108,7 +108,7 @@ class MyTestCase(unittest.TestCase):
     def test_transaction(self):
         fb = DataBuilder('Account')
         # clear out the previous configuration
-        _ = fb.fbpm.remove(fb.fbpm.builder_key)
+        _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
         # create Account id's
         account_ids = fb.tools.unique_identifiers(from_value=1000000, to_value=9999999, seed=101, size=100)
@@ -129,7 +129,7 @@ class MyTestCase(unittest.TestCase):
     def test_account(self):
         fb = DataBuilder('Account')
         # clear out the previous configuration
-        _ = fb.fbpm.remove(fb.fbpm.builder_key)
+        _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
         # create Custonmer id's
         cids = fb.tools.unique_identifiers(from_value=100000, to_value=999999, prefix="CU_", seed=101, size=100)
@@ -164,7 +164,7 @@ class MyTestCase(unittest.TestCase):
     def test_customer_build(self):
         fb = DataBuilder('Customer')
         # clear out the previous configuration
-        _ = fb.fbpm.remove(fb.fbpm.builder_key)
+        _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
         # main columns
         fb.add_column('cid', 'unique_identifiers', from_value=100000, to_value=999999,

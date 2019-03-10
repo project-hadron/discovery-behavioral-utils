@@ -9,7 +9,7 @@ import os
 import warnings
 
 from ds_behavioral.generator.data_builder import DataBuilder, DataBuilderTools
-from ds_behavioral.config.properties import AbstractPropertiesManager
+from ds_discovery.config.properties import AbstractPropertiesManager
 from ds_discovery.transition.discovery import DataDiscovery as discover
 from ds_discovery.transition.cleaners import ColumnCleaners as cleaner
 
@@ -31,7 +31,7 @@ class MyTestCase(unittest.TestCase):
 
     def tearDown(self):
         _tmp = DataBuilder(self.name).fbpm
-        _tmp.remove(_tmp.KEY.manager)
+        _tmp.remove(_tmp.KEY.manager_key)
         try:
             os.remove('config_data_builder.yaml')
             os.remove('customer.csv')
