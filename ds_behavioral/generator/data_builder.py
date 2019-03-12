@@ -190,15 +190,14 @@ class DataBuilderTools(object):
         """
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
 
         rtn_list = []
         for _ in range(size):
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
             rtn_list.append(eval(code_str, globals(), local_kwargs))
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_distribution(method: str=None, offset: float=None, precision: int=None, size: int=None,
@@ -217,17 +216,16 @@ class DataBuilderTools(object):
         offset = 1 if offset is None or not isinstance(offset, (float, int)) else offset
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
 
         method = 'normal' if method is None else method
         precision = 3 if precision is None else precision
         func = "np.random.{}(**{})".format(method, kwargs)
         rtn_list = []
         for _ in range(size):
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             rtn_list.append(round(eval(func) * offset, precision))
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_intervals(intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
@@ -245,9 +243,9 @@ class DataBuilderTools(object):
         """
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         interval_list = DataBuilderTools.get_category(selection=intervals, weight_pattern=weight_pattern, size=size,
-                                                      seed=seed)
+                                                      seed=_seed)
         interval_counts = pd.Series(interval_list).value_counts()
         rtn_list = []
         for index in interval_counts.index:
@@ -256,10 +254,10 @@ class DataBuilderTools(object):
                 continue
             (lower, upper) = index
             rtn_list = rtn_list + DataBuilderTools.get_number(lower, upper, precision=precision, currency=currency,
-                                                              size=size, seed=seed)
-        np.random.seed(seed)
+                                                              size=size, seed=_seed)
+        np.random.seed(_seed)
         np.random.shuffle(rtn_list)
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
@@ -279,7 +277,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
         precision = 3 if not isinstance(precision, int) else precision
         value_bins = None
@@ -290,12 +288,11 @@ class DataBuilderTools(object):
             value_bins.drop_duplicates()
         rtn_list = []
         for _ in range(size):
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             if weight_pattern is not None:
                 pattern = DataBuilderTools._normailse_weights(weight_pattern, size=size, count=len(rtn_list),
                                                               length=value_bins.size)
-                index = DataBuilderTools._weighted_choice(pattern, seed=seed)
+                index = DataBuilderTools._weighted_choice(pattern, seed=_seed)
                 from_value = value_bins[index].left
                 to_value = value_bins[index].right
             value = np.round(np.random.uniform(low=from_value, high=to_value), precision)
@@ -304,7 +301,7 @@ class DataBuilderTools(object):
             if isinstance(currency, str):
                 value = '{}{:0,.{}f}'.format(currency, value, precision)
             rtn_list.append(value)
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_reference(header: str, filename: str, weight_pattern: list = None, selection_size: int=None,
@@ -326,7 +323,7 @@ class DataBuilderTools(object):
         :return:
         """
         quantity = DataBuilderTools._quantity(quantity)
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         if not isinstance(file_format, str) and file_format not in ['csv', 'pickle']:
             file_format = 'csv'
         _path = Path(filename)
@@ -343,12 +340,12 @@ class DataBuilderTools(object):
             raise ValueError("The header '{}' does not exist in the ".format(header))
         rtn_list = df[header].tolist()
         if shuffled:
-            np.random.seed(seed)
+            np.random.seed(_seed)
             np.random.shuffle(rtn_list)
         if isinstance(selection_size, int) and 0 < selection_size < len(rtn_list):
             rtn_list = rtn_list[:selection_size]
         return DataBuilderTools.get_category(selection=rtn_list, weight_pattern=weight_pattern,
-                                             quantity=quantity, size=size, at_most=at_most, seed=seed)
+                                             quantity=quantity, size=size, at_most=at_most, seed=_seed)
 
     @staticmethod
     def get_category(selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
@@ -369,7 +366,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         at_most = None if not isinstance(at_most, int) else at_most
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         weight_pattern = [1] if not isinstance(weight_pattern, list) else weight_pattern
         if at_most is not None and at_most * len(selection) < size:
             raise ValueError("the selection size '{}' is smaller than the required sample size '{}'".format(
@@ -381,11 +378,10 @@ class DataBuilderTools(object):
             if len(selection) == 1:
                 rtn_list.append(selection[0])
                 continue
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             pattern = DataBuilderTools._normailse_weights(weight_pattern, size=size, count=len(rtn_list),
                                                           length=len(selection))
-            choice = selection[DataBuilderTools._weighted_choice(pattern, seed=seed)]
+            choice = selection[DataBuilderTools._weighted_choice(pattern, seed=_seed)]
             rtn_list.append(choice)
             if at_most is not None:
                 choice_idx = selection.index(choice)
@@ -393,7 +389,7 @@ class DataBuilderTools(object):
                 if at_most_counter[choice_idx] >= at_most:
                     selection.remove(choice)
                     at_most_counter.pop(choice_idx)
-        return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed))
+        return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
     @staticmethod
     def get_string_pattern(pattern: str, choices: dict=None, quantity: [float, int]=None, size: int=None,
@@ -423,7 +419,7 @@ class DataBuilderTools(object):
         choice_only = True if choice_only is None or not isinstance(choice_only, bool) else choice_only
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         if choices is None or not isinstance(choices, dict):
             choices = {'c': list(string.ascii_letters),
                        'd': list(string.digits),
@@ -441,8 +437,7 @@ class DataBuilderTools(object):
 
         rtn_list = []
         for _ in range(size):
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             result = []
             for c in list(pattern):
                 if c in choices.keys():
@@ -450,7 +445,7 @@ class DataBuilderTools(object):
                 elif not choice_only:
                     result.append(c)
             rtn_list.append(''.join(result))
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_datetime(start: Any, until: Any, default: Any = None, ordered: bool=None,
@@ -492,7 +487,7 @@ class DataBuilderTools(object):
             raise ValueError("The start or until parameters cannot be of NoneType")
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         _dt_start = pd.to_datetime(start, errors='coerce', infer_datetime_format=True,
                                    dayfirst=day_first, yearfirst=year_first)
         _dt_until = pd.to_datetime(until, errors='coerce', infer_datetime_format=True,
@@ -505,8 +500,7 @@ class DataBuilderTools(object):
         # ### Apply the patterns if any ###
         rtn_dates = []
         for _ in range(size):
-            seed += len(rtn_dates)
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0, second=0,
                                                                             microsecond=0, nanosecond=0)
             _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
@@ -519,12 +513,12 @@ class DataBuilderTools(object):
             if date_pattern is not None:
                 _dp_start = DataBuilderTools._convert_date2value(_dt_start)[0]
                 _dp_until = DataBuilderTools._convert_date2value(_dt_until)[0]
-                value = DataBuilderTools.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=seed)
+                value = DataBuilderTools.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed)
                 _dt_default = DataBuilderTools._convert_value2date(value)[0]
             # ### years ###
             rand_year = _dt_default.year
             if year_pattern is not None:
-                rand_select = DataBuilderTools._date_choice(_dt_start, _dt_until, year_pattern, seed=seed)
+                rand_select = DataBuilderTools._date_choice(_dt_start, _dt_until, year_pattern, seed=_seed)
                 if rand_select is pd.NaT:
                     rtn_dates.append(rand_select)
                     continue
@@ -539,12 +533,12 @@ class DataBuilderTools(object):
                 month_start = _dt_start if _dt_start.year == _min_date.year else _min_date
                 month_end = _dt_until if _dt_until.year == _max_date.year else _max_date
                 rand_select = DataBuilderTools._date_choice(month_start, month_end, month_pattern,
-                                                            limits='month', seed=seed)
+                                                            limits='month', seed=_seed)
                 if rand_select is pd.NaT:
                     rtn_dates.append(rand_select)
                     continue
                 rand_month = rand_select.month
-                rand_day = rand_select.day
+                rand_day = _dt_default.day if _dt_default.day <= rand_select.daysinmonth else rand_select.daysinmonth
             _max_date = _max_date.replace(month=rand_month, day=rand_day)
             _min_date = _min_date.replace(month=rand_month, day=rand_day)
             _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
@@ -552,7 +546,7 @@ class DataBuilderTools(object):
             if weekday_pattern is not None:
                 if not len(weekday_pattern) == 7:
                     raise ValueError("The weekday_pattern mut be a list of size 7 with index 0 as Monday")
-                _weekday = DataBuilderTools._weighted_choice(weekday_pattern, seed=seed)
+                _weekday = DataBuilderTools._weighted_choice(weekday_pattern, seed=_seed)
                 if _weekday != _min_date.dayofweek:
                     if _dt_start <= (_dt_default + Week(weekday=_weekday)) <= _dt_until:
                         rand_day = (_dt_default + Week(weekday=_weekday)).day
@@ -611,7 +605,7 @@ class DataBuilderTools(object):
                     rtn_list.append(str(d))
         else:
             rtn_list = rtn_dates
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_names(size: int=None, mf_weighting: list=None, seed: int=None, quantity: float = None):
@@ -627,38 +621,37 @@ class DataBuilderTools(object):
             mf_weighting = [1, 1]
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         if len(mf_weighting) != 2:
             raise ValueError("if used, mf_weighting must be a list of len 2 representing Male to female ratio")
 
         df = pd.DataFrame()
-        df['surname'] = ProfileSample.surnames(size=size, seed=seed)
+        df['surname'] = ProfileSample.surnames(size=size, seed=_seed)
 
-        m_names = ProfileSample.male_names(size=size, seed=seed)
-        f_names = ProfileSample.female_names(size=size, seed=seed)
+        m_names = ProfileSample.male_names(size=size, seed=_seed)
+        f_names = ProfileSample.female_names(size=size, seed=_seed)
         forename = []
         gender = []
         for idx in range(size):
-            seed += idx
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             pattern = DataBuilderTools._normailse_weights(mf_weighting, size=size, count=idx)
-            weight_idx = DataBuilderTools._weighted_choice(pattern, seed=seed)
+            weight_idx = DataBuilderTools._weighted_choice(pattern, seed=_seed)
             if weight_idx:
                 fn = np.random.choice(f_names)
                 forename.append(fn)
                 f_names.remove(fn)
                 gender.append('F')
                 if len(f_names) < 1:
-                    f_names = ProfileSample.female_names(seed=seed)
+                    f_names = ProfileSample.female_names(seed=_seed)
             else:
                 mn = np.random.choice(m_names)
                 forename.append(mn)
                 m_names.remove(mn)
                 gender.append('M')
                 if len(m_names) < 1:
-                    m_names = ProfileSample.male_names(seed=seed)
+                    m_names = ProfileSample.male_names(seed=_seed)
         df['forename'] = forename
-        df['gender'] = DataBuilderTools._set_quantity(gender, quantity=quantity, seed=seed)
+        df['gender'] = DataBuilderTools._set_quantity(gender, quantity=quantity, seed=_seed)
         return df
 
     @staticmethod
@@ -676,7 +669,7 @@ class DataBuilderTools(object):
         :param kwargs: (optional) any extra key word args to include in pd.read_csv() method
         :return: DataFrame or List
         """
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
         labels = AbstractPropertiesManager.list_formatter(labels)
         if file_format == 'pickle':
@@ -684,7 +677,7 @@ class DataBuilderTools(object):
         else:
             df = Cleaner.filter_columns(pd.read_csv(filename, **kwargs), headers=labels)
         if randomize:
-            df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+            df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
         for label in labels:
             if label not in df.columns:
                 raise NameError("The label '{}' could not be found in the file {}".format(label, filename))
@@ -799,7 +792,7 @@ class DataBuilderTools(object):
         :return: a list of equal length to the one passed
         """
         quantity = DataBuilderTools._quantity(quantity)
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
 
         if not isinstance(dataset, (str, int, float, list, pd.Series, pd.DataFrame)):
             raise TypeError("The parameter values is not an accepted type")
@@ -891,7 +884,7 @@ class DataBuilderTools(object):
                     rtn_list.append(dataset[method.get('_header')].iloc[index])
                 else:
                     rtn_list.append(method)
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def associate_custom(df: pd.DataFrame, action: str, use_exec: bool=False, **kwargs):
@@ -941,7 +934,7 @@ class DataBuilderTools(object):
         keep_zero = False if not isinstance(keep_zero, bool) else True
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
         quantity = DataBuilderTools._quantity(quantity)
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
 
         values = AbstractPropertiesManager.list_formatter(values)
 
@@ -960,8 +953,7 @@ class DataBuilderTools(object):
                 if counter > 100:
                     raise ValueError("The minimum or maximum values are too constraining to correlate numbers")
                 v = values[index]
-                seed += 1
-                np.random.seed(seed)
+                _seed = DataBuilderTools._next_seed(_seed, seed)
                 if fill_nulls and len(mode_choice) > 0 and (str(v) == 'nan' or not isinstance(v, (int, float))):
                     v = int(np.random.choice(mode_choice))
                 if isinstance(v, (int, float)):
@@ -977,7 +969,7 @@ class DataBuilderTools(object):
                     continue
                 rtn_list.append(_result)
                 next_index = True
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @ staticmethod
     def correlate_categories(values: Any, correlations: list, actions: dict, value_type: str,
@@ -1005,7 +997,7 @@ class DataBuilderTools(object):
         :return: a list of equal length to the one passed
         """
         quantity = DataBuilderTools._quantity(quantity)
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         if value_type.lower() not in ['c', 'n', 'd', 'category', 'number', 'datetime', 'date']:
             raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
         corr_list = []
@@ -1018,8 +1010,7 @@ class DataBuilderTools(object):
         rtn_list = []
         for value_index in range(len(values)):
             value = values[value_index]
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             corr_index = None
             for i in range(len(corr_list)):
                 if value_type.lower() in ['number', 'n']:
@@ -1069,7 +1060,7 @@ class DataBuilderTools(object):
                 if isinstance(method, dict):
                     method = value
                 rtn_list.append(method)
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def correlate_dates(dates: Any, offset: [int, dict]=None, date_format: str=None, lower_spread: [int, dict]=None,
@@ -1107,7 +1098,7 @@ class DataBuilderTools(object):
         :return: a list of equal size to that given
         """
         quantity = DataBuilderTools._quantity(quantity)
-        seed = DataBuilderTools._seed() if seed is None else seed
+        _seed = DataBuilderTools._seed() if seed is None else seed
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
         if date_format is None:
             date_format = '%d-%m-%YT%H:%M:%S'
@@ -1149,8 +1140,7 @@ class DataBuilderTools(object):
         mode_choice = DataBuilderTools._mode_choice(dates) if fill_nulls else list()
         rtn_list = []
         for d in dates:
-            seed += 1
-            np.random.seed(seed)
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             if fill_nulls and len(mode_choice) > 0 and not isinstance(d, str):
                 d = int(np.random.choice(mode_choice))
             _control_date = pd.to_datetime(d, errors='coerce', infer_datetime_format=True,
@@ -1171,7 +1161,7 @@ class DataBuilderTools(object):
                                                                 month_pattern=month_pattern,
                                                                 weekday_pattern=weekday_pattern,
                                                                 hour_pattern=hour_pattern,
-                                                                minute_pattern=minute_pattern, seed=seed)
+                                                                minute_pattern=minute_pattern, seed=_seed)
                     _sample_date = sample_list[0]
                     if _sample_date is None or _sample_date is pd.NaT:
                         raise ValueError("Unable to generate a random datetime, {} returned".format(sample_list))
@@ -1182,7 +1172,7 @@ class DataBuilderTools(object):
             else:
                 _result = d
             rtn_list.append(_result)
-        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def unique_identifiers(from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
@@ -1226,6 +1216,7 @@ class DataBuilderTools(object):
         """
         if until - start <= size:
             raise ValueError("The number of tokens must be less than the the number pool")
+        _seed = DataBuilderTools._seed() if seed is None else seed
         seen = set()
         add = seen.add
         attempts = 0
@@ -1235,12 +1226,11 @@ class DataBuilderTools(object):
                 raise InterruptedError(
                     "Unique Date Sequence stopped: After {} attempts unable to create unique set".format(max_attempts))
             for token in DataBuilderTools.get_number(from_value=start, to_value=until, weight_pattern=weight_pattern,
-                                                     precision=precision, size=size+10, seed=seed):
+                                                     precision=precision, size=size+10, seed=_seed):
                 add(token)
                 if len(seen) == size:
                     break
-            if seed is not None:
-                seed += 1
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             attempts += 1
         return list(seen)
 
@@ -1276,6 +1266,7 @@ class DataBuilderTools(object):
         :return: a date or size of dates in the format given.
         """
         size = 1 if size is None or not isinstance(size, int) else size
+        _seed = DataBuilderTools._seed() if seed is None else seed
         seen = set()
         add = seen.add
         attempt = 0
@@ -1289,12 +1280,11 @@ class DataBuilderTools(object):
                                                        month_pattern=month_pattern, weekday_pattern=weekday_pattern,
                                                        hour_pattern=hour_pattern, minute_pattern=minute_pattern,
                                                        date_format=date_format, day_first=day_first,
-                                                       year_first=year_first, size=size+10, seed=seed):
+                                                       year_first=year_first, size=size+10, seed=_seed):
                 add(token)
                 if len(seen) == size:
                     break
-            if seed is not None:
-                seed += 1
+            _seed = DataBuilderTools._next_seed(_seed, seed)
             attempt += 1
         return list(seen)
 
@@ -1712,3 +1702,11 @@ class DataBuilderTools(object):
     @staticmethod
     def _seed():
         return int(time.time() * np.random.random())
+
+    @staticmethod
+    def _next_seed(seed: int, default: int):
+        seed += 1
+        if seed > 2 ** 31:
+            seed = DataBuilderTools._seed() if isinstance(default, int) else default
+        np.random.seed(seed)
+        return seed

@@ -8,7 +8,7 @@ import unittest
 import os
 import warnings
 
-from ds_behavioral.generator.data_builder import DataBuilder, DataBuilderTools
+from ds_behavioral import DataBuilder, DataBuilderTools
 
 
 def ignore_warnings(test_func):
@@ -333,11 +333,12 @@ class FileBuilderTest(unittest.TestCase):
         tools = DataBuilderTools()
         start = "11/11/1964"
         until = "01/01/2018"
-        control = ['20-04-1992', '15-08-1996', '20-09-1972']
+        control = ['15-08-1996', '28-10-1987', '20-09-1972']
         result = tools.get_datetime(start, until, date_format="%d-%m-%Y", size=3, seed=101)
         self.assertEqual(control, result)
+        control = ['13-02-1974', '29-12-1976', '02-08-1982']
         result = tools.get_datetime(start, until, date_format="%d-%m-%Y", size=3, date_pattern=[1], seed=101)
-        print(result)
+        self.assertEqual(control, result)
 
     @ignore_warnings
     def test_date_pattern_exceptions(self):
@@ -354,19 +355,27 @@ class FileBuilderTest(unittest.TestCase):
     @ignore_warnings
     def test_date_year_pattern(self):
         tools = DataBuilderTools()
-        start = '05/07/2010'
-        until = '05/07/2018'
-        # check random date
-        control= ['13-12-2011', '28-09-2011', '14-08-2014']
-        result = tools.get_datetime(start=start, until=until, date_format='%d-%m-%Y', size=3, seed=11)
-        self.assertEqual(control, result)
-        # check years
-        years = [0, 1, 2, 3, 4, 4, 5, 6, 7]
-        for i in range(9):
-            control = ['13-12-201{}'.format(years[i])]
-            pattern = [0] * i + [1] + [0] * (8 - i)
-            result = tools.get_datetime(start=start, until=until, year_pattern=pattern, date_format='%d-%m-%Y', seed=11)
-            self.assertEqual(control, result)
+        start = '01/01/2010'
+        until = '31/12/2019'
+        result = tools.get_datetime(start=start, until=until, default='28/01/2017', year_pattern=[1], size=100, seed=101)
+        test = [0]*10
+        for d in result:
+            self.assertEqual(28, d.day)
+            self.assertEqual(1, d.month)
+            test[d.year-2010] += 1
+        control = [8, 14, 11, 7, 6, 8, 12, 10, 9, 15]
+        self.assertEqual(control, test)
+        for i in range(10):
+            pattern = [0]*10
+            pattern[i] = 1
+            result = tools.get_datetime(start=start, until=until, default='28/01/2017', year_pattern=pattern, size=10, seed=101)
+            test = [0]*10
+            for d in result:
+                self.assertEqual(28, d.day)
+                self.assertEqual(1, d.month)
+                test[d.year - 2010] += 1
+            self.assertEqual(10, test[i])
+            self.assertEqual(10, sum(test))
         pattern = [0]
         control = [pd.NaT, pd.NaT, pd.NaT]
         result = tools.get_datetime(start=start, until=until, year_pattern=pattern, size=3)
@@ -377,21 +386,25 @@ class FileBuilderTest(unittest.TestCase):
         tools = DataBuilderTools()
         start = '01/01/2017'
         until = '01/01/2018'
-        control= ['28-09-2017', '28-03-2017', '07-03-2017']
-        result = tools.get_datetime(start=start, until=until, date_pattern=[1], date_format='%d-%m-%Y', size=3, seed=11)
-        self.assertEqual(control, result)
-        month = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+        result = tools.get_datetime(start=start, until=until, default='31/01/2016', month_pattern=[1], size=100, seed=101)
+        test = [0]*12
+        for d in result:
+            self.assertEqual(d.daysinmonth, d.day)
+            self.assertEqual(2016, d.year)
+            test[d.month-1] += 1
+        control = [10, 7, 10, 10, 8, 5, 4, 9, 12, 10, 9, 6]
+        self.assertEqual(control, test)
         for i in range(12):
-            control = '{}-2017'.format(month[i])
-            pattern = [0] * i + [1] + [0] * (11 - i)
-            result = tools.get_datetime(start=start, until=until, month_pattern=pattern, date_format='%d-%m-%Y', seed=11)
-            self.assertTrue(result[0].endswith(control))
-        month = ['01', '03', '05', '07', '09', '11']
-        for i in range(6):
-            control = '{}-2017'.format(month[i])
-            pattern = [0] * i + [1] + [0] * (5 - i)
-            result = tools.get_datetime(start=start, until=until, month_pattern=pattern, date_format='%d-%m-%Y', seed=11)
-            self.assertTrue(result[0].endswith(control))
+            pattern = [0]*12
+            pattern[i] = 1
+            result = tools.get_datetime(start=start, until=until, default='31/01/2016', month_pattern=pattern, size=10, seed=101)
+            test = [0]*12
+            for d in result:
+                self.assertEqual(d.daysinmonth, d.day)
+                self.assertEqual(2016, d.year)
+                test[d.month - 1] += 1
+            self.assertEqual(10, test[i])
+            self.assertEqual(10, sum(test))
         pattern = [0]
         control = [pd.NaT, pd.NaT, pd.NaT]
         result = tools.get_datetime(start=start, until=until, year_pattern=pattern, size=3)
@@ -440,14 +453,32 @@ class FileBuilderTest(unittest.TestCase):
     @ignore_warnings
     def test_date_hour_pattern(self):
         tools = DataBuilderTools()
-        start = '01/01/2018'
-        until = '01/02/2018'
-        hour = ['01', '07', '13', '19']
-        for i in range(4):
-            control = ['{}:07:27'.format(hour[i])]
-            pattern = [0] * i + [1] + [0] * (3 - i)
-            result = tools.get_datetime(start=start, until=until, hour_pattern=pattern, date_format='%H:%M:%S', seed=11)
-            self.assertEqual(control, result)
+        start = '01/01/2018 00:00'
+        until = '01/02/2018 00:00'
+        result = tools.get_datetime(start=start, until=until, default='01/02/2018 12:23:00', hour_pattern=[1], size=100, seed=101)
+        test = [0]*24
+        for d in result:
+            self.assertEqual(1, d.day)
+            self.assertEqual(2, d.month)
+            self.assertEqual(2018, d.year)
+            self.assertEqual(23, d.minute)
+            test[d.hour] += 1
+        control = [6, 9, 6, 4, 5, 3, 6, 2, 5, 4, 3, 0, 7, 6, 6, 4, 2, 5, 1, 2, 5, 4, 5, 0]
+        self.assertEqual(control, test)
+        for i in range(24):
+            pattern = [0]*24
+            pattern[i] = 1
+            result = tools.get_datetime(start=start, until=until, default='01/02/2018 12:23:00', hour_pattern=pattern, size=10, seed=101)
+            test = [0]*24
+            for d in result:
+                # self.assertEqual(1, d.day)
+                # self.assertEqual(2, d.month)
+                # self.assertEqual(2018, d.year)
+                # self.assertEqual(23, d.minute)
+                test[d.hour] += 1
+            print(test)
+            # self.assertEqual(10, test[i])
+            # self.assertEqual(10, sum(test))
 
     def test_norm_weight(self):
         selection = DataBuilderTools.get_string_pattern("UUUU", size=20)
