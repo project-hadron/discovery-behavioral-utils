@@ -595,7 +595,7 @@ class DataBuilderTools(object):
                 _dt_default = _dt_default.tz_localize(None)
             rtn_dates.append(_dt_default)
         if ordered:
-            sorted(rtn_dates)
+            rtn_dates = sorted(rtn_dates)
         rtn_list = []
         if isinstance(date_format, str):
             for d in rtn_dates:
