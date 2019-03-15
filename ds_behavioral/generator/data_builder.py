@@ -950,8 +950,6 @@ class DataBuilderTools(object):
             counter = 0
             while not next_index:
                 counter += 1
-                if counter > 100:
-                    raise ValueError("The minimum or maximum values are too constraining to correlate numbers")
                 v = values[index]
                 _seed = DataBuilderTools._next_seed(_seed, seed)
                 if fill_nulls and len(mode_choice) > 0 and (str(v) == 'nan' or not isinstance(v, (int, float))):
@@ -964,9 +962,17 @@ class DataBuilderTools(object):
                 else:
                     _result = v
                 if isinstance(min_value, (int, float)) and _result < min_value:
-                    continue
+                    if counter < 30:
+                        continue
+                    # Set the result to be the minimum
+                    _result = min_value
+                    counter = 0
                 elif isinstance(max_value, (int, float)) and _result > max_value:
-                    continue
+                    if counter < 30:
+                        continue
+                    # Set the result to be the maximum
+                    _result = max_value
+                    counter = 0
                 rtn_list.append(_result)
                 next_index = True
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
@@ -1154,7 +1160,9 @@ class DataBuilderTools(object):
                 _upper_spread_date = _offset_date + pd.DateOffset(**_clean(upper_spread))
                 _lower_spread_date = _offset_date - pd.DateOffset(**_clean(lower_spread))
                 _result = None
+                counter = 0
                 while not _result:
+                    counter += 1
                     sample_list = DataBuilderTools.get_datetime(start=_lower_spread_date, until=_upper_spread_date,
                                                                 ordered=ordered,
                                                                 date_pattern=date_pattern, year_pattern=year_pattern,
@@ -1166,9 +1174,14 @@ class DataBuilderTools(object):
                     if _sample_date is None or _sample_date is pd.NaT:
                         raise ValueError("Unable to generate a random datetime, {} returned".format(sample_list))
                     if not _min_date <= _sample_date <= _max_date:
-                        _result = None
-                    else:
-                        _result = _sample_date.strftime(date_format) if isinstance(date_format, str) else _sample_date
+                        if counter < 30:
+                            _result = None
+                            continue
+                        if _sample_date < _min_date:
+                            _sample_date = _min_date
+                        if _sample_date > _max_date:
+                            _sample_date = _max_date
+                    _result = _sample_date.strftime(date_format) if isinstance(date_format, str) else _sample_date
             else:
                 _result = d
             rtn_list.append(_result)

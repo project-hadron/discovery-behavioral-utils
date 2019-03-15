@@ -82,6 +82,24 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(values, result)
 
     @ignore_warnings
+    def test_correlate_numbers_max_min(self):
+        tools = DataBuilderTools()
+        values = [2]
+        result = tools.correlate_numbers(values, max_value=1)
+        self.assertEqual([1],result)
+        result = tools.correlate_numbers(values, min_value=3)
+        self.assertEqual([3],result)
+
+    @ignore_warnings
+    def test_correlate_date_max_min(self):
+        tools = DataBuilderTools()
+        dates = ['10/01/2017']
+        result = tools.correlate_dates(dates, max_date='05/01/2017')
+        self.assertEqual(['05-01-2017T00:00:00'], result)
+        result = tools.correlate_dates(dates, min_date='12/01/2017')
+        self.assertEqual(['12-01-2017T00:00:00'], result)
+
+    @ignore_warnings
     def test_correlation_dates(self):
         tools = DataBuilderTools()
         dates = ['10/01/2017', '12/01/2017', None, '', 'Fred']
@@ -92,10 +110,10 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.correlate_dates(dates, date_format="%d-%m-%Y", seed=99)
         self.assertEqual(control, result)
         dates = DataBuilderTools.get_datetime('01/01/2010', '31/12/2010', date_format="%d-%m-%Y", seed=99, size=5)
-        control = ['02-09-2010', '17-07-2010', '06-08-2010', '31-01-2010', '11-08-2010']
+        control = ['17-07-2010', '07-07-2010', '06-08-2010', '07-06-2010', '23-02-2010']
         self.assertEqual(control, dates)
         result = tools.correlate_dates(dates, lower_spread={'days':2}, upper_spread={'days':2}, seed=99, date_format="%d-%m-%Y")
-        control = ['03-09-2010', '18-07-2010', '07-08-2010', '31-01-2010', '10-08-2010']
+        control = ['18-07-2010', '08-07-2010', '06-08-2010', '06-06-2010', '22-02-2010']
         self.assertEqual(control, result)
 
     @ignore_warnings
