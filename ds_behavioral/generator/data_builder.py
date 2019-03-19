@@ -10,6 +10,7 @@ import string
 import pandas as pd
 from pandas.tseries.offsets import Week
 import matplotlib.dates as mdates
+import warnings
 
 from ds_discovery.config.properties import AbstractPropertiesManager
 from ds_behavioral.sample.sample_data import ProfileSample
@@ -501,11 +502,13 @@ class DataBuilderTools(object):
         rtn_dates = []
         for _ in range(size):
             _seed = DataBuilderTools._next_seed(_seed, seed)
-            _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0, second=0,
-                                                                            microsecond=0, nanosecond=0)
-            _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
-                                                                             second=59, microsecond=0, nanosecond=0)
-            # reset the starting base
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+                _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0,
+                                                                                second=0, microsecond=0, nanosecond=0)
+                _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
+                                                                                 second=59, microsecond=0, nanosecond=0)
+                # reset the starting base
             _dt_default = _dt_base
             if not isinstance(_dt_default, pd.Timestamp):
                 _dt_default = np.random.random() * (_dt_until - _dt_start) + _dt_start
@@ -1152,13 +1155,17 @@ class DataBuilderTools(object):
             _control_date = pd.to_datetime(d, errors='coerce', infer_datetime_format=True,
                                            dayfirst=day_first, yearfirst=year_first)
             if isinstance(_control_date, pd.Timestamp):
-                _offset_date = _control_date + pd.DateOffset(**_clean(offset))
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+                    _offset_date = _control_date + pd.DateOffset(**_clean(offset))
                 if _max_date <= _offset_date <= _min_date:
                     err_date = _offset_date.strftime(date_format)
                     raise ValueError(
                         "The offset_date {} is does not fall between the min and max dates".format(err_date))
-                _upper_spread_date = _offset_date + pd.DateOffset(**_clean(upper_spread))
-                _lower_spread_date = _offset_date - pd.DateOffset(**_clean(lower_spread))
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+                    _upper_spread_date = _offset_date + pd.DateOffset(**_clean(upper_spread))
+                    _lower_spread_date = _offset_date - pd.DateOffset(**_clean(lower_spread))
                 _result = None
                 counter = 0
                 while not _result:

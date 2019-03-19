@@ -1,4 +1,5 @@
 import matplotlib
+
 matplotlib.use("TkAgg")
 
 import pandas as pd
@@ -9,15 +10,6 @@ import os
 import warnings
 
 from ds_behavioral import DataBuilder, DataBuilderTools
-
-
-def ignore_warnings(test_func):
-    def do_test(self, *args, **kwargs):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            test_func(self, *args, **kwargs)
-    return do_test
-
 
 class FileBuilderTest(unittest.TestCase):
 
@@ -66,7 +58,7 @@ class FileBuilderTest(unittest.TestCase):
         control = {'etype': 'get_number', 'kwargs': {}}
         self.assertEqual(control, fb.fbpm.get_column('test_att2'))
 
-    @ignore_warnings
+    # @ignore_warnings(message='Discarding nonzero nanoseconds in conversion')
     def test_create_file_and_get_column_csv(self):
         fb = DataBuilder(self.name)
         fb.add_column('id', 'unique_identifiers', from_value=100, prefix='pre_', suffix='_suf')
@@ -311,7 +303,6 @@ class FileBuilderTest(unittest.TestCase):
         control = ['Number 13', 'Number 14', 'Number 11', 'Number 11', 'Number 12']
         self.assertEqual(control, result)
 
-    @ignore_warnings
     def test_unique_date(self):
         tools = DataBuilderTools()
         start = "01/01/2016"
@@ -328,7 +319,6 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.unique_date_seq(start, end, size=1000)
         self.assertEqual(1000, len(set(result)))
 
-    @ignore_warnings
     def test_datetime(self):
         tools = DataBuilderTools()
         start = "11/11/1964"
@@ -340,7 +330,6 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.get_datetime(start, until, date_format="%d-%m-%Y", size=3, date_pattern=[1], seed=101)
         self.assertEqual(control, result)
 
-    @ignore_warnings
     def test_date_pattern_exceptions(self):
         tools = DataBuilderTools()
         valid = '23-12-2016'
@@ -352,7 +341,6 @@ class FileBuilderTest(unittest.TestCase):
                 tools.get_datetime(valid, d)
             self.assertTrue("The start or until parameters cannot be" in str(context.exception))
 
-    @ignore_warnings
     def test_date_year_pattern(self):
         tools = DataBuilderTools()
         start = '01/01/2010'
@@ -381,7 +369,6 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.get_datetime(start=start, until=until, year_pattern=pattern, size=3)
         self.assertEqual(control, result)
 
-    @ignore_warnings
     def test_date_month_pattern(self):
         tools = DataBuilderTools()
         start = '01/01/2017'
@@ -411,7 +398,6 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
         result = tools.get_datetime('01/01/2017', '31/12/2017', size=100, date_format='%d/%m/%Y', ordered=True, month_pattern=[4,0,1,4])
 
-    @ignore_warnings
     def test_date_week_pattern(self):
         tools = DataBuilderTools()
         start = '01/01/2017'
@@ -450,7 +436,6 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.get_datetime(start=start, until=until, weekday_pattern=pattern, date_format='%d-%m-%Y', seed=11)
         self.assertEqual(['NaT'], result)
 
-    @ignore_warnings
     def test_date_hour_pattern(self):
         tools = DataBuilderTools()
         start = '01/01/2018 00:00'
