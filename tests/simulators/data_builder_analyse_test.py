@@ -143,7 +143,7 @@ class MyTestCase(unittest.TestCase):
         control = {'dtype': 'category', 'selection': ['unknown', 'female', 'male'], 'sample': [446, 445],
                    'weighting': [[0.22, 38.34, 61.43], [4.72, 30.34, 64.94]], 'null_values': [0.0, 0.0]}
         self.assertEqual(control, result)
-        df = tools.get_names(size=100, mf_weighting=[60, 40], seed=31, quantity=90.0)
+        df = tools.get_profiles(size=100, mf_weighting=[60, 40], seed=31, quantity=90.0)
         result = tools.analyse_category(df['gender'])
         control = {'selection': ['M', 'F'], 'weighting': [65.56, 34.44], 'sample': [90], 'dtype': 'category', 'null_values': [10.0]}
         self.assertEqual(control, result)
@@ -152,7 +152,7 @@ class MyTestCase(unittest.TestCase):
     def test_analyse_associate_single(self):
         tools = DataBuilderTools()
         size = 50
-        df = tools.get_names(size=size, mf_weighting=[60,40], seed=31, quantity=90.0)
+        df = tools.get_profiles(size=size, mf_weighting=[60, 40], seed=31, quantity=90.0)
         # category
         columns_list = [{'gender': {}}]
         result = tools.analyse_association(df, columns_list)
@@ -188,7 +188,7 @@ class MyTestCase(unittest.TestCase):
     def test_multi_analyse_associate(self):
         tools = DataBuilderTools()
         size = 50
-        df = tools.get_names(size=size, mf_weighting=[60,40], seed=31, quantity=90.0)
+        df = tools.get_profiles(size=size, mf_weighting=[60, 40], seed=31, quantity=90.0)
         df['numbers'] = tools.get_number(from_value=1000, weight_pattern=[5,0,2], size=size, quantity=0.9, seed=31)
         df['dates'] = tools.get_datetime('10/10/2000', '31/12/2018', date_pattern=[1,9,4], size=size, quantity=0.9, seed=31)
         columns_list = [{'gender': {}}, {'numbers': {}}]
@@ -204,7 +204,7 @@ class MyTestCase(unittest.TestCase):
     def test_levels_analyse_associate(self):
         tools = DataBuilderTools()
         size = 50
-        df = tools.get_names(mf_weighting=[60,40], quantity=90.0, seed=31, size=size)
+        df = tools.get_profiles(mf_weighting=[60, 40], quantity=90.0, seed=31, size=size)
         df['lived'] = tools.get_category(selection=['yes', 'no'], quantity=80.0, seed=31, size=size)
         df['age'] = tools.get_number(from_value=20,to_value=80, weight_pattern=[1,2,5,6,2,1,0.5], seed=31, size=size)
         df['fare'] = tools.get_number(from_value=1000, weight_pattern=[5,0,2], size=size, quantity=0.9, seed=31)

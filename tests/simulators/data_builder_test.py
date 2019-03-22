@@ -302,6 +302,10 @@ class FileBuilderTest(unittest.TestCase):
         result = DataBuilderTools.get_string_pattern("Number #", choices=choices, choice_only=False, size=5, seed=31)
         control = ['Number 13', 'Number 14', 'Number 11', 'Number 11', 'Number 12']
         self.assertEqual(control, result)
+        choices = {'#': list('abcdef') + list('0123456789'), '-': ['-']}
+        result = tools.get_string_pattern('########-####-####-####-############', choices=choices, seed=31)
+        control = ['15f0682d-6183-df43-e5bd-bcd24c4ecee3']
+        self.assertEqual(control, result)
 
     def test_unique_date(self):
         tools = DataBuilderTools()
@@ -483,12 +487,12 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_profile(self):
         tools = DataBuilderTools()
-        result = tools.get_names(size=10, mf_weighting=[0, 1])
+        result = tools.get_profiles(size=10, mf_weighting=[0, 1])
         self.assertEqual(['F'], result['gender'].unique())
-        result = tools.get_names(size=10, mf_weighting=[1, 0])
+        result = tools.get_profiles(size=10, mf_weighting=[1, 0])
         self.assertEqual(['M'], result['gender'].unique())
 
-        result = tools.get_names(size=6000, mf_weighting=[1, 1])
+        result = tools.get_profiles(size=6000, mf_weighting=[1, 1])
         counter = result.groupby('gender').nunique(dropna=True).drop('gender', axis=1)
         self.assertTrue(counter.iloc[0,0] > counter.iloc[0,1])
         self.assertTrue(counter.iloc[1,0] > counter.iloc[1,1])
