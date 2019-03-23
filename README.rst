@@ -83,7 +83,7 @@ you are trying to create such as ``customer``, ``accounts`` or
 
 .. code:: python
 
-    from ds_discovery.simulators.data_builder import DataBuilder
+    from ds_behavioral import DataBuilder
 
 .. code:: python
 
@@ -101,18 +101,21 @@ and produce a ``Pandas DataFrame`` on the fly
 
 .. parsed-literal::
 
-    ['associate_custom',
+    ['associate_analysis',
+     'associate_custom',
      'associate_dataset',
      'correlate_categories',
      'correlate_dates',
      'correlate_numbers',
      'get_category',
-     'get_column_csv',
      'get_custom',
      'get_datetime',
      'get_distribution',
-     'get_names',
+     'get_file_column',
+     'get_intervals',
      'get_number',
+     'get_profiles',
+     'get_reference',
      'get_string_pattern',
      'unique_date_seq',
      'unique_identifiers',
