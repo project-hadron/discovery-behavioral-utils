@@ -237,24 +237,24 @@ class GenericSamples(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def real_company_names(size: int = None, seed: int = None) -> list:
+    def company_fortune_1000(size: int = None, seed: int = None) -> list:
         """returns a randomly selected list of real company names of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return GenericSamples._get_dataset(filename='lookup_company_names.csv', size=size, seed=seed)
+        return GenericSamples._get_dataset(filename='lookup_fortune1000_companies.csv', size=size, seed=seed)
 
     @staticmethod
-    def fake_company_names(size: int = None, seed: int = None) -> list:
+    def company_names(size: int = None, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return GenericSamples._get_dataset(filename='lookup_fake_company_names.csv', size=size, seed=seed)
+        return GenericSamples._get_dataset(filename='lookup_inc5000_companies.csv', size=size, seed=seed)
 
     @staticmethod
     def road_types(size: int = None, seed: int = None) -> list:

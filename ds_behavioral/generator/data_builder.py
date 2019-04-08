@@ -1,5 +1,6 @@
 import os
 import random
+import re
 import time
 from collections import Counter
 from pathlib import Path
@@ -391,6 +392,48 @@ class DataBuilderTools(object):
                     selection.remove(choice)
                     at_most_counter.pop(choice_idx)
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
+
+    @staticmethod
+    def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,
+                          size: int=None, seed: int=None):
+        """ Returns the pattern with the tags subsituted by tage choice
+            example ta dictionary:
+                { '<slogan>': {'action': '', kwargs: {}},
+                  '<phone>': {'action': '', kwargs: {}}
+                }
+            where action is a DataBuilderTools method name and kwargs are the arguments to pass
+            for sample data use get_custom
+
+        :param pattern: a strin or list of strins to apply the ta subsitution too
+        :param tags: a dictionary of tas and actions
+        :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param quantity: a number between 0 and 1 representing the percentage quantity of the data
+        :param size: an optional size of the return. default to 1
+        :param seed: a seed value for the random function: default to None
+        :return: a list of patterns with tas replaced
+        """
+        quantity = DataBuilderTools._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = DataBuilderTools._seed() if seed is None else seed
+        pattern = AbstractPropertiesManager.list_formatter(pattern)
+        if not isinstance(tags, dict):
+            raise ValueError("The 'tags' parameter must be a dictionary")
+        class_methods = DataBuilderTools().__dir__()
+
+        rtn_list = []
+        for _ in range(size):
+            _seed = DataBuilderTools._next_seed(_seed, seed)
+            choice = DataBuilderTools.get_category(pattern, weight_pattern=weight_pattern, seed=_seed, size=1)[0]
+            for tag, action in tags.items():
+                method = action.get('action')
+                if method in class_methods:
+                    kwargs = action.get('kwargs')
+                    result = eval("DataBuilderTools.{}(**{})".format(method, kwargs))[0]
+                else:
+                    result = method
+                choice = re.sub(tag, str(result), str(choice))
+            rtn_list.append(choice)
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
     def get_string_pattern(pattern: str, choices: dict=None, quantity: [float, int]=None, size: int=None,
@@ -1336,229 +1379,6 @@ class DataBuilderTools(object):
             add(token)
             attempts += 1
         return list(seen)
-
-    # @staticmethod
-    # def analyse_date(values: Any, granularity: [int, float, pd.Timedelta]=None, lower: Any = None, upper: Any = None,
-    #                  day_first: bool = True, year_first: bool = False, date_format: str = None, chunk_size: int = None,
-    #                  replace_zero: [int, float] = None):
-    #     """Analyses a set of dates and returns a dictionary of selection and weighting
-    #
-    #     :param values: the values to analyse
-    #     :param granularity: (optional) the granularity of the analysis across the range.
-    #             int passed - the number of sections to break the value range into
-    #             pd.Timedelta passed - a frequency time delta
-    #     :param lower: (optional) the lower limit of the number value. Takes min() if not set
-    #     :param upper: (optional) the upper limit of the number value. Takes max() if not set
-    #     :param day_first: if the date provided has day first
-    #     :param year_first: if the date provided has year first
-    #     :param date_format: the format of the output dates, if None then pd.Timestamp
-    #     :param chunk_size: (optional) number of chuncks if you want weighting over the length of the dataset
-    #     :param replace_zero: (optional) if zero what to replace the weighting value with to avoid zero probability
-    #     :return: a dictionary of results
-    #     """
-    #     values = pd.to_datetime(values, errors='coerce', infer_datetime_format=True, dayfirst=day_first,
-    #                             yearfirst=year_first)
-    #     values = mdates.date2num(values)
-    #     values = pd.Series(values)
-    #     lower = pd.to_datetime(lower, errors='coerce', infer_datetime_format=True, dayfirst=day_first,
-    #                            yearfirst=year_first)
-    #     upper = pd.to_datetime(upper, errors='coerce', infer_datetime_format=True, dayfirst=day_first,
-    #                            yearfirst=year_first)
-    #     lower = values.min() if not isinstance(lower, pd.Timestamp) else mdates.date2num(lower)
-    #     upper = values.max() if not isinstance(upper, pd.Timestamp) else mdates.date2num(upper)
-    #     if lower < upper:
-    #         if isinstance(granularity, pd.Timedelta):
-    #             granularity = mdates.date2num(mdates.num2date(lower) + granularity) - lower
-    #         rtn_dict = DataBuilderTools.analyse_number(values, granularity=granularity, lower=lower, upper=upper,
-    #                                                    chunk_size=chunk_size, replace_zero=replace_zero, precision=10)
-    #     else:
-    #         value_size = values.size
-    #         values = values.dropna()
-    #         null_values = np.round(((value_size - values.size) / value_size) * 100, 2) if value_size > 0 else 0
-    #         rtn_dict = {'selection': [(lower, upper)], 'weighting': [100 - null_values], 'lower': lower, 'upper': upper,
-    #                     'granularity': granularity, 'dtype': 'date', 'quantity': null_values, 'sample': [values.size]}
-    #     # tidy back all the dates
-    #     rtn_dict['selection'] = [(tuple([pd.Timestamp(mdates.num2date(y)) for y in x])) for x in rtn_dict['selection']]
-    #     rtn_dict['lower'] = pd.Timestamp(mdates.num2date(rtn_dict['lower']))
-    #     rtn_dict['upper'] = pd.Timestamp(mdates.num2date(rtn_dict['upper']))
-    #     if isinstance(date_format, str):
-    #         rtn_dict['selection'] = [(tuple([y.strftime(date_format) for y in x])) for x in rtn_dict['selection']]
-    #         rtn_dict['lower'] = rtn_dict['lower'].strftime(date_format)
-    #         rtn_dict['upper'] = rtn_dict['upper'].strftime(date_format)
-    #     rtn_dict['dtype'] = 'date'
-    #     return rtn_dict
-    #
-    # @staticmethod
-    # def analyse_number(values: Any, granularity: [int, float]=None, lower: [int, float]=None, upper: [int, float]=None,
-    #                    chunk_size: int=None, replace_zero: [int, float]=None, precision: int=None):
-    #     """Analyses a set of values and returns a dictionary of selection and weighting
-    #
-    #     :param values: the values to analyse
-    #     :param granularity: (optional) the granularity of the analysis across the range.
-    #             int passed - represents the number of periods
-    #             float passed - the length of each interval
-    #     :param lower: (optional) the lower limit of the number value. Default min()
-    #     :param upper: (optional) the upper limit of the number value. Default max()
-    #     :param chunk_size: (optional) number of chuncks if you want weighting over the length of the dataset
-    #     :param replace_zero: (optional) if zero what to replace the weighting value with to avoid zero probability
-    #     :param precision: (optional) by default set to 3.
-    #     :return: a dictionary of results
-    #     """
-    #     values = pd.Series(values)
-    #     precision = 3 if not isinstance(precision, int) else precision
-    #     granularity = 3 if not isinstance(granularity, (int, float)) else granularity
-    #     replace_zero = 0 if not isinstance(replace_zero, (int, float)) else replace_zero
-    #     chunk_size = 1 if not isinstance(chunk_size, int) or chunk_size > values.size else chunk_size
-    #     lower = values.min() if not isinstance(lower, (int, float)) or lower > values.min() else lower
-    #     upper = values.max() if not isinstance(upper, (int, float)) or upper < values.max() else upper
-    #     if lower >= upper:
-    #         value_size = values.size
-    #         values = values.dropna()
-    #         null_values = np.round(((value_size - values.size) / value_size) * 100, 2) if value_size > 0 else 0
-    #         return {'selection': [(lower, upper)], 'weighting': [100-null_values], 'lower': lower, 'upper': upper,
-    #                 'granularity': granularity, 'dtype': 'number', 'null_values': null_values, 'sample': [values.size]}
-    #     # get the intervals so the interval range is fixed across the chunks
-    #     freq = granularity if isinstance(granularity, float) else None
-    #     periods = granularity if isinstance(granularity, int) else None
-    #     # ensure the frequency is equal to or higher than the upper value
-    #     _upper = upper + freq - (upper % freq) if periods is None else upper
-    #     interval_range = pd.interval_range(start=lower, end=_upper, periods=periods, freq=freq, closed='both')
-    #     interval_range = interval_range.drop_duplicates()
-    #     weighting = []
-    #     null_values = []
-    #     sample = []
-    #     for chunk in np.array_split(values, chunk_size):
-    #         value_size = chunk.size
-    #         chunk = chunk.dropna()
-    #         null_values.append(np.round(((value_size - chunk.size) / value_size) * 100, 2) if value_size > 0 else 0)
-    #         sample.append(chunk.size)
-    #         chunk_weights = [0] * len(interval_range)
-    #         for v in chunk:
-    #             chunk_weights[interval_range.get_loc(v)[-1]] += 1
-    #         chunk_weights = pd.Series(chunk_weights)
-    #         if value_size > 0:
-    #             chunk_weights = chunk_weights.apply(lambda x: np.round((x / value_size) * 100, 2))
-    #         weighting.append(chunk_weights.replace(0, replace_zero).tolist())
-    #     if len(weighting) == 1:
-    #         weighting = weighting[0]
-    #     selection = interval_range.to_tuples().tolist()
-    #     selection = [(tuple([round(y, precision) if isinstance(y, (int, float)) else y for y in x])) for x in selection]
-    #     rtn_dict = {'selection': selection, 'weighting': weighting, 'lower': lower, 'upper': upper,
-    #                 'granularity': granularity, 'dtype': 'number', 'null_values': null_values, 'sample': sample}
-    #     return rtn_dict
-    #
-    # @staticmethod
-    # def analyse_category(categories: Any, chunk_size: int=None, replace_zero: [int, float]=None, nulls_list: list=None):
-    #     """Analyses a set of categories and returns a dictionary of selection and weighting
-    #     the return is in the form:
-    #             {'selection': [], 'weighting': []}
-    #
-    #     :param categories: the categories to analyse
-    #     :param chunk_size: (optional) number of chuncks if you want weighting over the length of the dataset
-    #     :param replace_zero: (optional) if zero what to replace the weighting value with to avoid zero probability
-    #     :param nulls_list: (optional) a list of nulls if more than the default empty string
-    #     :return: a dictionary of results
-    #     """
-    #     categories = pd.Series(categories)
-    #     nulls_list = [''] if not isinstance(nulls_list, list) else nulls_list
-    #     replace_zero = 0 if not isinstance(replace_zero, (int, float)) else replace_zero
-    #     chunk_size = 1 if not isinstance(chunk_size, int) or chunk_size > categories.size else chunk_size
-    #     selection = pd.Series(data=0, index=categories.replace(nulls_list, np.nan).dropna().unique())
-    #     weighting = []
-    #     null_values = []
-    #     sample = []
-    #     for chunk in np.array_split(categories, chunk_size):
-    #         cat_size = chunk.size
-    #         chunk = chunk.replace(nulls_list, np.nan).dropna()
-    #         null_values.append(np.round(((cat_size - chunk.size) / cat_size) * 100, 2) if cat_size > 0 else 0)
-    #         sample.append(chunk.size)
-    #         value_count = chunk.value_counts()
-    #         if value_count.sum() > 0:
-    #             value_count = value_count.apply(lambda x: np.round((x / value_count.sum()) * 100, 2))
-    #         value_count = pd.Series(selection.index.map(value_count))
-    #         weighting.append(value_count.replace(np.nan, 0).replace(0, replace_zero).tolist())
-    #     if len(weighting) == 1:
-    #         weighting = weighting[0]
-    #     rtn_dict = {'selection': categories.replace(nulls_list, np.nan).dropna().unique().tolist(),
-    #                 'weighting': weighting, 'dtype': 'category', 'null_values': null_values, 'sample': sample}
-    #     return rtn_dict
-    #
-    # @staticmethod
-    # def analyse_association(df: pd.DataFrame, columns_list: list, exclude_associate: list=None):
-    #     """ Analyses the association of Category against Values and returns a dictionary of resulting weighting
-    #     the structure of the columns_list is a list of dictionaries with the key words
-    #         - label: the label or name of the header in the DataFrame
-    #         - type: onr of category|number|date indicating the origin of the data, Default is 'category' if omitted
-    #         - chunk_size: if the weighting pattern is over the size of the data the number of chunks
-    #         - replace_zero: if a zero reference is returned it can optionally be replaced with a low probability
-    #     and example structure might look like:
-    #         [{'label1': {'type': 'category|number|date', 'chunk_size': int, 'replace_zero': int|float}},
-    #          {'label2': {}}]
-    #
-    #     :param df: the dataframe to take the columns from
-    #     :param columns_list: a dictionary structure of collumns to select for association
-    #     :param exclude_associate: (optional) a list of dot separated tree of items to exclude from iteration (e.g. [age.
-    #     :return: a dictionary of association weighting
-    #     """
-    #     tools = DataBuilderTools
-    #
-    #     def _get_weights(_df: pd.DataFrame, columns: list, index: int, weighting: dict, parent: list):
-    #         for label, kwargs in columns[index].items():
-    #             tree = parent.copy()
-    #             tree.append(label)
-    #             if '.'.join(tree) in exclude_associate:
-    #                 continue
-    #             section = {'associate': str('.'.join(tree))}
-    #             if label not in _df.columns:
-    #                 raise ValueError("header '{}' not found in the Dataframe".format(label))
-    #             dtype = kwargs.get('dtype')
-    #             chunk_size = kwargs.get('chunk_size')
-    #             replace_zero = kwargs.get('replace_zero')
-    #             if (dtype is None and df[label].dtype in [int, float]) or str(dtype).lower().startswith('number'):
-    #                 granularity = kwargs.get('granularity')
-    #                 lower = kwargs.get('lower')
-    #                 upper = kwargs.get('upper')
-    #                 precision = kwargs.get('precision')
-    #                 section['analysis'] = tools.analyse_number(_df[label], granularity=granularity, lower=lower,
-    #                                                            upper=upper, chunk_size=chunk_size,
-    #                                                            replace_zero=replace_zero, precision=precision)
-    #             elif str(dtype).lower().startswith('date'):
-    #                 granularity = kwargs.get('granularity')
-    #                 lower = kwargs.get('lower')
-    #                 upper = kwargs.get('upper')
-    #                 day_first = kwargs.get('day_first')
-    #                 year_first = kwargs.get('year_first')
-    #                 date_format = kwargs.get('date_format')
-    #                 section['analysis'] = tools.analyse_date(_df[label], granularity=granularity, lower=lower,
-    #                                                          upper=upper, day_first=day_first, year_first=year_first,
-    #                                                          chunk_size=chunk_size, replace_zero=replace_zero,
-    #                                                          date_format=date_format)
-    #             else:
-    #                 nulls_list = kwargs.get('nulls_list')
-    #                 section['analysis'] = tools.analyse_category(_df[label], chunk_size=chunk_size,
-    #                                                              replace_zero=replace_zero, nulls_list=nulls_list)
-    #             for category in section.get('analysis').get('selection'):
-    #                 if section.get('sub_category') is None:
-    #                     section['sub_category'] = {}
-    #                 section.get('sub_category').update({category: {}})
-    #                 sub_category = section.get('sub_category').get(category)
-    #                 if index < len(columns) - 1:
-    #                     if isinstance(category, tuple):
-    #                         interval = pd.Interval(left=category[0], right=category[1])
-    #                         df_filter = _df.loc[_df[label].apply(lambda x: x in interval)]
-    #                     else:
-    #                         df_filter = _df[_df[label] == category]
-    #                     _get_weights(df_filter, columns=columns, index=index + 1, weighting=sub_category, parent=tree)
-    #                 # tidy empty sub categories
-    #                 if section.get('sub_category').get(category) == {}:
-    #                     section.pop('sub_category')
-    #             weighting[label] = section
-    #         return
-    #
-    #     exclude_associate = list() if not isinstance(exclude_associate, list) else exclude_associate
-    #     rtn_dict = {}
-    #     _get_weights(df, columns=columns_list, index=0, weighting=rtn_dict, parent=list())
-    #     return rtn_dict
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):

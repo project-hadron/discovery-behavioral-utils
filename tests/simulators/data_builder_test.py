@@ -39,6 +39,12 @@ class FileBuilderTest(unittest.TestCase):
         """test we can get tools"""
         fb = DataBuilder(self.name)
 
+    def test_remove(self):
+        fb = DataBuilder('Customer')
+        _ = fb.fbpm.remove(fb.fbpm.KEY.manager_key)
+        fbpm = fb.fbpm
+        fbpm.save()
+
     def test_columns(self):
         fbpm = DataBuilder(self.name).fbpm
         fbpm.set_column('Attr01', 'type01', quantity='0.8', Fa1='Va1', Fa2='Va2')
@@ -113,6 +119,15 @@ class FileBuilderTest(unittest.TestCase):
             result[index] += 1
         control = [11, 8, 54, 19, 8]
         self.assertEqual(control, result)
+
+    def test_cat_quantity(self):
+        tools = DataBuilderTools()
+        cat = list('ABCDE')
+        result = tools.get_category(cat, quantity=0.7, size=10)
+        print(result)
+
+
+
 
     def test_cat_size(self):
         tools = DataBuilderTools()
@@ -290,8 +305,8 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_string_pattern_choices(self):
         tools = DataBuilderTools()
-        choices = {'^': list('ABC'), '|': ['Code','Ref', 'id'], '#': list('1234')}
-        pattern = 'Hi ^, your reference is: |#'
+        choices = {'?': list('ABC'), '|': ['Code','Ref', 'id'], '#': list('1234')}
+        pattern = 'Hi ?, your reference is: |#'
         result = tools.get_string_pattern(pattern, choices=choices, size=3, seed=101)
         control = ['Aid3', 'BRef3', 'BRef2']
         self.assertEqual(control, result)
@@ -306,6 +321,13 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.get_string_pattern('########-####-####-####-############', choices=choices, seed=31)
         control = ['15f0682d-6183-df43-e5bd-bcd24c4ecee3']
         self.assertEqual(control, result)
+
+    def test_tagged_pattern(self):
+        tools = DataBuilderTools()
+        text = "My name is <name>, how do you do"
+        tags = {"<name>": {'action': 'get_category', 'kwargs': {'selection': ['fred', 'jim']}}}
+        result = tools.get_tagged_pattern(text, tags=tags)
+        print(result)
 
     def test_unique_date(self):
         tools = DataBuilderTools()
