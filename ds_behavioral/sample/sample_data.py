@@ -36,6 +36,59 @@ class AbstractSample(ABC):
             size = len(selection) - 1
         return selection[:size]
 
+class MappedSample(AbstractSample):
+
+    def __dir__(self):
+        rtn_list = []
+        for m in dir(MappedSample):
+            if not m.startswith('_'):
+                rtn_list.append(m)
+        return rtn_list
+
+    @staticmethod
+    def companies_fortune1000(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('map_companies_fortune1000.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
+    @staticmethod
+    def companies_inc5000(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('map_companies_inc5000.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
+    @staticmethod
+    def uk_postcodes_primary(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('map_uk_postcodes_primary.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
+    @staticmethod
+    def us_zipcode_primary(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('map_us_zipcode_primary.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
 
 class ProfileSample(AbstractSample):
 

@@ -120,15 +120,6 @@ class FileBuilderTest(unittest.TestCase):
         control = [11, 8, 54, 19, 8]
         self.assertEqual(control, result)
 
-    def test_cat_quantity(self):
-        tools = DataBuilderTools()
-        cat = list('ABCDE')
-        result = tools.get_category(cat, quantity=0.7, size=10)
-        print(result)
-
-
-
-
     def test_cat_size(self):
         tools = DataBuilderTools()
         cat = [0, 1, 2, 3, 4]
