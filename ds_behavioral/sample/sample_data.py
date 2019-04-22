@@ -89,6 +89,79 @@ class MappedSample(AbstractSample):
         df = pd.read_csv(_path, encoding='latin1')
         return df.iloc[:size]
 
+    @staticmethod
+    def profile_us_500(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('profile_us_500.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
+    @staticmethod
+    def profile_uk_500(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('profile_uk_500.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
+    @staticmethod
+    def profile_au_500(size: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :return: the mapping DataFrame
+        """
+        _path = Path(AbstractSample._full_path('profile_au_500.csv'))
+        df = pd.read_csv(_path, encoding='latin1')
+        return df.iloc[:size]
+
+
+class BusinessSample(AbstractSample):
+
+    def __dir__(self):
+        rtn_list = []
+        for m in dir(BusinessSample):
+            if not m.startswith('_'):
+                rtn_list.append(m)
+        return rtn_list
+
+    @staticmethod
+    def company_fortune_1000(size: int = None, seed: int = None) -> list:
+        """returns a randomly selected list of real company names of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        return GenericSamples._get_dataset(filename='lookup_fortune1000_companies.csv', size=size, seed=seed)
+
+    @staticmethod
+    def company_names(size: int = None, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        return GenericSamples._get_dataset(filename='lookup_inc5000_companies.csv', size=size, seed=seed)
+
+    @staticmethod
+    def slogan_mechanic(size: int = None, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        return GenericSamples._get_dataset(filename='lookup_slogan_mechanics.csv', size=size, seed=seed)
+
 
 class ProfileSample(AbstractSample):
 
@@ -236,26 +309,6 @@ class CallCentreSamples(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def phrases(size: int = None, seed: int = None) -> list:
-        """returns a randomly selected list of size
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :param seed: (optional) a seed value
-        :return: a list of names
-        """
-        return CallCentreSamples._get_dataset(filename='lookup_catch_phrases.csv', size=size, seed=seed)
-
-    @staticmethod
-    def slogans(size: int = None, seed: int = None) -> list:
-        """returns a randomly selected list of size
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :param seed: (optional) a seed value
-        :return: a list of names
-        """
-        return CallCentreSamples._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed)
-
-    @staticmethod
     def contact_type(size: int = None, seed: int = None) -> list:
         """returns a randomly selected list of size
 
@@ -290,24 +343,24 @@ class GenericSamples(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def company_fortune_1000(size: int = None, seed: int = None) -> list:
-        """returns a randomly selected list of real company names of size
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :param seed: (optional) a seed value
-        :return: a list of names
-        """
-        return GenericSamples._get_dataset(filename='lookup_fortune1000_companies.csv', size=size, seed=seed)
-
-    @staticmethod
-    def company_names(size: int = None, seed: int = None) -> list:
+    def phrases(size: int = None, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return GenericSamples._get_dataset(filename='lookup_inc5000_companies.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_catch_phrases.csv', size=size, seed=seed)
+
+    @staticmethod
+    def slogans(size: int = None, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        return CallCentreSamples._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed)
 
     @staticmethod
     def road_types(size: int = None, seed: int = None) -> list:

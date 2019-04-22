@@ -262,7 +262,7 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
-    def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
+    def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
                    precision: int=None, currency: str=None, size: int=None, quantity: float=None, seed: int=None):
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
@@ -270,6 +270,7 @@ class DataBuilderTools(object):
         :param to_value: optional, (signed) integer to end from.
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
+        :param offset: an offset multiplier, if None then assume 1
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
@@ -278,6 +279,7 @@ class DataBuilderTools(object):
         """
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
+        offset = 1 if offset is None else offset
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         _seed = DataBuilderTools._seed() if seed is None else seed
         is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
@@ -300,6 +302,7 @@ class DataBuilderTools(object):
             value = np.round(np.random.uniform(low=from_value, high=to_value), precision)
             if is_int:
                 value = int(value)
+            value *= offset
             if isinstance(currency, str):
                 value = '{}{:0,.{}f}'.format(currency, value, precision)
             rtn_list.append(value)

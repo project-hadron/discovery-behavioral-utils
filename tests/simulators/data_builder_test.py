@@ -236,6 +236,12 @@ class FileBuilderTest(unittest.TestCase):
         control = ['$1,858.00', '$1,248.00', '$1,038.00', '$1,458.00', '$1,728.00', '$1,944.00', '$1,384.00', '$1,546.00', '$1,407.00', '$1,250.00']
         self.assertEqual(control, result)
 
+    def test_number_offset(self):
+        tools = DataBuilderTools()
+        result = tools.get_number(20, seed=101, size=10, offset=1000)
+        control = [11000, 8000, 2000, 1000, 0, 3000, 4000, 12000, 2000, 12000]
+        self.assertEqual(control, result)
+
     def test_unique_num(self):
         tools = DataBuilderTools()
         result = tools.unique_numbers(4, 100, size=5, seed=101)
