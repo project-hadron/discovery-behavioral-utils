@@ -239,7 +239,7 @@ class FileBuilderTest(unittest.TestCase):
     def test_number_offset(self):
         tools = DataBuilderTools()
         result = tools.get_number(20, seed=101, size=10, offset=1000)
-        control = [11000, 8000, 2000, 1000, 0, 3000, 4000, 12000, 2000, 12000]
+        control = [12000, 9000, 3000, 2000, 0, 3000, 5000, 12000, 2000, 12000]
         self.assertEqual(control, result)
 
     def test_unique_num(self):

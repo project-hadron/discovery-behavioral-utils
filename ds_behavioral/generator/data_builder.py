@@ -283,6 +283,8 @@ class DataBuilderTools(object):
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         _seed = DataBuilderTools._seed() if seed is None else seed
         is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
+        if is_int:
+            precision = 0
         precision = 3 if not isinstance(precision, int) else precision
         value_bins = None
         if from_value == to_value:
@@ -300,9 +302,9 @@ class DataBuilderTools(object):
                 from_value = value_bins[index].left
                 to_value = value_bins[index].right
             value = np.round(np.random.uniform(low=from_value, high=to_value), precision)
+            value *= offset
             if is_int:
                 value = int(value)
-            value *= offset
             if isinstance(currency, str):
                 value = '{}{:0,.{}f}'.format(currency, value, precision)
             rtn_list.append(value)
