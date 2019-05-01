@@ -14,7 +14,8 @@ import matplotlib.dates as mdates
 import warnings
 
 from ds_discovery.config.properties import AbstractPropertiesManager
-from ds_behavioral.sample.sample_data import ProfileSample
+from ds_behavioral.sample.sample_data import ProfileSample, CallCentreSamples, MutualFundSamples, BusinessSample
+from ds_behavioral.sample.sample_data import GenericSamples, MappedSample
 from ds_discovery.transition.cleaners import ColumnCleaners as Cleaner
 
 __author__ = 'Darryl Oatridge'
@@ -397,6 +398,13 @@ class DataBuilderTools(object):
                     selection.remove(choice)
                     at_most_counter.pop(choice_idx)
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
+
+    @staticmethod
+    def get_sample(category: str, name: str, size: int=None, quantity: [float, int]=None, seed: int=None):
+        quantity = DataBuilderTools._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = DataBuilderTools._seed() if seed is None else seed
+
 
     @staticmethod
     def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,
