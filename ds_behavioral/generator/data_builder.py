@@ -400,19 +400,37 @@ class DataBuilderTools(object):
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
     @staticmethod
-    def get_sample(category: str, name: str, size: int=None, quantity: [float, int]=None, seed: int=None):
-        quantity = DataBuilderTools._quantity(quantity)
-        size = 1 if size is None else size
+    def sample_dataset(size: int=None, seed: int=None):
+        size = 100 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-
+        if not isinstance(size, int):
+            size = 1
+        tools = DataBuilderTools
+        df = tools.get_profiles(size=size, mf_weighting=[4, 6], seed=seed)
+        df['date_of_birth'] = tools.get_datetime(start='1930-01-01', until='2000-12-31', date_format='%Y-%m-%d',
+                                                 date_pattern=[0.2, 0.5, 1, 4, 7, 6, 5], size=size, seed=seed)
+        df['profession'] = ProfileSample.professions(size=size, seed=seed)
+        df['phrase'] = GenericSamples.phrases(size=size, seed=seed)
+        df['slogan'] = GenericSamples.slogans(size=size, seed=seed)
+        df['accounts'] = tools.get_number(from_value=1, to_value=8, precision=0,
+                                          weight_pattern=[10, 7, 5, 2, 1, 0.5, 0.3], size=size, seed=seed)
+        balance_weight = [10.0, 5, 3]+([1]*7)+([0.1]*10)
+        df['balance'] = tools.get_number(from_value=10.0, to_value=10000.0, precision=2,
+                                         weight_pattern=balance_weight, size=size, seed=seed)
+        df['opt_in'] = tools.get_category(selection=[1, 0], weight_pattern=[3, 7], size=size, seed=seed)
+        df['updated'] = tools.get_datetime(start='2018-01-01', until='2018-12-31', size=size, seed=seed,
+                                                 date_format='%Y-%m-%d %H:%M:%S')
+        df['p_value'] = tools.get_number(from_value=0, to_value=1.0, precision=2,
+                                          weight_pattern=[1, 2, 5, 7, 11, 7, 5, 2, 1], size=size, seed=seed)
+        return df
 
     @staticmethod
     def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,
-                          size: int=None, seed: int=None):
+                           size: int=None, seed: int=None):
         """ Returns the pattern with the tags subsituted by tage choice
             example ta dictionary:
-                { '<slogan>': {'action': '', kwargs: {}},
-                  '<phone>': {'action': '', kwargs: {}}
+                { '<slogan>': {'action': '', 'kwargs': {}},
+                  '<phone>': {'action': '', 'kwargs': {}}
                 }
             where action is a DataBuilderTools method name and kwargs are the arguments to pass
             for sample data use get_custom

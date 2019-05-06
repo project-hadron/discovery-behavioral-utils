@@ -36,6 +36,7 @@ class AbstractSample(ABC):
             size = len(selection) - 1
         return selection[:size]
 
+
 class MappedSample(AbstractSample):
 
     def __dir__(self):
