@@ -20,18 +20,21 @@ class AbstractSample(ABC):
         pass
 
     @staticmethod
-    def _get_dataset(filename: str, size: int = None, seed: int = None) -> list:
+    def _get_dataset(filename: str, size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """private method to retrieve a dataset"""
         _path = Path(AbstractSample._full_path(filename))
         df = pd.read_csv(_path, header=None)
-        return AbstractSample._select_list(selection=df.iloc[:, 0].tolist(), size=size, seed=seed)
+        return AbstractSample._select_list(selection=df.iloc[:, 0].tolist(), size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def _select_list(selection: list, size: int = None, seed: int = None):
-        """private method to select from a series"""
+    def _select_list(selection: list, size: int = None, shuffle: bool=True, seed: int = None):
+        """private method to select from a series
+        :param shuffle:
+        """
         seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
         np.random.seed(seed)
-        np.random.shuffle(selection)
+        if shuffle:
+            np.random.shuffle(selection)
         if not isinstance(size, int) or not 0 < size < len(selection):
             size = len(selection) - 1
         return selection[:size]
@@ -134,34 +137,40 @@ class BusinessSample(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def company_fortune_1000(size: int = None, seed: int = None) -> list:
+    def company_fortune_1000(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of real company names of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return GenericSamples._get_dataset(filename='lookup_fortune1000_companies.csv', size=size, seed=seed)
+        return GenericSamples._get_dataset(filename='lookup_fortune1000_companies.csv', size=size, seed=seed,
+                                           shuffle=shuffle)
 
     @staticmethod
-    def company_names(size: int = None, seed: int = None) -> list:
+    def company_names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return GenericSamples._get_dataset(filename='lookup_inc5000_companies.csv', size=size, seed=seed)
+        return GenericSamples._get_dataset(filename='lookup_inc5000_companies.csv', size=size, seed=seed,
+                                           shuffle=shuffle)
 
     @staticmethod
-    def slogan_mechanic(size: int = None, seed: int = None) -> list:
+    def slogan_mechanic(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return GenericSamples._get_dataset(filename='lookup_slogan_mechanics.csv', size=size, seed=seed)
+        return GenericSamples._get_dataset(filename='lookup_slogan_mechanics.csv', size=size, seed=seed,
+                                           shuffle=shuffle)
 
 
 class ProfileSample(AbstractSample):
@@ -174,90 +183,101 @@ class ProfileSample(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def female_names(size: int = None, seed: int = None) -> list:
+    def female_names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of female first names of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return ProfileSample._get_dataset(filename='lookup_female_first_names.csv', size=size, seed=seed)
+        return ProfileSample._get_dataset(filename='lookup_female_first_names.csv', size=size, seed=seed,
+                                          shuffle=shuffle)
 
     @staticmethod
-    def male_names(size: int = None, seed: int = None) -> list:
+    def male_names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of male first names of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return ProfileSample._get_dataset(filename='lookup_male_first_names.csv', size=size, seed=seed)
+        return ProfileSample._get_dataset(filename='lookup_male_first_names.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def surnames(size: int = None, seed: int = None) -> list:
+    def surnames(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of surnames first names of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return ProfileSample._get_dataset(filename='lookup_last_names.csv', size=size, seed=seed)
+        return ProfileSample._get_dataset(filename='lookup_last_names.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def professions(size: int = None, seed: int = None) -> list:
+    def professions(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of professions first names of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return ProfileSample._get_dataset(filename='lookup_professions.csv', size=size, seed=seed)
+        return ProfileSample._get_dataset(filename='lookup_professions.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def uk_cities(size: int = None, seed: int = None) -> list:
+    def uk_cities(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_uk_city.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_uk_city.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def uk_postcode_district(size: int = None, seed: int = None) -> list:
+    def uk_postcode_district(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_uk_postcode_district.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_uk_postcode_district.csv', size=size, seed=seed,
+                                              shuffle=shuffle)
 
     @staticmethod
-    def us_cities(size: int = None, seed: int = None) -> list:
+    def us_cities(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_us_city.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_us_city.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_zipcodes(size: int = None, seed: int = None) -> list:
+    def us_zipcodes(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_us_zip.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_us_zip.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_states(size: int = None, seed: int = None) -> list:
+    def us_states(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
@@ -266,13 +286,14 @@ class ProfileSample(AbstractSample):
              'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME', 'MH', 'MI', 'MN', 'MO', 'MP', 'MS',
              'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'PR', 'PW', 'RI', 'SC',
              'SD', 'TN', 'TX', 'UT', 'VA', 'VI', 'VT', 'WA', 'WI', 'WV', 'WY']
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def global_mail_domains(size: int = None, seed: int = None) -> list:
+    def global_mail_domains(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
@@ -283,13 +304,14 @@ class ProfileSample(AbstractSample):
              "icloud.com", "iname.com", "inbox.com", "lavabit.com", "love.com" "outlook.com", "pobox.com",
              "protonmail.com", "rocketmail.com", "safe-mail.net", "wow.com", "ygm.com", "ymail.com", "zoho.com",
              "yandex.com", "bellsouth.net", "charter.net", "cox.net", "earthlink.net", "juno.com"]
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def british_mail_domains(size: int = None, seed: int = None) -> list:
+    def british_mail_domains(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
@@ -297,7 +319,7 @@ class ProfileSample(AbstractSample):
              "btinternet.com", "virginmedia.com", "blueyonder.co.uk", "freeserve.co.uk", "live.co.uk", "ntlworld.com",
              "o2.co.uk", "orange.net", "sky.com", "talktalk.co.uk", "tiscali.co.uk", "virgin.net", "wanadoo.co.uk",
              "bt.com", "yahoo.co.uk", "hotmail.co.uk"]
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
 
 class CallCentreSamples(AbstractSample):
@@ -310,10 +332,11 @@ class CallCentreSamples(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def contact_type(size: int = None, seed: int = None) -> list:
+    def contact_type(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
@@ -321,17 +344,18 @@ class CallCentreSamples(AbstractSample):
              'Phone Call', 'E-mail', 'Letter', 'Internet', 'MyPortal', 'Questionnaire', 'Account manager',
              'E-mail & Phone Call', 'Letter & Phone Call', 'Visit', 'Fax', 'Retail Voice', 'Third Party Call',
              'Survey']
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def complaint(size: int = None, seed: int = None) -> list:
+    def complaint(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return ProfileSample._get_dataset(filename='lookup_complaints.csv', size=size, seed=seed)
+        return ProfileSample._get_dataset(filename='lookup_complaints.csv', size=size, seed=seed, shuffle=shuffle)
 
 
 class GenericSamples(AbstractSample):
@@ -344,37 +368,42 @@ class GenericSamples(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def phrases(size: int = None, seed: int = None) -> list:
+    def phrases(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_catch_phrases.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_catch_phrases.csv', size=size, seed=seed,
+                                              shuffle=shuffle)
 
     @staticmethod
-    def slogans(size: int = None, seed: int = None) -> list:
+    def slogans(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed)
+        return CallCentreSamples._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed,
+                                              shuffle=shuffle)
 
     @staticmethod
-    def road_types(size: int = None, seed: int = None) -> list:
+    def road_types(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
         selection = [
              'Alley', 'Avenue', 'Boulevard', 'Close', 'Circle', 'Crescent', 'Crossing', 'Court', 'Drive', 'Hill',
              'Lane', 'Road', 'Park', 'Parkway', 'Plaza', 'Street', 'Terrace', 'Way']
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
 
 class MutualFundSamples(AbstractSample):
@@ -387,38 +416,41 @@ class MutualFundSamples(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def mutual_fund_type(size: int = None, seed: int = None) -> list:
+    def mutual_fund_type(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
         selection = ['Money market', 'Fixed income', 'Equity', 'Balanced', 'Index', 'Specialty', 'Fund-of-funds']
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def pension_product(size: int = None, seed: int = None) -> list:
+    def pension_product(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
         selection = [
              'Individual Pension', 'Annuity', 'Bond', 'Uncategorised', 'Savings', 'Term Assurance', 'Income Drawdown',
              'Freestanding AVC', 'Mortgage Protection', 'Corporate Pension']
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def authority_type(size: int = None, seed: int = None) -> list:
+    def authority_type(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
         :param seed: (optional) a seed value
         :return: a list of names
         """
         selection = [
              'Policy Holder', 'Financial Adviser', '3rd Party Claims Reviewer', 'Relative of Policyholder',
              'Other Third Party', 'Executor', 'Trustee', 'Employer Contact', 'Life Assured', 'General Public']
-        return ProfileSample._select_list(selection=selection, size=size, seed=seed)
+        return ProfileSample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)

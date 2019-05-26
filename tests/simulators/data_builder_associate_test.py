@@ -47,17 +47,17 @@ class FileBuilderTest(unittest.TestCase):
         df['cat'] = tools.get_category(list('MFU'), size=10, seed=31)
         df['values'] = tools.get_number(10, size=10, seed=31)
         control = [2.0,np.nan,0.0,np.nan,2.0,np.nan,np.nan,np.nan,5.0,3.0]
-        result = tools.associate_custom(df=df, action="df.loc[df['cat'] == 'U', 'values'] = new_value", use_exec=True,  new_value=None)
+        result = tools.associate_custom(df=df, code_str="df.loc[df['cat'] == 'U', 'values'] = new_value", use_exec=True, new_value=None)
         # self.assertEqual(control,list(result['values']))
         df['values'] = tools.get_number(10, size=10, seed=31)
-        result = tools.associate_custom(df=df, action="df['values'] = np.where(df['cat'] == 'U', None, df['values'])", use_exec=True, new_value=None)
+        result = tools.associate_custom(df=df, code_str="df['values'] = np.where(df['cat'] == 'U', None, df['values'])", use_exec=True, new_value=None)
         control = [None, 2, 0, 4, None, None, 3, 5, 4, 2]
         self.assertEqual(control,list(result['values']))
         self.assertEqual(control,list(df['values']))
 
         df_staff = pd.DataFrame()
         df_staff['sid'] = [1000]
-        result = tools.associate_custom(df=df_staff, action="df[header].apply(lambda x: f'CU_{x}')", header='sid')
+        result = tools.associate_custom(df=df_staff, code_str="df[header].apply(lambda x: f'CU_{x}')", header='sid')
         self.assertEqual(['CU_1000'], list(result))
 
     def test_associate_dataset(self):

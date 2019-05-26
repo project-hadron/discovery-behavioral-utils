@@ -409,9 +409,9 @@ class DataBuilderTools(object):
         df = tools.get_profiles(size=size, mf_weighting=[4, 6], seed=seed)
         df['date_of_birth'] = tools.get_datetime(start='1930-01-01', until='2000-12-31', date_format='%Y-%m-%d',
                                                  date_pattern=[0.2, 0.5, 1, 4, 7, 6, 5], size=size, seed=seed)
-        df['profession'] = ProfileSample.professions(size=size, seed=seed)
-        df['phrase'] = GenericSamples.phrases(size=size, seed=seed)
-        df['slogan'] = GenericSamples.slogans(size=size, seed=seed)
+        df['profession'] = tools.get_category(ProfileSample.professions(seed=seed), size=size, seed=seed)
+        df['phrase'] = tools.get_category(GenericSamples.phrases(seed=seed), size=size, seed=seed)
+        df['slogan'] = tools.get_category(GenericSamples.slogans(seed=seed), size=size, seed=seed)
         df['accounts'] = tools.get_number(from_value=1, to_value=8, precision=0,
                                           weight_pattern=[10, 7, 5, 2, 1, 0.5, 0.3], size=size, seed=seed)
         balance_weight = [10.0, 5, 3]+([1]*7)+([0.1]*10)
@@ -965,13 +965,13 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
-    def associate_custom(df: pd.DataFrame, action: str, use_exec: bool=False, **kwargs):
+    def associate_custom(df: pd.DataFrame, code_str: str, use_exec: bool=False, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
-        the evaluation returns None. Not that if using the input dataframe in your action, it is internally referenced
+        the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
         as it's parameter name 'df'.
 
         :param df: a pd.DataFrame used in the action
-        :param action: an action on those column values
+        :param code_str: an action on those column values
         :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
         :param kwargs: a set of kwargs to include in any executable function
         :return: a list or pandas.DataFrame
@@ -980,7 +980,7 @@ class DataBuilderTools(object):
         if 'df' not in local_kwargs:
             local_kwargs['df'] = df
 
-        result = exec(action, globals(), local_kwargs) if use_exec else eval(action, globals(), local_kwargs)
+        result = exec(code_str, globals(), local_kwargs) if use_exec else eval(code_str, globals(), local_kwargs)
         if result is None:
             return df
         return result
