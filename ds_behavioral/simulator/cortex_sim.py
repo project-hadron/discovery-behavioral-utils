@@ -15,7 +15,11 @@ class CortexTransition(object):
 
     def set_transition_pipeline(self, contract_pipeline: dict):
         self._tr.data_pm.set(self._tr.data_pm.KEY.cleaners_key, contract_pipeline)
-        self._tr.save()
+        self._tr.persist()
+
+    def set_augmented_knwoledge(self, augmented_knowledge: dict):
+        self._tr.data_pm.set(self._tr.data_pm.KEY.augmented_key, augmented_knowledge)
+        self._tr.persist()
 
     def run_transition_pipeline(self):
         return self._tr.refresh_clean_canonical()
