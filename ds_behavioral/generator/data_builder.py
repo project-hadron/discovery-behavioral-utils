@@ -312,12 +312,12 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
-    def get_reference(header: str, filename: str, weight_pattern: list = None, selection_size: int=None,
+    def get_reference(header: str, df: pd.DataFrame, weight_pattern: list = None, selection_size: int=None,
                       sample_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=True,
-                      file_format: str=None, quantity: float=None, seed: int=None, **kwargs):
+                      quantity: float=None, seed: int=None):
         """
         :param header: the name of the header to be selected from
-        :param filename: the full path and filename to be loaded
+        :param df: a pandas DataFrame of the reference data
         :param weight_pattern: (optional) a weighting pattern of the final selection
         :param selection_size: (optional) the selection to take from the sample size, norally used with shuffle
         :param sample_size: (optional) the size of the sample to take from the reference file
@@ -332,18 +332,9 @@ class DataBuilderTools(object):
         """
         quantity = DataBuilderTools._quantity(quantity)
         _seed = DataBuilderTools._seed() if seed is None else seed
-        if not isinstance(file_format, str) and file_format not in ['csv', 'pickle']:
-            file_format = 'csv'
-        _path = Path(filename)
-        if not _path.exists():
-            raise ValueError("The filename '{}' does not exist".format(filename))
-        if file_format == 'pickle':
-            df = pd.read_pickle(_path, **kwargs)
-            df = df.iloc[:sample_size]
-        else:
-            df = pd.read_csv(_path, nrows=sample_size, **kwargs)
-        if df.shape[0] == 0:
-            raise LookupError("No data was loaded from the file filename '{}'". format(filename))
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError("The df parameter is not a valid pandas DataFrame")
+        df = df.iloc[:sample_size]
         if header not in df.columns:
             raise ValueError("The header '{}' does not exist in the ".format(header))
         rtn_list = df[header].tolist()

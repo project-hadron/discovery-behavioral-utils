@@ -17,7 +17,7 @@ class CortexTransition(object):
         self._tr.data_pm.set(self._tr.data_pm.KEY.cleaners_key, contract_pipeline)
         self._tr.persist()
 
-    def set_augmented_knwoledge(self, augmented_knowledge: dict):
+    def set_augmented_knowledge(self, augmented_knowledge: dict):
         self._tr.data_pm.set(self._tr.data_pm.KEY.augmented_key, augmented_knowledge)
         self._tr.persist()
 
