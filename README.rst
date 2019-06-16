@@ -16,10 +16,9 @@ characteristics.
 Main features
 =============
 
-* Data Generation
-* Data Correlation
-* Feature association
-* Characteristic analysis
+* Probability Waiting
+* Correlation and Association
+* Behavioral Analytics
 
 Installation
 ============
@@ -44,6 +43,54 @@ env setup
 Other than the dependant python packages indicated in the ``requirements.txt`` there are
 no special environment setup needs to use the package. The package should sit as an extension to
 your current data science and discovery packages.
+
+Overview
+========
+
+Techniques and Methods
+----------------------
+The Behavioral Syntenic Data Generator was developed as a solution to the current challenges of data accessibility
+and the early mobilization of machine learning discovery and model build. This product tool takes on, what is, a
+sceptically viewed and challenging problem area of the generation of data that is synthetic but is still representative
+of its intended real-life counterpart. In short, The project needed to develop rich data sets to demonstrate the
+capabilities of its machine learning offerings so users could see and test what the synthetic data could do.
+
+To achieve this, the project identified in three constructs;
+
+1.  Probability Waiting - Is an algorithm based on breadth and depth weighting patterns fulfilled through multivariate
+continuous distributions using monotonic splines and copulas. Working with Aryan Pedawi, a Ph.D research scientist
+specializing in Bayesian probability theory, this Probability Waiting algorithm is one of the key differentiators
+from other synthetic data models, allowing fine grain and complex behavioral characteristics to be added to the
+distribution of data points within a data set.
+
+2.  Correlation and Association – Through advanced programming techniques and a deep knowledge of component modelling
+and code reuse, the project developed a finite set of data point generation tooling that implements method chaining
+and rules-based association against action techniques. This approach and its techniques provide the ability to capture
+machine learning and business intent and generate specialized output against those requirements.
+
+3.  Behavioral Analytics – In addition to the data point generators, the tooling provides data analytics and behavioral
+extraction, against existing data sets, that can be replayed to quickly create behavioral patterns within existing
+data sets, without compromising or disclosing sensitive, or protected information.  This is particularly valuable
+with today’s concerns of data protection and disclosure mitigation strategies.
+
+Value Proposition
+-----------------
+Within the Machine learning discipline, and as a broader challenge, the accessibility of data and its relevance to the
+success of early engagement and customer success is an industry problem with many variants available on the market.
+Though competent in their delivery, their ability to flex and enrich across multiple examples of need and particularly
+the high demands of pattern and associative recognition, pertaining to machine learning, is limited and cynically
+considered within the machine learning community. The Behavioral Synthetic Data Generator improves representation of
+data appropriate to ML modelling, test train data sets and the disclosure mitigation through targeted and customized
+modelling of data that removes the personal DNA and leaves one with representative data that retains its behavioural
+DNA allowing true representation of the problem scope.
+
+The ability to engage with the customer before the availability of or access to organisational data sets is a vital
+part of an organisations ability to prove value add early and build customer success. The Behavioural Synthetic Data
+Generator is currently being used for stress, volume and boundary testing and presentation enrichment modelling within
+the Accelerated Machine learning initiative. In addition, it is being used to generate highly sophisticated machine
+learning focused behavioural data that allows for early validation of customer success while data access remains
+restrictive and inaccessible.
+
 
 Using the Behavioral Synthetic Data Generator
 =============================================
