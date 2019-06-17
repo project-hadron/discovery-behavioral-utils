@@ -5,7 +5,7 @@ __author__ = "Darryl Oatridge"
 
 class CortexTransitionAgent(object):
 
-    def __init__(self, identifier):
+    def __init__(self, identifier: str):
         name = "cortex_tr_{}".format(identifier)
         self._tr = Transition(name)
 
