@@ -1,27 +1,35 @@
 import os
 import random
 import re
+import string
+import threading
 import time
+import warnings
 from collections import Counter
-from pathlib import Path
+from copy import deepcopy
 from typing import Any
 
+import matplotlib.dates as mdates
 import numpy as np
-import string
 import pandas as pd
 from pandas.tseries.offsets import Week
-import matplotlib.dates as mdates
-import warnings
 
-from ds_discovery.config.properties import AbstractPropertiesManager
-from ds_behavioral.sample.sample_data import ProfileSample, CallCentreSamples, MutualFundSamples, BusinessSample
-from ds_behavioral.sample.sample_data import GenericSamples, MappedSample
-from ds_discovery.transition.cleaners import ColumnCleaners as Cleaner
+from ds_foundation.properties.abstract_properties import AbstractPropertiesManager
+from ds_behavioral.sample.sample_data import GenericSamples
+from ds_behavioral.sample.sample_data import ProfileSample
 
 __author__ = 'Darryl Oatridge'
 
 
 class DataBuilderPropertyManager(AbstractPropertiesManager):
+
+    def reset_contract_properties(self):
+        """resets the data contract properties back to it's original state. It also resets the source handler
+        Note: this method ONLY writes to the properties memmory and must be explicitely persisted
+        using the ``save()'' method
+        """
+        super()._reset_abstract_properties()
+        return
 
     def __init__(self, build_name: str):
         if build_name is None or not build_name or not isinstance(build_name, str):
@@ -179,6 +187,82 @@ class DataBuilderTools(object):
         return rtn_list
 
     @staticmethod
+    def _filter_headers(df: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
+                        exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None) -> list:
+        """ returns a list of headers based on the filter criteria
+
+        :param df: the Pandas.DataFrame to get the column headers from
+        :param headers: a list of headers to drop or filter on type
+        :param drop: to drop or not drop the headers
+        :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
+        :param exclude: to exclude or include the dtypes. Default is False
+        :param regex: a regiar expression to seach the headers
+        :param re_ignore_case: true if the regex should ignore case. Default is False
+        :return: a filtered list of headers
+
+        :raise: TypeError if any of the types are not as expected
+        """
+        if drop is None or not isinstance(drop, bool):
+            drop = False
+        if exclude is None or not isinstance(exclude, bool):
+            exclude = False
+        if re_ignore_case is None or not isinstance(re_ignore_case, bool):
+            re_ignore_case = False
+
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("The first function attribute must be a pandas 'DataFrame'")
+        _headers = AbstractPropertiesManager.list_formatter(headers)
+        dtype = AbstractPropertiesManager.list_formatter(dtype)
+        regex = AbstractPropertiesManager.list_formatter(regex)
+        _obj_cols = df.columns
+        _rtn_cols = set()
+        unmodified = True
+
+        if _headers is not None:
+            _rtn_cols = set(_obj_cols).difference(_headers) if drop else set(_obj_cols).intersection(_headers)
+            unmodified = False
+
+        if regex is not None and regex:
+            re_ignore_case = re.I if re_ignore_case else 0
+            _regex_cols = list()
+            for exp in regex:
+                _regex_cols += [s for s in _obj_cols if re.search(exp, s, re_ignore_case)]
+            _rtn_cols = _rtn_cols.union(set(_regex_cols))
+            unmodified = False
+
+        if unmodified:
+            _rtn_cols = set(_obj_cols)
+
+        if dtype is not None and len(dtype) > 0:
+            _df_selected = df.loc[:, _rtn_cols]
+            _rtn_cols = (_df_selected.select_dtypes(exclude=dtype) if exclude
+                         else _df_selected.select_dtypes(include=dtype)).columns
+
+        return [c for c in _rtn_cols]
+
+    @staticmethod
+    def _filter_columns(df, headers=None, drop=False, dtype=None, exclude=False, regex=None, re_ignore_case=None,
+                        inplace=False) -> [dict, pd.DataFrame]:
+        """ Returns a subset of columns based on the filter criteria
+
+        :param df: the Pandas.DataFrame to get the column headers from
+        :param headers: a list of headers to drop or filter on type
+        :param drop: to drop or not drop the headers
+        :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
+        :param exclude: to exclude or include the dtypes
+        :param regex: a regiar expression to seach the headers
+        :param re_ignore_case: true if the regex should ignore case. Default is False
+        :param inplace: if the passed pandas.DataFrame should be used or a deep copy
+        :return:
+        """
+        if not inplace:
+            with threading.Lock():
+                df = deepcopy(df)
+        obj_cols = DataBuilderTools._filter_headers(df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+                                                    regex=regex, re_ignore_case=re_ignore_case)
+        return df.loc[:, obj_cols]
+
+    @staticmethod
     def get_custom(code_str: str, quantity: float=None, size: int=None, seed: int=None, **kwargs):
         """returns a number based on the random func. The code should generate a value per line
         example:
@@ -323,11 +407,9 @@ class DataBuilderTools(object):
         :param sample_size: (optional) the size of the sample to take from the reference file
         :param at_most: (optional) the most times a selection should be chosen
         :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
-        :param file_format: (optional) the format of the file to reference
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
         :param size: (optional) size of the return. default to 1
         :param seed: (optional) a seed value for the random function: default to None
-        :param kwargs: (optional) key word arguments to pass to the pandas read method
         :return:
         """
         quantity = DataBuilderTools._quantity(quantity)
@@ -412,7 +494,7 @@ class DataBuilderTools(object):
         df['updated'] = tools.get_datetime(start='2018-01-01', until='2018-12-31', size=size, seed=seed,
                                                  date_format='%Y-%m-%d %H:%M:%S')
         df['p_value'] = tools.get_number(from_value=0, to_value=1.0, precision=2,
-                                          weight_pattern=[1, 2, 5, 7, 11, 7, 5, 2, 1], size=size, seed=seed)
+                                         weight_pattern=[1, 2, 5, 7, 11, 7, 5, 2, 1], size=size, seed=seed)
         return df
 
     @staticmethod
@@ -744,7 +826,7 @@ class DataBuilderTools(object):
         if file_format == 'pickle':
             df = pd.read_pickle(filename, **kwargs)
         else:
-            df = Cleaner.filter_columns(pd.read_csv(filename, **kwargs), headers=labels)
+            df = pd.read_csv(filename, **kwargs)
         if randomize:
             df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
         for label in labels:

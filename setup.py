@@ -56,7 +56,7 @@ setup(
         '': ['*.yaml', '*.csv'],
     },
     install_requires=[
-        'discovery-transitioning-utils',
+        'discovery-foundation',
         'pyyaml',
         'pandas',
         'numpy',
