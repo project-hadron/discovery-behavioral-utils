@@ -9,9 +9,7 @@ import os
 import warnings
 
 from ds_behavioral.generator.data_builder import DataBuilder, DataBuilderTools
-from ds_discovery.config.properties import AbstractPropertiesManager
-from ds_discovery.transition.discovery import DataDiscovery as discover
-from ds_discovery.transition.cleaners import ColumnCleaners as cleaner
+from ds_discovery.config.abstract_properties import AbstractPropertiesManager
 
 
 def ignore_warnings(test_func):

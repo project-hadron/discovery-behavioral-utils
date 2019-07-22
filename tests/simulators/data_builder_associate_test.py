@@ -9,9 +9,6 @@ import os
 import warnings
 
 from ds_behavioral.generator.data_builder import DataBuilder, DataBuilderTools
-from ds_discovery.config.properties import AbstractPropertiesManager
-from ds_discovery.transition.discovery import DataDiscovery as discover
-from ds_discovery.transition.cleaners import ColumnCleaners as cleaner
 
 
 def ignore_warnings(test_func):
@@ -132,7 +129,6 @@ class FileBuilderTest(unittest.TestCase):
 
         df_staff['registered'] = tools.associate_dataset(df_staff, associations=associations, actions=actions,
                                                          default_value=None)
-        df_staff = cleaner.to_date_type(df_staff, headers=['registered', 'joined'])
         # TODO finish this
 
 
