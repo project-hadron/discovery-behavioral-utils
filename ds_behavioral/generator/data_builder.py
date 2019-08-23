@@ -15,6 +15,7 @@ import pandas as pd
 from pandas.tseries.offsets import Week
 
 from ds_foundation.properties.abstract_properties import AbstractPropertyManager
+from ds_discovery.cleaners.pandas_cleaners import PandasCleaners as cleaner
 from ds_behavioral.sample.sample_data import GenericSamples
 from ds_behavioral.sample.sample_data import ProfileSample
 
@@ -211,9 +212,9 @@ class DataBuilderTools(object):
 
         if not isinstance(df, pd.DataFrame):
             raise TypeError("The first function attribute must be a pandas 'DataFrame'")
-        _headers = AbstractPropertyManager.list_formatter(headers)
-        dtype = AbstractPropertyManager.list_formatter(dtype)
-        regex = AbstractPropertyManager.list_formatter(regex)
+        _headers = cleaner.list_formatter(headers)
+        dtype = cleaner.list_formatter(dtype)
+        regex = cleaner.list_formatter(regex)
         _obj_cols = df.columns
         _rtn_cols = set()
         unmodified = True
@@ -519,7 +520,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-        pattern = AbstractPropertyManager.list_formatter(pattern)
+        pattern = cleaner.list_formatter(pattern)
         if not isinstance(tags, dict):
             raise ValueError("The 'tags' parameter must be a dictionary")
         class_methods = DataBuilderTools().__dir__()
@@ -822,7 +823,7 @@ class DataBuilderTools(object):
         """
         _seed = DataBuilderTools._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
-        labels = AbstractPropertyManager.list_formatter(labels)
+        labels = cleaner.list_formatter(labels)
         if file_format == 'pickle':
             df = pd.read_pickle(filename, **kwargs)
         else:
@@ -952,7 +953,7 @@ class DataBuilderTools(object):
         _dataset = dataset
         _associations = associations
         if isinstance(_dataset, (str, int, float)):
-            _dataset = AbstractPropertyManager.list_formatter(_dataset)
+            _dataset = cleaner.list_formatter(_dataset)
         if isinstance(_dataset, (list, pd.Series)):
             tmp = pd.DataFrame()
             tmp['_default'] = _dataset
@@ -975,7 +976,7 @@ class DataBuilderTools(object):
                 for header, lookup in associate_dict.items():
                     df_value = _dataset[header].iloc[index]
                     expect = lookup.get('expect')
-                    chk_value = AbstractPropertyManager.list_formatter(lookup.get('value'))
+                    chk_value = cleaner.list_formatter(lookup.get('value'))
                     if expect.lower() in ['number', 'n']:
                         if len(chk_value) == 1:
                             [s] = [e] = chk_value
@@ -1087,7 +1088,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         _seed = DataBuilderTools._seed() if seed is None else seed
 
-        values = AbstractPropertyManager.list_formatter(values)
+        values = cleaner.list_formatter(values)
 
         if values is None or len(values) == 0:
             return list()
@@ -1159,7 +1160,7 @@ class DataBuilderTools(object):
             raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
         corr_list = []
         for corr in correlations:
-            corr_list.append(AbstractPropertyManager.list_formatter(corr))
+            corr_list.append(cleaner.list_formatter(corr))
         if values is None or len(values) == 0:
             return list()
         class_methods = DataBuilderTools().__dir__()
@@ -1291,7 +1292,7 @@ class DataBuilderTools(object):
         if _min_date >= _max_date:
             raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
 
-        dates = AbstractPropertyManager.list_formatter(dates)
+        dates = cleaner.list_formatter(dates)
         if dates is None or len(dates) == 0:
             return list()
         mode_choice = DataBuilderTools._mode_choice(dates) if fill_nulls else list()
@@ -1569,7 +1570,7 @@ class DataBuilderTools(object):
             raise ValueError("counts can't be greater than or equal to size")
         pattern = []
         for i in weights:
-            i = AbstractPropertyManager.list_formatter(i)[:size]
+            i = cleaner.list_formatter(i)[:size]
             pattern.append(i)
         rtn_weights = []
         for p in pattern:

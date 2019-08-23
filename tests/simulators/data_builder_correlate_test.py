@@ -9,7 +9,7 @@ import os
 import warnings
 
 from ds_behavioral.generator.data_builder import DataBuilder, DataBuilderTools
-from ds_discovery.config.abstract_properties import AbstractPropertiesManager
+from ds_discovery.cleaners.pandas_cleaners import PandasCleaners as cleaner
 
 
 def ignore_warnings(test_func):
@@ -132,7 +132,7 @@ class FileBuilderTest(unittest.TestCase):
             mean_diff = np.mean(diff_list)
             return min_diff, mean_diff, max_diff
 
-        control = AbstractPropertiesManager.list_formatter(df_staff['joined'])
+        control = cleaner.list_formatter(df_staff['joined'])
         result = tools.correlate_dates(df_staff['joined'], offset={'days': 7})
         min_diff, mean_diff, max_diff = offset_limits()
         self.assertEquals(7, max_diff.days)
@@ -190,6 +190,20 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.correlate_categories(values, correlations=selection, actions=corr, value_type='number', seed=101)
         control = [11,122]
         self.assertEqual(control, result)
+
+    def test_example(self):
+        tools = DataBuilderTools()
+        df_accounts = pd.DataFrame()
+        df_accounts['account_id'] = tools.unique_identifiers(1000, 2000, size=150)
+
+        # Create a weighting pattern that is loaded towards low value and then exponetially tails off
+        value_distribution = [0.01, 0.8, 1, 3, 9, 8, 3, 2, 1] + list(np.flip(np.exp(np.arange(-5, 0.0, 0.2)).round(2)))
+
+        # Apply the weighting to an account range of 0 to 1000
+        df_accounts['balance'] = tools.get_number(0, 1000, weight_pattern=value_distribution, size=150)
+
+        df_accounts['interest'] = tools.correlate_numbers(df_accounts['balance'], spread=0, offset=0.02,
+                                                          action='multiply', precision=2)
 
 
 if __name__ == '__main__':
