@@ -1,4 +1,5 @@
 import matplotlib
+from ds_foundation.handlers.abstract_handlers import ConnectorContract
 
 matplotlib.use("TkAgg")
 
@@ -43,7 +44,7 @@ class FileBuilderTest(unittest.TestCase):
         fb = DataBuilder('Customer')
         _ = fb.fbpm.remove(fb.fbpm.KEY.manager_key)
         fbpm = fb.fbpm
-        fbpm.save()
+        fbpm.persist_properties()
 
     def test_columns(self):
         fbpm = DataBuilder(self.name).fbpm
@@ -76,7 +77,7 @@ class FileBuilderTest(unittest.TestCase):
         fb.add_column('date', 'get_datetime', quantity=0.8, start='10/10/2001', until='10/10/2018')
         fb.add_column('datetime', 'get_datetime', quantity=0.8, start='10/10/2001 00:00:00', until='10/10/2018 00:00:00', date_format='%d/%m/%Y %H:%M:%S')
         fb.add_column('vulnerable', 'get_category', selection=[True,False], weight_pattern=[0.05,0.95], quantity=0.75)
-        fb.fbpm.save()
+        fb.fbpm.persist_properties()
         df = fb.build_columns(10, filename='customer.csv')
         self.assertEqual((10,9), df.shape)
         result = fb.tools.get_file_column(['id', 'value'], filename='customer.csv', size=10)
@@ -86,15 +87,18 @@ class FileBuilderTest(unittest.TestCase):
         self.assertTrue(isinstance(result, list))
         self.assertEqual(5, len(result))
 
-    def test_reference(self):
+    def test_file_column(self):
         tools = DataBuilderTools()
         df = pd.DataFrame()
         df['cat'] = tools.get_category(list('MFU'), size=10, seed=31)
         df['values'] = tools.get_number(10, size=10, seed=31)
         df.to_csv("test_df.csv", sep=',',  index=False)
-        result = tools.get_reference('cat', "test_df.csv", size=3, selection_size=3, sample_size=7, seed=31)
-        control = ['U', 'M', 'M']
-        self.assertEqual(control, result)
+        connector_contract = ConnectorContract(resource="test_df.csv", connector_type='csv', location='.',
+                                               module_name='ds_foundation.handlers.python_handlers',
+                                               handler='PythonSourceHandler')
+        result = tools.get_file_column('cat', connector_contract, size=3, seed=31)
+        self.assertCountEqual(['U','M', 'M'], result['cat'].to_list())
+        self.assertCountEqual(['9','2','0'], result['values'].to_list())
 
     def test_cat(self):
         tools = DataBuilderTools()

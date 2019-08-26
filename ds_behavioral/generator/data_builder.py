@@ -12,6 +12,7 @@ from typing import Any
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
+from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from pandas.tseries.offsets import Week
 
 from ds_foundation.properties.abstract_properties import AbstractPropertyManager
@@ -807,13 +808,12 @@ class DataBuilderTools(object):
         return df
 
     @staticmethod
-    def get_file_column(labels: [str, list], filename: str, size: int=None, randomize: bool=None, seed: int=None,
-                        file_format: str=None, **kwargs):
+    def get_file_column(labels: [str, list], connector_contract: ConnectorContract, size: int=None, randomize: bool=None, seed: int=None):
         """ gets a column or columns of data from a CSV file returning them as a Series or Dataframe
         column is requested
 
         :param labels: the header labels to extract
-        :param filename: the file to load (must be CSV)
+        :param connector_contract: the connector contract for the data to upload
         :param size: (optional) the size of the sample to retrieve, if None then it assumes all
         :param randomize: (optional) if the selection should be randomised. Default is False
         :param seed: (optional) a seed value for the random function: default to None
@@ -821,13 +821,14 @@ class DataBuilderTools(object):
         :param kwargs: (optional) any extra key word args to include in pd.read_csv() method
         :return: DataFrame or List
         """
+        if not isinstance(connector_contract, ConnectorContract):
+            raise TypeError("The connector_contract must be a ConnectorContract instance")
         _seed = DataBuilderTools._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
         labels = cleaner.list_formatter(labels)
-        if file_format == 'pickle':
-            df = pd.read_pickle(filename, **kwargs)
-        else:
-            df = pd.read_csv(filename, **kwargs)
+        df = HandlerFactory.instantiate(connector_contract).load_canonical()
+        if isinstance(df, dict):
+            df = pd.DataFrame(df)
         if randomize:
             df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
         for label in labels:
