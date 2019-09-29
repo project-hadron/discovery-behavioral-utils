@@ -1,5 +1,8 @@
+import shutil
+
 import matplotlib
 from ds_foundation.handlers.abstract_handlers import ConnectorContract
+from ds_foundation.properties.property_manager import PropertyManager
 
 matplotlib.use("TkAgg")
 
@@ -12,42 +15,45 @@ import warnings
 
 from ds_behavioral import DataBuilder, DataBuilderTools
 
+
 class FileBuilderTest(unittest.TestCase):
 
     def setUp(self):
-        self.name='test_build'
-        pass
-
-    def tearDown(self):
-        _tmp = DataBuilder(self.name).fbpm
-        _tmp.remove(_tmp.KEY.manager_key)
+        # set environment variables
+        os.environ['DTU_CONTRACT_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
+        os.environ['DTU_PERSIST_PATH'] = os.path.join(os.environ['PWD'], 'work', 'data')
+        self.name = 'TestBuilder'
         try:
-            os.remove('config_data_builder.yaml')
-            os.remove('customer.csv')
+            shutil.copytree('../data', os.path.join(os.environ['PWD'], 'work'))
         except:
             pass
 
+    def tearDown(self):
+        try:
+            shutil.rmtree('work')
+        except:
+            pass
+        props = PropertyManager().get_all()
+        for key in props.keys():
+            PropertyManager().remove(key)
+
     def test_runs(self):
         """Basic smoke test"""
-        DataBuilder(self.name)
+        DataBuilder.from_env(self.name)
 
     def test_tools(self):
         """test we can get tools"""
-        fb = DataBuilder(self.name)
+        fb = DataBuilder.from_env(self.name)
         self.assertEqual(fb.tool_dir, DataBuilderTools().__dir__())
 
-    def test_dir(self):
-        """test we can get tools"""
-        fb = DataBuilder(self.name)
-
     def test_remove(self):
-        fb = DataBuilder('Customer')
+        fb = DataBuilder.from_env(self.name)
         _ = fb.fbpm.remove(fb.fbpm.KEY.manager_key)
         fbpm = fb.fbpm
         fbpm.persist_properties()
 
     def test_columns(self):
-        fbpm = DataBuilder(self.name).fbpm
+        fbpm = DataBuilder.from_env(self.name).fbpm
         fbpm.set_column('Attr01', 'type01', quantity='0.8', Fa1='Va1', Fa2='Va2')
         fbpm.set_column('Attr02', 'type02', quantity='0.9')
         fbpm.set_column('Attr03', 'type01', Fc1='Vc1', func='random.random()')
@@ -56,7 +62,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(fbpm.columns, ['Attr01', 'Attr02', 'Attr03', 'Ass01', 'Ass02'])
 
     def test_add_column(self):
-        fb = DataBuilder(self.name)
+        fb = DataBuilder.from_env(self.name)
         self.assertEqual({}, fb.fbpm.builder)
         fb.add_column('test_att', 'number', quantity=0.8, params=(0,500), rand_func='random.randint()')
         control = {'etype': 'number', 'kwargs': {'params': (0, 500), 'quantity': 0.8, 'rand_func': 'random.randint()'}}
@@ -67,7 +73,7 @@ class FileBuilderTest(unittest.TestCase):
 
     # @ignore_warnings(message='Discarding nonzero nanoseconds in conversion')
     def test_create_file_and_get_column_csv(self):
-        fb = DataBuilder(self.name)
+        fb = DataBuilder.from_env(self.name)
         fb.add_column('id', 'unique_identifiers', from_value=100, prefix='pre_', suffix='_suf')
         fb.add_column('value', 'get_distribution', quantity=0.95, method='beta', precision=2, a=2, b=5)
         fb.add_column('percent', 'get_number', from_value=1)

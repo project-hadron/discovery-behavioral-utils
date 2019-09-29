@@ -12,100 +12,118 @@ from typing import Any
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
-from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from pandas.tseries.offsets import Week
 
-from ds_foundation.properties.abstract_properties import AbstractPropertyManager
-from ds_discovery.cleaners.pandas_cleaners import PandasCleaners as cleaner
+from ds_foundation.managers.augment_properties import AugmentedPropertyManager
+from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
+from ds_foundation.properties.decorator_patterns import deprecated
+from ds_behavioral.managers.synthetic_properties import DataBuilderPropertyManager
 from ds_behavioral.sample.sample_data import GenericSamples
 from ds_behavioral.sample.sample_data import ProfileSample
 
 __author__ = 'Darryl Oatridge'
 
 
-class DataBuilderPropertyManager(AbstractPropertyManager):
-
-    def reset_contract_properties(self):
-        """resets the data contract properties back to it's original state. It also resets the source handler
-        Note: this method ONLY writes to the properties memmory and must be explicitely persisted
-        using the ``save()'' method
-        """
-        super()._reset_abstract_properties()
-        return
-
-    def __init__(self, build_name: str):
-        if build_name is None or not build_name or not isinstance(build_name, str):
-            assert TypeError("The build_name can't be None or of zero length. '{}' passed".format(build_name))
-        keys = ['columns', 'correlate', 'associate']
-        super().__init__(manager='data_builder', contract=build_name, keys=keys)
-        if not self.is_key(self.KEY.contract_key):
-            self.set(self.KEY.contract_key, {})
-
-    @property
-    def KEY(self):
-        return self._keys
-
-    @property
-    def builder(self):
-        """returns true if the key exists"""
-        if self.is_key(self.KEY.contract_key):
-            return self.get(self.KEY.contract_key)
-        return {}
-
-    @property
-    def columns(self):
-        """returns a list of columns"""
-        rtn_col = []
-        if self.is_key(self.KEY.columns_key):
-            rtn_col.extend(self.get(self.KEY.columns_key).keys())
-        if self.is_key(self.KEY.correlate_key):
-            rtn_col.extend(self.get(self.KEY.correlate_key).keys())
-        return rtn_col
-
-    def get_column(self, name: str):
-        _column_key = self.join(self.KEY.columns_key, name)
-        _association_key = self.join(self.KEY.correlate_key, name)
-        for _key in [_column_key, _association_key]:
-            if self.is_key(_key):
-                return self.get(_key)
-        return {}
-
-    def set_column(self, label: str, etype: str, **kwargs):
-        _key = self.join(self.KEY.columns_key, label)
-        self.set(self.join(_key, 'etype'), etype)
-        self.set(self.join(_key, 'kwargs'), {})
-        for k, v in kwargs.items():
-            self.set(self.join(_key, 'kwargs', k), v)
-
-    def set_association(self, label: str, associate: [str, list], etype: str, **kwargs):
-        _key = self.join(self.KEY.correlate_key, label)
-        associate = self.list_formatter(associate)
-        self.set(self.join(_key, 'associate'), associate)
-        self.set(self.join(_key, 'etype'), etype)
-        self.set(self.join(_key, 'kwargs'), {})
-        for k, v in kwargs.items():
-            self.set(self.join(_key, 'kwargs', k), v)
-
-
 class DataBuilder(object):
 
-    def __init__(self, build_name: str):
-        """ creates a DataBuilder instance with the reference name given.
-        The build_name allows each FileBuild instance to have their wn configuration build.
+    PERSIST_CONNECTOR = 'persist_connector'
 
-        :param build_name: a build reference name
+    def __init__(self, contract_name: str, builder_properties: [ConnectorContract],
+                 knowledge_properties: [ConnectorContract], default_save=None):
+        """ Encapsulation class for the discovery set of classes
+
+        :param contract_name: The name of the contract
+        :param builder_properties: The persist handler for the builder properties
+        :param knowledge_properties: The persist handler for the augmented knowledge properties
+        :param default_save: The default behaviour of persisting the contracts:
+                    if True: all contract properties are persisted
+                    if False: The connector contracts are kept in memory (useful for restricted file systems)
         """
-        if build_name is None or not build_name or not isinstance(build_name, str):
-            assert TypeError("The file_name can't be None or of zero length. '{}' passed".format(build_name))
-        self._file_builder_pm = DataBuilderPropertyManager(build_name)
+        if not isinstance(contract_name, str) or len(contract_name) < 1:
+            raise ValueError("The contract name must be a valid string")
+        self._contract_name = contract_name
+        self._default_save = default_save if isinstance(default_save, bool) else True
+        # set property managers
+        self._builder_pm = DataBuilderPropertyManager.from_properties(contract_name=contract_name,
+                                                                      connector_contract=builder_properties)
+        if self._builder_pm.has_persisted_properties():
+            self._builder_pm.load_properties()
+        self._knowledge_catalogue = ['overview', 'notes', 'observations', 'attribute', 'dictionary', 'tor']
+        self._knowledge_pm = AugmentedPropertyManager.from_properties(self._contract_name,
+                                                                      connector_contract=knowledge_properties,
+                                                                      knowledge_catalogue=self._knowledge_catalogue)
+        if self._knowledge_pm.has_persisted_properties():
+            self._knowledge_pm.load_properties()
+        # initialise the values
+        self.persist_contract(save=self._default_save)
+
         self._tools = DataBuilderTools()
 
+    @classmethod
+    def from_path(cls, contract_name: str,  contract_path: str, default_save=None):
+        """ Class Factory Method that builds the connector handlers from the data paths.
+        This assumes the use of the pandas handler module and yaml persisted file.
+
+        :param contract_name: The reference name of the properties contract
+        :param contract_path: (optional) the path of the properties contracts
+        :param default_save: (optional) if the configuration should be persisted
+        :return: the initialised class instance
+        """
+        for param in ['contract_name', 'contract_path']:
+            if not isinstance(eval(param), str) or len(eval(param)) == 0:
+                raise ValueError("a {} must be provided".format(param))
+        _default_save = default_save if isinstance(default_save, bool) else True
+        _module_name = 'ds_foundation.handlers.pandas_handlers'
+        _location = os.path.join(contract_path, contract_name)
+        _synthetic_connector = ConnectorContract(resource="config_synthetic_builder_{}.yaml".format(contract_name),
+                                                 connector_type='yaml', location=_location, module_name=_module_name,
+                                                 handler='PandasPersistHandler')
+        return cls(contract_name=contract_name, builder_properties=_synthetic_connector,
+                   knowledge_properties=_synthetic_connector, default_save=default_save)
+
+    @classmethod
+    def from_env(cls, contract_name: str,  default_save=None):
+        """ Class Factory Method that builds the connector handlers taking the property contract path from
+        either the os.envon['DBU_CONTRACT_PATH'], os.environ['DBU_PERSIST_PATH']/contracts or locally from the current
+        working directory 'dbu/contracts' if no environment variable is found. This assumes the use of the default
+        handler module and yaml persisted file.
+
+         :param contract_name: The reference name of the properties contract
+         :param default_save: (optional) if the configuration should be persisted
+         :return: the initialised class instance
+         """
+        if 'SYNTHETIC_CONTRACT_PATH' in os.environ.keys():
+            contract_path = os.environ['SYNTHETIC_CONTRACT_PATH']
+        elif 'SYNTHETIC_PERSIST_PATH' in os.environ.keys():
+            contract_path = os.path.join(os.environ['SYNTHETIC_PERSIST_PATH'], 'contracts')
+        else:
+            contract_path = os.path.join(os.getcwd(), 'synthetic', 'contracts')
+        return cls.from_path(contract_name=contract_name, contract_path=contract_path, default_save=default_save)
+
     @property
+    def contract_name(self) -> str:
+        """The contract name of this transition instance"""
+        return self._contract_name
+
+    @property
+    def version(self):
+        """The version number of the contracts"""
+        return self._builder_pm.version
+
+    @property
+    @deprecated("Data Builder method fpm has been deprecated as of version 1.02.006. Use builder_pm instead.")
     def fbpm(self) -> DataBuilderPropertyManager:
         """
         :return: the file builder properties instance
         """
-        return self._file_builder_pm
+        return self._builder_pm
+
+    @property
+    def builder_pm(self) -> DataBuilderPropertyManager:
+        """
+        :return: the file builder properties instance
+        """
+        return self._builder_pm
 
     @property
     def tools(self):
@@ -118,65 +136,83 @@ class DataBuilder(object):
     def tool_dir(self):
         return self._tools.__dir__()
 
-    def add_column(self, label: str, etype: str, **kwargs) -> None:
-        """ Add a column to the build configuration
-
-        :param label: the label or header for the column
-        :param etype: the DataBuilderTools method name to execute
-        :param kwargs: the key/word args to pass to the method.
+    def set_version(self, version, save=None):
+        """ sets the version
+        :param version: the version to be set
+        :param save: if True, save to file. Default is True
         """
-        self.fbpm.set_column(label=label, etype=etype, **kwargs)
+        if not isinstance(save, bool):
+            save = self._default_save
+            self._builder_pm.set_version(version=version)
+        self.persist_contract(save)
+        return
 
-    def add_association(self, label: str, associate: str, etype: str, **kwargs) -> None:
-        """ adds an association column to the configuration
+    def load_synthetic_data(self) -> pd.DataFrame:
+        """loads the clean pandas.DataFrame from the clean folder for this contract"""
+        if self.builder_pm.has_connector(self.PERSIST_CONNECTOR):
+            handler = self.builder_pm.get_connector_handler(self.PERSIST_CONNECTOR)
+            df = handler.load_canonical()
+            return df
+        return pd.DataFrame()
 
-        :param label: the label or header for the column
-        :param associate:
-        :param etype: the DataBuilderTools method name to execute
-        :param kwargs:
-        :return:
+    def save_synthetic_data(self, df):
+        """Saves the pandas.DataFrame to the clean files folder"""
+        if self.builder_pm.has_connector(self.PERSIST_CONNECTOR):
+            handler = self.builder_pm.get_connector_handler(self.PERSIST_CONNECTOR)
+            handler.persist_canonical(df)
+        return
+
+    def remove_synthetic_data(self):
+        """removes the current persisted canonical"""
+        if self.builder_pm.has_connector(self.PERSIST_CONNECTOR):
+            handler = self.builder_pm.get_connector_handler(self.PERSIST_CONNECTOR)
+            handler.remove_canonical()
+        return
+
+    def persist_contract(self, save=None):
+        """Saves the current configuration to file"""
+        if not isinstance(save, bool):
+            save = self._default_save
+        if save:
+            self.builder_pm.persist_properties()
+            self._knowledge_pm.persist_properties()
+        return
+
+    def set_persist_contract(self, resource=None, connector_type=None, location=None, module_name: str=None,
+                             handler: str=None, save: bool=None, **kwargs):
+        """ Sets the persist contract
+
+        :param resource: a local file, connector, URI or URL
+        :param connector_type: (optional) a reference to the type of resource. if None then csv file assumed
+        :param location: (optional) a path, region or uri reference that can be used to identify location of resource
+        :param module_name: a module name with full package path e.g 'ds_discovery.handlers.pandas_handlers
+        :param handler: the name of the Handler Class. Must be
+        :param save: if True, save to file. Default is True
+        :param kwargs: (optional) a list of key additional word argument properties associated with the resource
+        :return: if load is True, returns a Pandas.DataFrame else None
         """
-        self.fbpm.set_association(label=label, associate=associate, etype=etype, **kwargs)
-
-    def build_columns(self, rows: int, filename: str=None) -> pd.DataFrame:
-        """ build a file based on the columns tha have been added by column
-
-        :param rows: the number of rows to create
-        :param filename: (optional) the filename to output the results to
-        :return: pandas Dataframe
-        """
-        df = pd.DataFrame(index=list(range(rows)))
-        for col in self.fbpm.columns:
-            col_dict = self.fbpm.get_column(col)
-            method_str = "DataBuilderTools.{}(**_kwargs)".format(col_dict['etype'])
-            _kwargs = {}
-            if 'kwargs' in col_dict.keys():
-                _kwargs = col_dict['kwargs']
-            _kwargs['size'] = rows
-            df.insert(loc=0, column=col, value=eval(method_str))
-        if filename is not None:
-            df.to_csv(filename, sep=',', index=False)
-        return df
-
-    @staticmethod
-    def save_to_disk(df, filename: str, path: str=None, file_format: str=None):
-        """ Saves a dataframe to disk
-
-        :param df: the dataframe to save
-        :param filename: the filename. Note, include the extension
-        :param path: (optional) an existing path
-        :param file_format: (optional) the format to save too, currently only 'csv' and 'pickle' supported
-        """
-        _filename = filename
-        if path is not None:
-            if os.path.exists(path):
-                _filename = os.path.join(path, filename)
+        save = save if isinstance(save, bool) else self._default_save
+        if resource is None or not resource:
+            resource = self.get_persist_file_name('synthetic')
+        if connector_type is None:
+            connector_type = 'csv'
+        if location is None:
+            if 'SYNTHETIC_PERSIST_PATH' in os.environ.keys():
+                location = os.environ['SYNTHETIC_PERSIST_PATH']
             else:
-                raise FileNotFoundError("The path {} does not exist".format(path))
-        if file_format == 'pickle':
-            pd.to_pickle(df, path=_filename)
-        else:
-            df.to_csv(_filename, index=False)
+                raise ValueError("A location must be provided if the os.environ['SYNTHETIC_PERSIST_PATH'] is not set")
+        module_name = 'ds_foundation.handlers.pandas_handlers' if module_name is None else module_name
+        handler = 'PandasPersistHandler' if handler is None else handler
+        self._builder_pm.set_connector_contract(self.PERSIST_CONNECTOR, resource=resource,
+                                                connector_type=connector_type, location=location,
+                                                module_name=module_name, handler=handler, **kwargs)
+        self.persist_contract(save)
+        return
+
+    def get_persist_file_name(self, prefix: str):
+        """ Returns a persist pattern based on name"""
+        _pattern = "{}_{}_{}.csv"
+        return _pattern.format(prefix, self.contract_name, self.version)
 
 
 class DataBuilderTools(object):
@@ -213,9 +249,9 @@ class DataBuilderTools(object):
 
         if not isinstance(df, pd.DataFrame):
             raise TypeError("The first function attribute must be a pandas 'DataFrame'")
-        _headers = cleaner.list_formatter(headers)
-        dtype = cleaner.list_formatter(dtype)
-        regex = cleaner.list_formatter(regex)
+        _headers = AugmentedPropertyManager.list_formatter(headers)
+        dtype = AugmentedPropertyManager.list_formatter(dtype)
+        regex = AugmentedPropertyManager.list_formatter(regex)
         _obj_cols = df.columns
         _rtn_cols = set()
         unmodified = True
@@ -521,7 +557,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-        pattern = cleaner.list_formatter(pattern)
+        pattern = AugmentedPropertyManager.list_formatter(pattern)
         if not isinstance(tags, dict):
             raise ValueError("The 'tags' parameter must be a dictionary")
         class_methods = DataBuilderTools().__dir__()
@@ -808,8 +844,9 @@ class DataBuilderTools(object):
         return df
 
     @staticmethod
-    def get_file_column(labels: [str, list], connector_contract: ConnectorContract, size: int=None, randomize: bool=None, seed: int=None):
-        """ gets a column or columns of data from a CSV file returning them as a Series or Dataframe
+    def get_file_column(labels: [str, list], connector_contract: ConnectorContract, size: int=None,
+                        randomize: bool=None, seed: int=None):
+        """ gets a column or columns of data from a CSV file returning them as a Series or DataFrame
         column is requested
 
         :param labels: the header labels to extract
@@ -817,15 +854,13 @@ class DataBuilderTools(object):
         :param size: (optional) the size of the sample to retrieve, if None then it assumes all
         :param randomize: (optional) if the selection should be randomised. Default is False
         :param seed: (optional) a seed value for the random function: default to None
-        :param file_format: (optional) the format of the file. currently only csv and pickle supported. Default csv
-        :param kwargs: (optional) any extra key word args to include in pd.read_csv() method
         :return: DataFrame or List
         """
         if not isinstance(connector_contract, ConnectorContract):
             raise TypeError("The connector_contract must be a ConnectorContract instance")
         _seed = DataBuilderTools._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
-        labels = cleaner.list_formatter(labels)
+        labels = AugmentedPropertyManager.list_formatter(labels)
         df = HandlerFactory.instantiate(connector_contract).load_canonical()
         if isinstance(df, dict):
             df = pd.DataFrame(df)
@@ -833,7 +868,7 @@ class DataBuilderTools(object):
             df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
         for label in labels:
             if label not in df.columns:
-                raise NameError("The label '{}' could not be found in the file {}".format(label, filename))
+                raise NameError("The label '{}' could not be found in {}".format(label, connector_contract.resource))
         if not isinstance(size, int):
             size = df.shape[0]
         if df.shape[1] == 1:
@@ -954,7 +989,7 @@ class DataBuilderTools(object):
         _dataset = dataset
         _associations = associations
         if isinstance(_dataset, (str, int, float)):
-            _dataset = cleaner.list_formatter(_dataset)
+            _dataset = AugmentedPropertyManager.list_formatter(_dataset)
         if isinstance(_dataset, (list, pd.Series)):
             tmp = pd.DataFrame()
             tmp['_default'] = _dataset
@@ -977,7 +1012,7 @@ class DataBuilderTools(object):
                 for header, lookup in associate_dict.items():
                     df_value = _dataset[header].iloc[index]
                     expect = lookup.get('expect')
-                    chk_value = cleaner.list_formatter(lookup.get('value'))
+                    chk_value = AugmentedPropertyManager.list_formatter(lookup.get('value'))
                     if expect.lower() in ['number', 'n']:
                         if len(chk_value) == 1:
                             [s] = [e] = chk_value
@@ -1089,7 +1124,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         _seed = DataBuilderTools._seed() if seed is None else seed
 
-        values = cleaner.list_formatter(values)
+        values = AugmentedPropertyManager.list_formatter(values)
 
         if values is None or len(values) == 0:
             return list()
@@ -1161,7 +1196,7 @@ class DataBuilderTools(object):
             raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
         corr_list = []
         for corr in correlations:
-            corr_list.append(cleaner.list_formatter(corr))
+            corr_list.append(AugmentedPropertyManager.list_formatter(corr))
         if values is None or len(values) == 0:
             return list()
         class_methods = DataBuilderTools().__dir__()
@@ -1293,7 +1328,7 @@ class DataBuilderTools(object):
         if _min_date >= _max_date:
             raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
 
-        dates = cleaner.list_formatter(dates)
+        dates = AugmentedPropertyManager.list_formatter(dates)
         if dates is None or len(dates) == 0:
             return list()
         mode_choice = DataBuilderTools._mode_choice(dates) if fill_nulls else list()
@@ -1571,7 +1606,7 @@ class DataBuilderTools(object):
             raise ValueError("counts can't be greater than or equal to size")
         pattern = []
         for i in weights:
-            i = cleaner.list_formatter(i)[:size]
+            i = AugmentedPropertyManager.list_formatter(i)[:size]
             pattern.append(i)
         rtn_weights = []
         for p in pattern:
