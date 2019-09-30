@@ -3,7 +3,7 @@ import pandas as pd
 from ds_foundation.managers.augment_properties import AugmentedPropertyManager
 from ds_foundation.handlers.abstract_handlers import ConnectorContract
 from ds_foundation.properties.decorator_patterns import deprecated
-from ds_behavioral import DataBuilderTools
+from ds_behavioral.generator.data_bulder_tools import DataBuilderTools
 from ds_behavioral.managers.synthetic_properties import DataBuilderPropertyManager
 
 __author__ = 'Darryl Oatridge'
