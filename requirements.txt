@@ -4,16 +4,11 @@
 
 ###### Requirements without Version Specifiers ######
 setuptools
-pyyaml
 pandas
-numpy
+discovery-foundation
+discovery-connectors
 matplotlib
-scikit-learn
-scipy
-seaborn
-xlsxwriter
-xlrd
-
+numpy
 # SQl and HTML libs
 #sqlalchemy
 #lxml

@@ -20,11 +20,11 @@ class FileBuilderTest(unittest.TestCase):
 
     def setUp(self):
         # set environment variables
-        os.environ['DTU_CONTRACT_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
-        os.environ['DTU_PERSIST_PATH'] = os.path.join(os.environ['PWD'], 'work', 'data')
+        os.environ['SYNTHETIC_CONTRACT_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
+        os.environ['SYNTHETIC_PERSIST_PATH'] = os.path.join(os.environ['PWD'], 'work', 'data')
         self.name = 'TestBuilder'
         try:
-            shutil.copytree('../data', os.path.join(os.environ['PWD'], 'work'))
+            shutil.copytree('data', os.path.join(os.environ['PWD'], 'work'))
         except:
             pass
 
@@ -41,35 +41,39 @@ class FileBuilderTest(unittest.TestCase):
         """Basic smoke test"""
         DataBuilder.from_env(self.name)
 
+    def test_scratch(self):
+        fb = DataBuilder.from_env(self.name)
+        connector_contract = ConnectorContract(resource='claims_ml_dictionary.csv', connector_type='csv',
+                                               location=os.environ['SYNTHETIC_PERSIST_PATH'],
+                                               module_name='ds_foundation.handlers.python_handlers',
+                                               handler='PythonSourceHandler')
+        result = fb.tools.get_file_column(connector_contract=connector_contract, labels="Field Name")
+
+        print(result)
+
     def test_tools(self):
         """test we can get tools"""
         fb = DataBuilder.from_env(self.name)
         self.assertEqual(fb.tool_dir, DataBuilderTools().__dir__())
 
-    def test_remove(self):
-        fb = DataBuilder.from_env(self.name)
-        _ = fb.fbpm.remove(fb.fbpm.KEY.manager_key)
-        fbpm = fb.fbpm
-        fbpm.persist_properties()
-
     def test_columns(self):
-        fbpm = DataBuilder.from_env(self.name).fbpm
-        fbpm.set_column('Attr01', 'type01', quantity='0.8', Fa1='Va1', Fa2='Va2')
-        fbpm.set_column('Attr02', 'type02', quantity='0.9')
-        fbpm.set_column('Attr03', 'type01', Fc1='Vc1', func='random.random()')
-        fbpm.set_association('Ass01', 'Attr01', 'type05', par01='Value')
-        fbpm.set_association('Ass02', ['Attr02', 'Attr03'], 'type04')
-        self.assertEqual(fbpm.columns, ['Attr01', 'Attr02', 'Attr03', 'Ass01', 'Ass02'])
+        builder_pm = DataBuilder.from_env(self.name).builder_pm
+        builder_pm.set_column('Attr01', 'type01', quantity='0.8', Fa1='Va1', Fa2='Va2')
+        builder_pm.set_column('Attr02', 'type02', quantity='0.9')
+        builder_pm.set_column('Attr03', 'type01', Fc1='Vc1', func='random.random()')
+        builder_pm.set_association('Ass01', 'Attr01', 'type05', par01='Value')
+        builder_pm.set_association('Ass02', ['Attr02', 'Attr03'], 'type04')
+        self.assertEqual(builder_pm.columns, ['Attr01', 'Attr02', 'Attr03', 'Ass01', 'Ass02'])
 
     def test_add_column(self):
         fb = DataBuilder.from_env(self.name)
-        self.assertEqual({}, fb.fbpm.builder)
+        self.assertEqual({}, fb.builder_pm.builder)
         fb.add_column('test_att', 'number', quantity=0.8, params=(0,500), rand_func='random.randint()')
         control = {'etype': 'number', 'kwargs': {'params': (0, 500), 'quantity': 0.8, 'rand_func': 'random.randint()'}}
-        self.assertEqual(control, fb.fbpm.get_column('test_att'))
+        self.assertEqual(control, fb.builder_pm.get_column('test_att'))
         fb.add_column('test_att2', 'get_number')
         control = {'etype': 'get_number', 'kwargs': {}}
-        self.assertEqual(control, fb.fbpm.get_column('test_att2'))
+        self.assertEqual(control, fb.builder_pm.get_column('test_att2'))
 
     # @ignore_warnings(message='Discarding nonzero nanoseconds in conversion')
     def test_create_file_and_get_column_csv(self):
@@ -83,7 +87,7 @@ class FileBuilderTest(unittest.TestCase):
         fb.add_column('date', 'get_datetime', quantity=0.8, start='10/10/2001', until='10/10/2018')
         fb.add_column('datetime', 'get_datetime', quantity=0.8, start='10/10/2001 00:00:00', until='10/10/2018 00:00:00', date_format='%d/%m/%Y %H:%M:%S')
         fb.add_column('vulnerable', 'get_category', selection=[True,False], weight_pattern=[0.05,0.95], quantity=0.75)
-        fb.fbpm.persist_properties()
+        fb.builder_pm.persist_properties()
         df = fb.build_columns(10, filename='customer.csv')
         self.assertEqual((10,9), df.shape)
         result = fb.tools.get_file_column(['id', 'value'], filename='customer.csv', size=10)
