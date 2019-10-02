@@ -6,11 +6,10 @@ import time
 import warnings
 from collections import Counter
 from copy import deepcopy
-from typing import Any
+from typing import Any, List
 import numpy as np
 import pandas as pd
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
-from ds_foundation.managers.augment_properties import AugmentedPropertyManager
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_behavioral.sample.sample_data import ProfileSample, GenericSamples
@@ -50,9 +49,9 @@ class DataBuilderTools(object):
 
         if not isinstance(df, pd.DataFrame):
             raise TypeError("The first function attribute must be a pandas 'DataFrame'")
-        _headers = AugmentedPropertyManager.list_formatter(headers)
-        dtype = AugmentedPropertyManager.list_formatter(dtype)
-        regex = AugmentedPropertyManager.list_formatter(regex)
+        _headers = DataBuilderTools.list_formatter(headers)
+        dtype = DataBuilderTools.list_formatter(dtype)
+        regex = DataBuilderTools.list_formatter(regex)
         _obj_cols = df.columns
         _rtn_cols = set()
         unmodified = True
@@ -358,7 +357,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-        pattern = AugmentedPropertyManager.list_formatter(pattern)
+        pattern = DataBuilderTools.list_formatter(pattern)
         if not isinstance(tags, dict):
             raise ValueError("The 'tags' parameter must be a dictionary")
         class_methods = DataBuilderTools().__dir__()
@@ -661,7 +660,7 @@ class DataBuilderTools(object):
             raise TypeError("The connector_contract must be a ConnectorContract instance")
         _seed = DataBuilderTools._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
-        labels = AugmentedPropertyManager.list_formatter(labels)
+        labels = DataBuilderTools.list_formatter(labels)
         df = HandlerFactory.instantiate(connector_contract).load_canonical()
         if isinstance(df, dict):
             df = pd.DataFrame(df)
@@ -790,7 +789,7 @@ class DataBuilderTools(object):
         _dataset = dataset
         _associations = associations
         if isinstance(_dataset, (str, int, float)):
-            _dataset = AugmentedPropertyManager.list_formatter(_dataset)
+            _dataset = DataBuilderTools.list_formatter(_dataset)
         if isinstance(_dataset, (list, pd.Series)):
             tmp = pd.DataFrame()
             tmp['_default'] = _dataset
@@ -813,7 +812,7 @@ class DataBuilderTools(object):
                 for header, lookup in associate_dict.items():
                     df_value = _dataset[header].iloc[index]
                     expect = lookup.get('expect')
-                    chk_value = AugmentedPropertyManager.list_formatter(lookup.get('value'))
+                    chk_value = DataBuilderTools.list_formatter(lookup.get('value'))
                     if expect.lower() in ['number', 'n']:
                         if len(chk_value) == 1:
                             [s] = [e] = chk_value
@@ -925,7 +924,7 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         _seed = DataBuilderTools._seed() if seed is None else seed
 
-        values = AugmentedPropertyManager.list_formatter(values)
+        values = DataBuilderTools.list_formatter(values)
 
         if values is None or len(values) == 0:
             return list()
@@ -997,7 +996,7 @@ class DataBuilderTools(object):
             raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
         corr_list = []
         for corr in correlations:
-            corr_list.append(AugmentedPropertyManager.list_formatter(corr))
+            corr_list.append(DataBuilderTools.list_formatter(corr))
         if values is None or len(values) == 0:
             return list()
         class_methods = DataBuilderTools().__dir__()
@@ -1129,7 +1128,7 @@ class DataBuilderTools(object):
         if _min_date >= _max_date:
             raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
 
-        dates = AugmentedPropertyManager.list_formatter(dates)
+        dates = DataBuilderTools.list_formatter(dates)
         if dates is None or len(dates) == 0:
             return list()
         mode_choice = DataBuilderTools._mode_choice(dates) if fill_nulls else list()
@@ -1209,36 +1208,29 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     @staticmethod
-    def unique_numbers(start: [int, float], until: [int, float], size: int, weight_pattern: list=None,
+    def unique_numbers(start: [int, float], until: [int, float]=None, size: int=None, weight_pattern: list=None,
                        precision: int=None, seed: int=None) -> list:
         """Generate a number tokens of a specified length.
 
         :param start: the start number
-        :param until: then end boundary
+        :param until: (optional) then end boundary
         :param size: The number of tokens to return
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param seed: a seed value for the random function: default to None
         """
+        if until is None:
+            until = start
+            start = 0
         if until - start <= size:
-            raise ValueError("The number of tokens must be less than the the number pool")
+            until = start + size + 1
         _seed = DataBuilderTools._seed() if seed is None else seed
-        seen = set()
-        add = seen.add
-        attempts = 0
-        max_attempts = 10
-        while len(seen) < size:
-            if attempts > max_attempts:
-                raise InterruptedError(
-                    "Unique Date Sequence stopped: After {} attempts unable to create unique set".format(max_attempts))
-            for token in DataBuilderTools.get_number(from_value=start, to_value=until, weight_pattern=weight_pattern,
-                                                     precision=precision, size=size+10, seed=_seed):
-                add(token)
-                if len(seen) == size:
-                    break
-            _seed = DataBuilderTools._next_seed(_seed, seed)
-            attempts += 1
-        return list(seen)
+        selection = []
+        choice = list(range(start, until))
+        while len(selection) < size:
+            index = np.random.randint(0, len(choice) - 1)
+            selection.append(choice.pop(index))
+        return selection
 
     @staticmethod
     def unique_date_seq(start: Any, until: Any, default: Any = None, ordered: bool=None,
@@ -1407,7 +1399,7 @@ class DataBuilderTools(object):
             raise ValueError("counts can't be greater than or equal to size")
         pattern = []
         for i in weights:
-            i = AugmentedPropertyManager.list_formatter(i)[:size]
+            i = DataBuilderTools.list_formatter(i)[:size]
             pattern.append(i)
         rtn_weights = []
         for p in pattern:
@@ -1493,3 +1485,16 @@ class DataBuilderTools(object):
             seed = DataBuilderTools._seed() if isinstance(default, int) else default
         np.random.seed(seed)
         return seed
+
+    @staticmethod
+    def list_formatter(value) -> [List[str], list, None]:
+        """ Useful utility method to convert any type of str, list, tuple or pd.Series into a list"""
+        if isinstance(value, (int, float, str, pd.Timestamp)):
+            return [value]
+        if isinstance(value, (list, tuple, set)):
+            return list(value)
+        if isinstance(value, pd.Series):
+            return value.tolist()
+        if isinstance(value, dict):
+            return list(value.items())
+        return None

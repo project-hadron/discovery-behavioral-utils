@@ -1,6 +1,7 @@
 import shutil
 
 import matplotlib
+from ds_behavioral.generator.data_bulder_tools import DataBuilderTools
 from ds_foundation.handlers.abstract_handlers import ConnectorContract
 from ds_foundation.properties.property_manager import PropertyManager
 
@@ -13,7 +14,7 @@ import unittest
 import os
 import warnings
 
-from ds_behavioral import DataBuilder, DataBuilderTools
+from ds_behavioral import DataBuilder
 
 
 class FileBuilderTest(unittest.TestCase):
@@ -42,14 +43,13 @@ class FileBuilderTest(unittest.TestCase):
         DataBuilder.from_env(self.name)
 
     def test_scratch(self):
-        fb = DataBuilder.from_env(self.name)
-        connector_contract = ConnectorContract(resource='claims_ml_dictionary.csv', connector_type='csv',
-                                               location=os.environ['SYNTHETIC_PERSIST_PATH'],
-                                               module_name='ds_foundation.handlers.python_handlers',
-                                               handler='PythonSourceHandler')
-        result = fb.tools.get_file_column(connector_contract=connector_contract, labels="Field Name")
+        df = pd.DataFrame()
+        tools = DataBuilderTools
+        df['service_start_dte'] = tools.get_datetime(start='01/01/2017', until='31/07/2019', date_format='%y-%m-%d', size=10)
 
-        print(result)
+        dates = tools.correlate_dates(df['service_start_dte'], year_first=True, offset={'days': 20}, lower_spread=2, date_format='%y-%m-%d')
+
+        print(dates)
 
     def test_tools(self):
         """test we can get tools"""
