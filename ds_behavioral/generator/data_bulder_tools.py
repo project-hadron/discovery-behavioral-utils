@@ -186,7 +186,8 @@ class DataBuilderTools(object):
 
     @staticmethod
     def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
-                   precision: int=None, currency: str=None, size: int=None, quantity: float=None, seed: int=None):
+                   precision: int=None, currency: str=None, bounded_weighting: bool=True, size: int=None,
+                   quantity: float=None, seed: int=None):
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -195,6 +196,7 @@ class DataBuilderTools(object):
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param offset: an offset multiplier, if None then assume 1
         :param currency: a currency symbol to prefix the value with. returns string with commas
+        :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
@@ -209,28 +211,39 @@ class DataBuilderTools(object):
         if is_int:
             precision = 0
         precision = 3 if not isinstance(precision, int) else precision
-        value_bins = None
-        if from_value == to_value:
-            weight_pattern = None
         if weight_pattern is not None:
-            value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(weight_pattern),  closed='both')
-            value_bins.drop_duplicates()
+            counter = [0] * len(weight_pattern)
+            if bounded_weighting:
+                unit = size/sum(weight_pattern)
+                for i in range(len(weight_pattern)):
+                    counter[i] = int(round(weight_pattern[i] * unit, 0))
+                    if counter[i] == 0 and counter[DataBuilderTools._weighted_choice(weight_pattern)] == i:
+                        counter[i] = 1
+                while sum(counter) != size:
+                    if sum(counter) < size:
+                        counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
+                    else:
+                        counter[DataBuilderTools._weighted_choice(weight_pattern)] -= 1
+            else:
+                for _ in range(size):
+                    counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
+        else:
+            counter = [size]
+            weight_pattern = [1]
+        value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(weight_pattern), closed='both')
+        value_bins = value_bins.drop_duplicates()
+        _seed = DataBuilderTools._next_seed(_seed, seed)
         rtn_list = []
-        for _ in range(size):
-            _seed = DataBuilderTools._next_seed(_seed, seed)
-            if weight_pattern is not None:
-                pattern = DataBuilderTools._normailse_weights(weight_pattern, size=size, count=len(rtn_list),
-                                                              length=value_bins.size)
-                index = DataBuilderTools._weighted_choice(pattern, seed=_seed)
-                from_value = value_bins[index].left
-                to_value = value_bins[index].right
-            value = np.round(np.random.uniform(low=from_value, high=to_value), precision)
-            value *= offset
-            if is_int:
-                value = int(value)
-            if isinstance(currency, str):
-                value = '{}{:0,.{}f}'.format(currency, value, precision)
-            rtn_list.append(value)
+        for index in range(len(counter)):
+            low = value_bins[index].left
+            high = value_bins[index].right
+            rtn_list += np.round(np.random.uniform(low=low, high=high, size=counter[index]), precision).tolist()
+        if is_int:
+            rtn_list = [int(value) for value in rtn_list]
+        if isinstance(currency, str):
+            rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
+        if offset != 1:
+            rtn_list = [value*offset for value in rtn_list]
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
@@ -1181,7 +1194,7 @@ class DataBuilderTools(object):
 
     @staticmethod
     def unique_identifiers(from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
-                           weight_pattern: list = None, quantity: float=None, seed: int=None):
+                           quantity: float=None, seed: int=None):
         """ returns a list of unique identifiers randomly selected between the from_value and to_value
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -1189,7 +1202,6 @@ class DataBuilderTools(object):
         :param size: the size of the sample. Must be smaller than the range
         :param prefix: a prefix to the number . Default to nothing
         :param suffix: a suffix to the number. default to nothing
-        :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param quantity: a number between 0 and 1 preresenting the percentage quantity of the data
         :param seed: a seed value for the random function: default to None
         :return: a unique identifer randomly selected from the range
@@ -1202,34 +1214,41 @@ class DataBuilderTools(object):
         if suffix is None:
             suffix = ''
         rtn_list = []
-        for i in DataBuilderTools.unique_numbers(start=from_value, until=to_value, size=size,
-                                                 weight_pattern=weight_pattern, seed=seed):
+        for i in DataBuilderTools.unique_numbers(start=from_value, until=to_value, size=size, precision=0, seed=seed):
             rtn_list.append("{}{}{}".format(prefix, i, suffix))
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     @staticmethod
-    def unique_numbers(start: [int, float], until: [int, float]=None, size: int=None, weight_pattern: list=None,
-                       precision: int=None, seed: int=None) -> list:
+    def unique_numbers(start: [int, float], until: [int, float]=None, size: int=None, precision: int=None,
+                       at_most: int=None, seed: int=None) -> list:
         """Generate a number tokens of a specified length.
 
         :param start: the start number
         :param until: (optional) then end boundary
         :param size: The number of tokens to return
-        :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
+        :param at_most: allows for a certain number of occurances of uniquness, default to 1
         :param seed: a seed value for the random function: default to None
         """
+        is_int = True if isinstance(start, int) and isinstance(until, int) else False
+        at_most = 1 if not isinstance(at_most, int) else at_most
+        if is_int:
+            precision = 0
+        precision = 3 if not isinstance(precision, int) else precision
         if until is None:
             until = start
             start = 0
         if until - start <= size:
             until = start + size + 1
         _seed = DataBuilderTools._seed() if seed is None else seed
-        selection = []
-        choice = list(range(start, until))
-        while len(selection) < size:
-            index = np.random.randint(0, len(choice) - 1)
-            selection.append(choice.pop(index))
+        choice = []
+        for _ in range(at_most):
+            choice += list(range(start, until))
+        _seed = DataBuilderTools._next_seed(_seed, seed)
+        np.random.shuffle(choice)
+        selection = [np.round(value, precision) for value in choice[:size]]
+        if is_int:
+            selection = [int(value) for value in selection]
         return selection
 
     @staticmethod

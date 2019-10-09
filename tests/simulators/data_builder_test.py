@@ -1,4 +1,5 @@
 import shutil
+from collections import Counter
 
 import matplotlib
 from ds_behavioral.generator.data_bulder_tools import DataBuilderTools
@@ -259,7 +260,11 @@ class FileBuilderTest(unittest.TestCase):
     def test_unique_num(self):
         tools = DataBuilderTools()
         result = tools.unique_numbers(4, 100, size=5, seed=101)
-        self.assertEqual([4, 12, 45, 18, 61], result)
+        self.assertEqual([56, 15, 19, 25, 44], result)
+        result = tools.unique_numbers(4, 100090, size=10000,)
+        self.assertEqual(1, max(Counter(result).values()))
+        result = tools.unique_numbers(10, at_most=3, size=30)
+        self.assertEqual(3, max(Counter(result).values()))
 
     def test_bool(self):
         tools = DataBuilderTools()
@@ -529,6 +534,18 @@ class FileBuilderTest(unittest.TestCase):
         counter = result.groupby('gender').nunique(dropna=True).drop('gender', axis=1)
         self.assertTrue(counter.iloc[0,0] > counter.iloc[0,1])
         self.assertTrue(counter.iloc[1,0] > counter.iloc[1,1])
+
+    def test_local_get_number(self):
+        pattern = [0.2, 1, 3, 4, 6, 7, 3, 2, 0.1]
+
+        start = 50.1
+        end = 1000
+        sample_size = 10
+
+        result = DataBuilderTools.get_number(from_value=start, to_value=end, weight_pattern=pattern, size=sample_size)
+        print(result)
+
+
 
 if __name__ == '__main__':
     unittest.main()
