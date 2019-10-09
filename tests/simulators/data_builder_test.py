@@ -2,7 +2,7 @@ import shutil
 from collections import Counter
 
 import matplotlib
-from ds_behavioral.generator.data_bulder_tools import DataBuilderTools
+from ds_behavioral.generator.data_builder_tools import DataBuilderTools
 from ds_foundation.handlers.abstract_handlers import ConnectorContract
 from ds_foundation.properties.property_manager import PropertyManager
 
@@ -240,7 +240,7 @@ class FileBuilderTest(unittest.TestCase):
         tools = DataBuilderTools()
         result = tools.get_number(from_value=1.0, precision=3, seed=101)
         self.assertEqual([0.598], result)
-        pattern = [[0,1],1]
+        pattern = [1,1]
         control = [0.838, 0.587, 0.614, 0.667, 0.977, 0.377, 0.017, 0.746, 0.329, 0.585]
         result = tools.get_number(from_value=0, to_value=1.0, weight_pattern=pattern, size=10, seed=101)
         self.assertEqual(control, result)
