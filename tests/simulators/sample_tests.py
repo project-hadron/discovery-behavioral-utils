@@ -1,4 +1,7 @@
 import matplotlib
+import pandas as pd
+
+from ds_behavioral.generator.data_builder_tools import DataBuilderTools
 
 matplotlib.use("TkAgg")
 
@@ -36,8 +39,13 @@ class MyTestCase(unittest.TestCase):
         pass
 
     def test_map(self):
-        result = MappedSample.companies_fortune1000(size=10)
-        print(result)
+        tools = DataBuilderTools
+        selection = ['M', 'F', 'U']
+        weight_pattern = [5, 4, 1]
+        select_index = tools.get_number(len(selection) - 1, weight_pattern=weight_pattern, size=1000)
+        gender = [selection[i] for i in select_index]
+        print(pd.Series(gender).value_counts())
+
 
 if __name__ == '__main__':
     unittest.main()

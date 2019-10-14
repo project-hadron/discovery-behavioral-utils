@@ -186,8 +186,8 @@ class DataBuilderTools(object):
 
     @staticmethod
     def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
-                   precision: int=None, currency: str=None, bounded_weighting: bool=True, size: int=None,
-                   quantity: float=None, seed: int=None):
+                   precision: int=None, currency: str=None, bounded_weighting: bool=True, at_most: int=None,
+                   size: int = None, quantity: float=None, seed: int=None):
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -197,15 +197,20 @@ class DataBuilderTools(object):
         :param offset: an offset multiplier, if None then assume 1
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
+        :param at_most: the most times a selection should be chosen
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
         :return: a random number
         """
+        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
+        at_most = 0 if not isinstance(at_most, int) else at_most
+        if at_most > 0 and (at_most * (to_value-from_value)) < size:
+            raise ValueError("When using 'at_most', the selectable values must be greater than the size. selectable "
+                             "value count is '{}',size requested is '{}'".format(at_most * (to_value-from_value), size))
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         offset = 1 if offset is None else offset
-        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         _seed = DataBuilderTools._seed() if seed is None else seed
         is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
         if is_int:
@@ -217,33 +222,71 @@ class DataBuilderTools(object):
                 unit = size/sum(weight_pattern)
                 for i in range(len(weight_pattern)):
                     counter[i] = int(round(weight_pattern[i] * unit, 0))
+                    if 0 < at_most < counter[i]:
+                        counter[i] = at_most
                     if counter[i] == 0 and counter[DataBuilderTools._weighted_choice(weight_pattern)] == i:
                         counter[i] = 1
-                while sum(counter) != size:
-                    if sum(counter) < size:
-                        counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
-                    else:
-                        counter[DataBuilderTools._weighted_choice(weight_pattern)] -= 1
             else:
                 for _ in range(size):
                     counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
+                for i in range(len(counter)):
+                    if 0 < at_most < counter[i]:
+                        counter[i] = at_most
+            while sum(counter) != size:
+                if at_most > 0:
+                    for index in range(len(counter)):
+                        if counter[index] >= at_most:
+                            counter[index] = at_most
+                            weight_pattern[index] = 0
+                if sum(counter) < size:
+                    counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
+                else:
+                    counter[DataBuilderTools._weighted_choice(weight_pattern)] -= 1
+
         else:
             counter = [size]
             weight_pattern = [1]
-        value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(weight_pattern), closed='both')
-        value_bins = value_bins.drop_duplicates()
         _seed = DataBuilderTools._next_seed(_seed, seed)
         rtn_list = []
-        for index in range(len(counter)):
-            low = value_bins[index].left
-            high = value_bins[index].right
-            rtn_list += np.round(np.random.uniform(low=low, high=high, size=counter[index]), precision).tolist()
         if is_int:
-            rtn_list = [int(value) for value in rtn_list]
+            value_bins = []
+            ref = from_value
+            counter_len = len(counter)
+            select_len = to_value - from_value
+            for index in range(1, counter_len):
+                position = int(round(select_len / counter_len * index, 1)) + from_value
+                value_bins.append((ref, position))
+                ref = position
+            value_bins.append((ref, to_value))
+            for index in range(counter_len):
+                low, high = value_bins[index]
+                if at_most > 0:
+                    choice = []
+                    for _ in range(at_most):
+                        choice += list(range(low, high))
+                    np.random.shuffle(choice)
+                    rtn_list += [int(np.round(value, precision)) for value in choice[:counter[index]]]
+                else:
+                    rtn_list += [int(x) for x in np.random.uniform(low=low, high=high, size=counter[index]).tolist()]
+        else:
+            value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(weight_pattern), closed='both')
+            value_bins = value_bins.drop_duplicates()
+            for index in range(len(counter)):
+                low = value_bins[index].left
+                high = value_bins[index].right
+                if at_most > 0:
+                    choice = []
+                    for _ in range(at_most):
+                        choice += list(range(low, high))
+                    np.random.shuffle(choice)
+                    rtn_list += [np.round(value, precision) for value in choice[:counter[index]]]
+                else:
+                    rtn_list += np.round(np.random.uniform(low=low, high=high, size=counter[index]), precision).tolist()
         if isinstance(currency, str):
             rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
         if offset != 1:
             rtn_list = [value*offset for value in rtn_list]
+        np.random.shuffle(rtn_list)
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
@@ -254,7 +297,7 @@ class DataBuilderTools(object):
         :param header: the name of the header to be selected from
         :param df: a pandas DataFrame of the reference data
         :param weight_pattern: (optional) a weighting pattern of the final selection
-        :param selection_size: (optional) the selection to take from the sample size, norally used with shuffle
+        :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
         :param sample_size: (optional) the size of the sample to take from the reference file
         :param at_most: (optional) the most times a selection should be chosen
         :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
@@ -281,46 +324,28 @@ class DataBuilderTools(object):
 
     @staticmethod
     def get_category(selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
-                     at_most: int=None, seed: int=None):
+                     bounded_weighting: bool=None, at_most: int=None, seed: int=None):
         """ returns a category from a list. Of particular not is the at_least parameter that allows you to
-        control the number of times a selection can be chocen.
+        control the number of times a selection can be chosen.
 
         :param selection: a list of items to select from
         :param weight_pattern: a weighting pattern that does not have to add to 1
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param size: an optional size of the return. default to 1
-        :param at_most: the most times a selection should be chocen
+        :param at_most: the most times a selection should be chosen
+        :param bounded_weighting: if the weighting pattern should have a soft or hard boundary (default False)
         :param seed: a seed value for the random function: default to None
         :return: an item or list of items chosen from the list
         """
         if not isinstance(selection, list) or len(selection) == 0:
             return [None]*size
-        quantity = DataBuilderTools._quantity(quantity)
-        size = 1 if size is None else size
-        at_most = None if not isinstance(at_most, int) else at_most
+        bounded_weighting = False if not isinstance(bounded_weighting, bool) else bounded_weighting
         _seed = DataBuilderTools._seed() if seed is None else seed
-        weight_pattern = [1] if not isinstance(weight_pattern, list) else weight_pattern
-        if at_most is not None and at_most * len(selection) < size:
-            raise ValueError("the selection size '{}' is smaller than the required sample size '{}'".format(
-                at_most * len(selection), size))
-        selection = selection.copy()
-        rtn_list = []
-        at_most_counter = [0] * len(selection)
-        for _ in range(size):
-            if len(selection) == 1:
-                rtn_list.append(selection[0])
-                continue
-            _seed = DataBuilderTools._next_seed(_seed, seed)
-            pattern = DataBuilderTools._normailse_weights(weight_pattern, size=size, count=len(rtn_list),
-                                                          length=len(selection))
-            choice = selection[DataBuilderTools._weighted_choice(pattern, seed=_seed)]
-            rtn_list.append(choice)
-            if at_most is not None:
-                choice_idx = selection.index(choice)
-                at_most_counter[choice_idx] += 1
-                if at_most_counter[choice_idx] >= at_most:
-                    selection.remove(choice)
-                    at_most_counter.pop(choice_idx)
+        quantity = DataBuilderTools._quantity(quantity)
+        select_index = DataBuilderTools.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most,
+                                                   size=size, bounded_weighting=bounded_weighting, quantity=1,
+                                                   seed=seed)
+        rtn_list = [selection[i] for i in select_index]
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
     @staticmethod
@@ -351,7 +376,7 @@ class DataBuilderTools(object):
     @staticmethod
     def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,
                            size: int=None, seed: int=None):
-        """ Returns the pattern with the tags subsituted by tage choice
+        """ Returns the pattern with the tags substituted by tag choice
             example ta dictionary:
                 { '<slogan>': {'action': '', 'kwargs': {}},
                   '<phone>': {'action': '', 'kwargs': {}}
@@ -359,7 +384,7 @@ class DataBuilderTools(object):
             where action is a DataBuilderTools method name and kwargs are the arguments to pass
             for sample data use get_custom
 
-        :param pattern: a strin or list of strins to apply the ta subsitution too
+        :param pattern: a string or list of strings to apply the ta substitution too
         :param tags: a dictionary of tas and actions
         :param weight_pattern: a weighting pattern that does not have to add to 1
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
@@ -1219,37 +1244,23 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     @staticmethod
-    def unique_numbers(start: [int, float], until: [int, float]=None, size: int=None, precision: int=None,
-                       at_most: int=None, seed: int=None) -> list:
+    def unique_numbers(start: [int, float], until: [int, float]=None, precision: int=None, at_most: int=None,
+                       weight_pattern: list=None, quantity: float=None, size: int=None, seed: int=None) -> list:
         """Generate a number tokens of a specified length.
 
         :param start: the start number
         :param until: (optional) then end boundary
-        :param size: The number of tokens to return
-        :param precision: the precision of the returned number. if None then assumes int value else float
-        :param at_most: allows for a certain number of occurances of uniquness, default to 1
-        :param seed: a seed value for the random function: default to None
+        :param precision:(optional) the precision of the returned number. if None then assumes int value else float
+        :param at_most: (optional) allows for a certain number of occurrences of uniqueness, default to 1
+        :param size: (optional) The number of tokens to return
+        :param weight_pattern: (optional) a weighting pattern of the final selection
+        :param quantity: a number between 0 and 1 preresenting the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
         """
-        is_int = True if isinstance(start, int) and isinstance(until, int) else False
         at_most = 1 if not isinstance(at_most, int) else at_most
-        if is_int:
-            precision = 0
-        precision = 3 if not isinstance(precision, int) else precision
-        if until is None:
-            until = start
-            start = 0
-        if until - start <= size:
-            until = start + size + 1
-        _seed = DataBuilderTools._seed() if seed is None else seed
-        choice = []
-        for _ in range(at_most):
-            choice += list(range(start, until))
-        _seed = DataBuilderTools._next_seed(_seed, seed)
-        np.random.shuffle(choice)
-        selection = [np.round(value, precision) for value in choice[:size]]
-        if is_int:
-            selection = [int(value) for value in selection]
-        return selection
+        return DataBuilderTools.get_number(from_value=start, to_value=until, weight_pattern=weight_pattern,
+                                           precision=precision, at_most=at_most, quantity=quantity, size=size,
+                                           seed=seed)
 
     @staticmethod
     def unique_date_seq(start: Any, until: Any, default: Any = None, ordered: bool=None,

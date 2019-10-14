@@ -17,7 +17,6 @@ import warnings
 
 from ds_behavioral import DataBuilder
 
-
 class FileBuilderTest(unittest.TestCase):
 
     def setUp(self):
@@ -57,47 +56,6 @@ class FileBuilderTest(unittest.TestCase):
         fb = DataBuilder.from_env(self.name)
         self.assertEqual(fb.tool_dir, DataBuilderTools().__dir__())
 
-    def test_columns(self):
-        builder_pm = DataBuilder.from_env(self.name).builder_pm
-        builder_pm.set_column('Attr01', 'type01', quantity='0.8', Fa1='Va1', Fa2='Va2')
-        builder_pm.set_column('Attr02', 'type02', quantity='0.9')
-        builder_pm.set_column('Attr03', 'type01', Fc1='Vc1', func='random.random()')
-        builder_pm.set_association('Ass01', 'Attr01', 'type05', par01='Value')
-        builder_pm.set_association('Ass02', ['Attr02', 'Attr03'], 'type04')
-        self.assertEqual(builder_pm.columns, ['Attr01', 'Attr02', 'Attr03', 'Ass01', 'Ass02'])
-
-    def test_add_column(self):
-        fb = DataBuilder.from_env(self.name)
-        self.assertEqual({}, fb.builder_pm.builder)
-        fb.add_column('test_att', 'number', quantity=0.8, params=(0,500), rand_func='random.randint()')
-        control = {'etype': 'number', 'kwargs': {'params': (0, 500), 'quantity': 0.8, 'rand_func': 'random.randint()'}}
-        self.assertEqual(control, fb.builder_pm.get_column('test_att'))
-        fb.add_column('test_att2', 'get_number')
-        control = {'etype': 'get_number', 'kwargs': {}}
-        self.assertEqual(control, fb.builder_pm.get_column('test_att2'))
-
-    # @ignore_warnings(message='Discarding nonzero nanoseconds in conversion')
-    def test_create_file_and_get_column_csv(self):
-        fb = DataBuilder.from_env(self.name)
-        fb.add_column('id', 'unique_identifiers', from_value=100, prefix='pre_', suffix='_suf')
-        fb.add_column('value', 'get_distribution', quantity=0.95, method='beta', precision=2, a=2, b=5)
-        fb.add_column('percent', 'get_number', from_value=1)
-        fb.add_column('postcode', 'get_string_pattern', pattern='UUddsdUU')
-        fb.add_column('gender', 'get_category', selection=['M', 'F', 'U'], quantity=0.8, weight_pattern=[.3, .2, .5])
-        fb.add_column('category', 'get_category', selection=DataBuilderTools.unique_str_tokens(4, 5), quantity=1.0, weight_pattern=[.5, .2, .1, .1, .1])
-        fb.add_column('date', 'get_datetime', quantity=0.8, start='10/10/2001', until='10/10/2018')
-        fb.add_column('datetime', 'get_datetime', quantity=0.8, start='10/10/2001 00:00:00', until='10/10/2018 00:00:00', date_format='%d/%m/%Y %H:%M:%S')
-        fb.add_column('vulnerable', 'get_category', selection=[True,False], weight_pattern=[0.05,0.95], quantity=0.75)
-        fb.builder_pm.persist_properties()
-        df = fb.build_columns(10, filename='customer.csv')
-        self.assertEqual((10,9), df.shape)
-        result = fb.tools.get_file_column(['id', 'value'], filename='customer.csv', size=10)
-        self.assertTrue(isinstance(result, pd.DataFrame))
-        self.assertEqual((10,2), result.shape)
-        result = fb.tools.get_file_column('gender', filename='customer.csv', size=5)
-        self.assertTrue(isinstance(result, list))
-        self.assertEqual(5, len(result))
-
     def test_file_column(self):
         tools = DataBuilderTools()
         df = pd.DataFrame()
@@ -111,56 +69,36 @@ class FileBuilderTest(unittest.TestCase):
         self.assertCountEqual(['U','M', 'M'], result['cat'].to_list())
         self.assertCountEqual(['9','2','0'], result['values'].to_list())
 
-    def test_cat(self):
+    def test_category(self):
         tools = DataBuilderTools()
-        cat = [0,1,2,3,4]
-        result = [0,0,0,0,0]
-        for i in range(20):
-            index = tools.get_category(cat, seed=i)[0]
-            result[index] += 1
-        control = [5, 3, 5, 3, 4]
-        self.assertEqual(control, result)
-        # reset and test params
-        result = [0, 0, 0, 0, 0]
-        for i in range(100):
-            index = tools.get_category(cat, weight_pattern=[1, 1, 5, 2, 1], seed=i)[0]
-            result[index] += 1
-        control = [11, 8, 54, 19, 8]
-        self.assertEqual(control, result)
-        # reset and test params
-        result = [0, 0, 0, 0, 0]
-        for i in range(100):
-            index = tools.get_category(cat, weight_pattern=[.1,.1,.5,.2,.1], seed=i)[0]
-            result[index] += 1
-        control = [11, 8, 54, 19, 8]
-        self.assertEqual(control, result)
+        gender = list('MFTU')
+        int_values = [1,2,3,4]
+        float_values = [0.1,0.2,0.3,0.4]
+        for selection in [gender, int_values, float_values]:
+            result = tools.get_category(selection=selection, size=1000)
+            for i in result:
+                self.assertIn(i, selection)
+            # print(pd.Series(result).value_counts())
+            for c in pd.Series(result).value_counts():
+                self.assertTrue(220 < c < 280)
 
-    def test_cat_size(self):
+    def test_category_weight_pattern(self):
         tools = DataBuilderTools()
-        cat = [0, 1, 2, 3, 4]
-        result = [0, 0, 0, 0, 0]
-        for i in tools.get_category(cat, size=100, seed=101):
-            result[i] += 1
-        control = [22, 10, 23, 22, 23]
-        self.assertEqual(control, result)
-        # reset test params
-        result = [0, 0, 0, 0, 0]
-        for i in tools.get_category(cat, size=5, at_most=1):
-            result[i] += 1
-        control = [1,1,1,1,1]
-        self.assertEqual(control, result)
-        # reset test params
-        result = [0, 0, 0, 0, 0]
-        for i in tools.get_category(cat, size=10, at_most=2):
-            result[i] += 1
-        control = [2,2,2,2,2]
-        self.assertEqual(control, result)
-        # reset test params
-        result = [0, 0, 0, 0, 0]
-        for i in tools.get_category(cat, size=100, weight_pattern=[.1,.1,.5,.2,.1], seed=101):
-            result[i] += 1
-        control = [7, 15, 46, 22, 10]
-        self.assertEqual(control, result)
+        selection = list('MFTU')
+        weight_pattern=[5,3,0.1,0.9]
+        result = tools.get_category(selection=selection, weight_pattern=weight_pattern, size=1000)
+        print(pd.Series(result).value_counts())
+
+    def test_category_at_most(self):
+        tools = DataBuilderTools()
+        selection = list('MFTU')
+        result = tools.get_category(selection=selection, at_most=1, size=4)
+        self.assertEqual(1, max(pd.Series(result).value_counts()))
+        result = tools.get_category(selection=selection, at_most=3, size=10)
+        self.assertEqual(3, max(pd.Series(result).value_counts()))
+        weight_pattern=[5,3,0.1,0.9]
+        result = tools.get_category(selection=selection, weight_pattern=weight_pattern, at_most=10, size=40)
+        print(pd.Series(result).value_counts())
 
     def test_custom(self):
         tools = DataBuilderTools()
@@ -179,14 +117,14 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_quantity_number(self):
         tools = DataBuilderTools()
-        result = tools.get_number(100, size=10, quantity=1, seed=31)
-        control = [85, 24, 3, 45, 72, 94, 38, 54, 40, 25]
+        result = tools.get_number(100, size=10, quantity=1, seed=101)
+        control = [60, 68, 30, 73, 58, 81, 17, 31, 36, 49]
         self.assertEqual(control, result)
-        result = tools.get_number(100, size=10, quantity=0.9, seed=31)
-        control = [85, 24, 3, 45, 72, 94, 38, 54, None, 25]
+        result = tools.get_number(100, size=10, quantity=0.9, seed=98)
+        control = [67, 49, 83, 3, 81, 57, 30, 5, None, 1]
         self.assertEqual(control, result)
-        result = tools.get_number(100, size=10, quantity=0.5, seed=31)
-        control = [85, 24, None, 45, 72, None, 38, None, None, 25]
+        result = tools.get_number(100, size=10, quantity=0.5, seed=98)
+        control = [None, 49, None, 3, None, None, 30, 5, None, 1]
         self.assertEqual(control, result)
         result = tools.get_number(100, size=10, quantity=0.1, seed = 31)
         control = [None, 24, None, 45, None, None, None, None, None, None]
@@ -221,13 +159,13 @@ class FileBuilderTest(unittest.TestCase):
         intervals = [(0,10),(10,20),(20,30),(30,40)]
         weighting = [1,1,1,1]
         result = tools.get_intervals(intervals, weight_pattern=weighting, size=10, seed=31)
-        control = [28, 12, 14, 38, 22, 32, 8, 18, 2, 10]
+        control = [29, 14, 20, 39, 24, 34, 9, 19, 4, 16]
         self.assertEqual(control, result)
 
     def test_int(self):
         tools = DataBuilderTools()
         result = tools.get_number(from_value=20, seed=101)
-        self.assertEqual([11], result)
+        self.assertEqual([12], result)
         result = tools.get_number(from_value=100, quantity=0.5, size=10, seed=31)
         self.assertEqual([85, 24, None, 45, 72, None, 38, None, None, 25], result)
         pattern = [0,1]
@@ -241,7 +179,7 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.get_number(from_value=1.0, precision=3, seed=101)
         self.assertEqual([0.598], result)
         pattern = [1,1]
-        control = [0.838, 0.587, 0.614, 0.667, 0.977, 0.377, 0.017, 0.746, 0.329, 0.585]
+        control = [0.299, 0.338, 0.15, 0.365, 0.289, 0.905, 0.584, 0.656, 0.679, 0.746]
         result = tools.get_number(from_value=0, to_value=1.0, weight_pattern=pattern, size=10, seed=101)
         self.assertEqual(control, result)
         result = tools.get_number(from_value=1000, to_value=2000, size=10, currency='£', precision=0, seed=31)
@@ -254,7 +192,7 @@ class FileBuilderTest(unittest.TestCase):
     def test_number_offset(self):
         tools = DataBuilderTools()
         result = tools.get_number(20, seed=101, size=10, offset=1000)
-        control = [12000, 9000, 3000, 2000, 0, 3000, 5000, 12000, 2000, 12000]
+        control = [12000, 14000, 6000, 15000, 12000, 16000, 3000, 6000, 7000, 10000]
         self.assertEqual(control, result)
 
     def test_unique_num(self):
