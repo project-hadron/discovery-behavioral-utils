@@ -187,6 +187,7 @@ class DataBuilderTools(object):
     @staticmethod
     def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
                    precision: int=None, currency: str=None, bounded_weighting: bool=True, at_most: int=None,
+                   dominant_value: [float, list]=None, dominance: float=None, dominance_weighting: list=None,
                    size: int = None, quantity: float=None, seed: int=None):
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
@@ -198,6 +199,9 @@ class DataBuilderTools(object):
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
         :param at_most: the most times a selection should be chosen
+        :param dominant_value: a value or list of values with dominance. if used MUST provide a dominance
+        :param dominance: a value between 0 and 1 representing the dominance of the dominant value or values
+        :param dominance_weighting: a weighting of the dominant values
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
@@ -211,11 +215,26 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         offset = 1 if offset is None else offset
+        dominance = 0 if not isinstance(dominance, (int,float)) else dominance
+        dominance = dominance/100 if 1 < dominance <= 100 else dominance
         _seed = DataBuilderTools._seed() if seed is None else seed
+        # Resolve how many of the size will be
         is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
         if is_int:
             precision = 0
         precision = 3 if not isinstance(precision, int) else precision
+        dominant_list = []
+        if isinstance(dominant_value, (int,float,list)):
+            sample_count = int(round(size * dominance, 1)) if size > 1 else 0
+            dominance_weighting = [1] if not isinstance(dominance_weighting, list) else dominance_weighting
+            if sample_count > 0:
+                if isinstance(dominant_value, list):
+                    dominant_list = DataBuilderTools.get_category(selection=dominant_value,
+                                                                  weight_pattern=dominance_weighting,
+                                                                  size=sample_count, bounded_weighting=True)
+                else:
+                    dominant_list = [dominant_value] * sample_count
+            size -= sample_count
         if weight_pattern is not None:
             counter = [0] * len(weight_pattern)
             if bounded_weighting:
@@ -224,8 +243,9 @@ class DataBuilderTools(object):
                     counter[i] = int(round(weight_pattern[i] * unit, 0))
                     if 0 < at_most < counter[i]:
                         counter[i] = at_most
-                    if counter[i] == 0 and counter[DataBuilderTools._weighted_choice(weight_pattern)] == i:
-                        counter[i] = 1
+                    if counter[i] == 0 and weight_pattern[i] > 0:
+                        if counter[DataBuilderTools._weighted_choice(weight_pattern)] == i:
+                            counter[i] = 1
             else:
                 for _ in range(size):
                     counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
@@ -286,6 +306,8 @@ class DataBuilderTools(object):
             rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
         if offset != 1:
             rtn_list = [value*offset for value in rtn_list]
+        # add in the dominant values
+        rtn_list = rtn_list + dominant_list
         np.random.shuffle(rtn_list)
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
@@ -715,7 +737,7 @@ class DataBuilderTools(object):
 
     @staticmethod
     def associate_analysis(analysis_dict: dict, size: int=None, df_ref: pd.DataFrame=None, seed: int=None):
-        """ builds a set of colums based on an analysis dictionary of weighting (see analyse_association)
+        """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
         constructed association to be used as reference for a sub category.
@@ -742,9 +764,15 @@ class DataBuilderTools(object):
                 if isinstance(result, tuple) and str(dtype).startswith('num'):
                     precision = values.get('analysis').get('precision')
                     currency = values.get('analysis').get('currency')
+                    zero_count = values.get('analysis').get('zero_count')
                     (lower, upper) = result
                     # overwrite the results
+                    dominant_value = None
+                    if zero_count is not None:
+                        dominant_value = 0
+                        zero_count = zero_count[0]/100
                     row_dict[label] = tools.get_number(lower, upper, weight_pattern=weight_pattern, precision=precision,
+                                                       dominant_value=dominant_value, dominance_weighting=zero_count,
                                                        currency=currency, seed=seed, size=1)[0]
                 if isinstance(result, tuple) and str(dtype).startswith('date'):
                     date_format = values.get('analysis').get('date_format')

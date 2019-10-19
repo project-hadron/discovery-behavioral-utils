@@ -164,15 +164,21 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_int(self):
         tools = DataBuilderTools()
-        result = tools.get_number(from_value=20, seed=101)
-        self.assertEqual([12], result)
-        result = tools.get_number(from_value=100, quantity=0.5, size=10, seed=31)
-        self.assertEqual([85, 24, None, 45, 72, None, 38, None, None, 25], result)
+        result = tools.get_number(from_value=20)
+        self.assertEqual(len(result), 1)
+        self.assertTrue(0 <= result[0] <= 20)
+        result = tools.get_number(from_value=100, quantity=0.5, size=10)
+        self.assertIn(None, result)
         pattern = [0,1]
         result = tools.get_number(from_value=1, to_value=100, weight_pattern=pattern, size=1000)
         self.assertTrue(all(isinstance(x, int) for x in result))
-        for v in result:
-            self.assertGreaterEqual(v, 50)
+        result = tools.get_number(from_value=1, to_value=100, weight_pattern=pattern, size=20)
+        self.assertTrue(min(result) >= 50)
+
+    def test_number_dominant(self):
+        tools = DataBuilderTools()
+        result = tools.get_number(from_value=20, dominant_value=[0,1], dominance=0.6, dominance_weighting=[7,3], size=10)
+
 
     def test_float(self):
         tools = DataBuilderTools()
