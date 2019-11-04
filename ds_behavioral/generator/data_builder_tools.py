@@ -155,9 +155,9 @@ class DataBuilderTools(object):
     @staticmethod
     def get_intervals(intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
                       size: int=None, quantity: float=None, seed: int=None):
-        """ returns a number based on a list selection of tuple(lower,upper) interval
+        """ returns a number based on a list selection of tuple(lower, upper) interval
 
-        :param intervals: a list of unique tuple pairs representing the inteval lower and upper boundaries
+        :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param currency: a currency symbol to prefix the value with. returns string with commas
@@ -169,6 +169,8 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
+        if not all(isinstance(value, tuple) for value in intervals):
+            raise ValueError("The intervals list but be a list of tuples")
         interval_list = DataBuilderTools.get_category(selection=intervals, weight_pattern=weight_pattern, size=size,
                                                       seed=_seed)
         interval_counts = pd.Series(interval_list).value_counts()
@@ -177,7 +179,22 @@ class DataBuilderTools(object):
             size = interval_counts[index]
             if size == 0:
                 continue
-            (lower, upper) = index
+            if len(index) == 2:
+                (lower, upper) = index
+                if index == 0:
+                    closed = 'both'
+                else:
+                    closed = 'right'
+            else:
+                (lower, upper, closed) = index
+            margin = 10**(((-1)*precision)-1)
+            if str.lower(closed) == 'neither':
+                lower += margin
+                upper -= margin
+            elif str.lower(closed) == 'left':
+                upper -= margin
+            elif str.lower(closed) == 'right':
+                lower += margin
             rtn_list = rtn_list + DataBuilderTools.get_number(lower, upper, precision=precision, currency=currency,
                                                               size=size, seed=_seed)
         np.random.seed(_seed)
@@ -369,31 +386,6 @@ class DataBuilderTools(object):
                                                    seed=seed)
         rtn_list = [selection[i] for i in select_index]
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
-
-    @staticmethod
-    def sample_dataset(size: int=None, seed: int=None):
-        size = 100 if size is None else size
-        _seed = DataBuilderTools._seed() if seed is None else seed
-        if not isinstance(size, int):
-            size = 1
-        tools = DataBuilderTools
-        df = tools.get_profiles(size=size, mf_weighting=[4, 6], seed=seed)
-        df['date_of_birth'] = tools.get_datetime(start='1930-01-01', until='2000-12-31', date_format='%Y-%m-%d',
-                                                 date_pattern=[0.2, 0.5, 1, 4, 7, 6, 5], size=size, seed=seed)
-        df['profession'] = tools.get_category(ProfileSample.professions(seed=seed), size=size, seed=seed)
-        df['phrase'] = tools.get_category(GenericSamples.phrases(seed=seed), size=size, seed=seed)
-        df['slogan'] = tools.get_category(GenericSamples.slogans(seed=seed), size=size, seed=seed)
-        df['accounts'] = tools.get_number(from_value=1, to_value=8, precision=0,
-                                          weight_pattern=[10, 7, 5, 2, 1, 0.5, 0.3], size=size, seed=seed)
-        balance_weight = [10.0, 5, 3]+([1]*7)+([0.1]*10)
-        df['balance'] = tools.get_number(from_value=10.0, to_value=10000.0, precision=2,
-                                         weight_pattern=balance_weight, size=size, seed=seed)
-        df['opt_in'] = tools.get_category(selection=[1, 0], weight_pattern=[3, 7], size=size, seed=seed)
-        df['updated'] = tools.get_datetime(start='2018-01-01', until='2018-12-31', size=size, seed=seed,
-                                                 date_format='%Y-%m-%d %H:%M:%S')
-        df['p_value'] = tools.get_number(from_value=0, to_value=1.0, precision=2,
-                                         weight_pattern=[1, 2, 5, 7, 11, 7, 5, 2, 1], size=size, seed=seed)
-        return df
 
     @staticmethod
     def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,
@@ -746,7 +738,7 @@ class DataBuilderTools(object):
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param df_ref: (optional) an already constructed df of size 'size' to take reference values from
         :param seed: seed: (optional) a seed value for the random function: default to None
-        :return: a dataframe based on the association dictionary
+        :return: a DataFrame based on the association dictionary
         """
         tools = DataBuilderTools
 
@@ -762,18 +754,31 @@ class DataBuilderTools(object):
                 result = tools.get_category(selection=selection, weight_pattern=weight_pattern, seed=seed, size=1)[0]
                 row_dict[label] = result
                 if isinstance(result, tuple) and str(dtype).startswith('num'):
-                    precision = values.get('analysis').get('precision')
+                    precision = values.get('analysis').get('precision', 0)
                     currency = values.get('analysis').get('currency')
-                    zero_count = values.get('analysis').get('zero_count')
-                    (lower, upper) = result
-                    # overwrite the results
-                    dominant_value = None
-                    if zero_count is not None:
-                        dominant_value = 0
-                        zero_count = zero_count[0]/100
+                    dominant_value = values.get('analysis').get('dominant_value')
+                    dominance = values.get('analysis').get('dominance')
+                    dominance_weighting = values.get('analysis').get('dominance_weighting')
+                    if len(result) == 2:
+                        (lower, upper) = result
+                        if index == 0:
+                            closed = 'both'
+                        else:
+                            closed = 'right'
+                    else:
+                        (lower, upper, closed) = result
+                    margin = 10 ** (((-1) * precision) - 1)
+                    if str.lower(closed) == 'neither':
+                        lower += margin
+                        upper -= margin
+                    elif str.lower(closed) == 'left':
+                        upper -= margin
+                    elif str.lower(closed) == 'right':
+                        lower += margin
                     row_dict[label] = tools.get_number(lower, upper, weight_pattern=weight_pattern, precision=precision,
-                                                       dominant_value=dominant_value, dominance_weighting=zero_count,
-                                                       currency=currency, seed=seed, size=1)[0]
+                                                       dominant_value=dominant_value, dominance=dominance,
+                                                       dominance_weighting=dominance_weighting, currency=currency,
+                                                       seed=seed, size=1)[0]
                 if isinstance(result, tuple) and str(dtype).startswith('date'):
                     date_format = values.get('analysis').get('date_format')
                     day_first = values.get('analysis').get('day_first')
