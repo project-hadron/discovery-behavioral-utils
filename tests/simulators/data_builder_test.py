@@ -159,11 +159,24 @@ class FileBuilderTest(unittest.TestCase):
         intervals = [(0,10),(10,20),(20,30),(30,40)]
         weighting = [1,1,1,1]
         result = tools.get_intervals(intervals, weight_pattern=weighting, size=10, seed=31)
-        control = [29, 14, 20, 39, 24, 34, 9, 19, 4, 16]
-        self.assertEqual(control, result)
+        self.assertTrue(all(0 <= x <= 40 for x in result))
+        self.assertEqual(10, len(result))
+
+    def test_get_one_hot(self):
+        tools = DataBuilderTools()
+        selection = list('ABCDE')
+        result = tools.get_one_hot(selection=selection, size=10, weight_pattern=[0,0,1,1,1], quantity=0.5)
+        print(result)
+
 
     def test_int(self):
         tools = DataBuilderTools()
+        result = tools.get_number(1,1.0, size=3)
+        control = [1.0, 1.0, 1.0]
+        self.assertEqual(control, result)
+        result = tools.get_number(1,1, size=3)
+        control = [1, 1, 1]
+        self.assertEqual(control, result)
         result = tools.get_number(from_value=20)
         self.assertEqual(len(result), 1)
         self.assertTrue(0 <= result[0] <= 20)

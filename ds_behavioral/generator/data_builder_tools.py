@@ -12,7 +12,7 @@ import pandas as pd
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
-from ds_behavioral.sample.sample_data import ProfileSample, GenericSamples
+from ds_behavioral.sample.sample_data import ProfileSample
 
 
 class DataBuilderTools(object):
@@ -168,6 +168,8 @@ class DataBuilderTools(object):
         """
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
+        if not isinstance(precision, int):
+            precision = 0 if all(isinstance(v[0], int) and isinstance(v[1], int) for v in intervals) else 3
         _seed = DataBuilderTools._seed() if seed is None else seed
         if not all(isinstance(value, tuple) for value in intervals):
             raise ValueError("The intervals list but be a list of tuples")
@@ -232,16 +234,16 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         offset = 1 if offset is None else offset
-        dominance = 0 if not isinstance(dominance, (int,float)) else dominance
+        dominance = 0 if not isinstance(dominance, (int, float)) else dominance
         dominance = dominance/100 if 1 < dominance <= 100 else dominance
         _seed = DataBuilderTools._seed() if seed is None else seed
         # Resolve how many of the size will be
-        is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
+        is_int = True if isinstance(to_value, int) and isinstance(from_value, int) or precision == 0 else False
         if is_int:
             precision = 0
         precision = 3 if not isinstance(precision, int) else precision
         dominant_list = []
-        if isinstance(dominant_value, (int,float,list)):
+        if isinstance(dominant_value, (int, float, list)):
             sample_count = int(round(size * dominance, 1)) if size > 1 else 0
             dominance_weighting = [1] if not isinstance(dominance_weighting, list) else dominance_weighting
             if sample_count > 0:
@@ -278,11 +280,12 @@ class DataBuilderTools(object):
                 if sum(counter) < size:
                     counter[DataBuilderTools._weighted_choice(weight_pattern)] += 1
                 else:
-                    counter[DataBuilderTools._weighted_choice(weight_pattern)] -= 1
+                    weight_idx = DataBuilderTools._weighted_choice(weight_pattern)
+                    if counter[weight_idx] > 0:
+                        counter[weight_idx] -= 1
 
         else:
             counter = [size]
-            weight_pattern = [1]
         _seed = DataBuilderTools._next_seed(_seed, seed)
         rtn_list = []
         if is_int:
@@ -297,28 +300,31 @@ class DataBuilderTools(object):
             value_bins.append((ref, to_value))
             for index in range(counter_len):
                 low, high = value_bins[index]
-                if at_most > 0:
+                if low >= high:
+                    rtn_list += [low] * counter[index]
+                elif at_most > 0:
                     choice = []
                     for _ in range(at_most):
                         choice += list(range(low, high))
                     np.random.shuffle(choice)
                     rtn_list += [int(np.round(value, precision)) for value in choice[:counter[index]]]
                 else:
-                    rtn_list += [int(x) for x in np.random.uniform(low=low, high=high, size=counter[index]).tolist()]
+                    rtn_list += np.random.randint(low=low, high=high, size=counter[index]).tolist()
         else:
-            value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(weight_pattern), closed='both')
-            value_bins = value_bins.drop_duplicates()
+            value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(counter), closed='both')
             for index in range(len(counter)):
                 low = value_bins[index].left
                 high = value_bins[index].right
-                if at_most > 0:
+                if low >= high:
+                    rtn_list += [low] * counter[index]
+                elif at_most > 0:
                     choice = []
                     for _ in range(at_most):
                         choice += list(range(low, high))
                     np.random.shuffle(choice)
                     rtn_list += [np.round(value, precision) for value in choice[:counter[index]]]
                 else:
-                    rtn_list += np.round(np.random.uniform(low=low, high=high, size=counter[index]), precision).tolist()
+                    rtn_list += np.round((np.random.random(size=counter[index])*(high-low)+low), precision).tolist()
         if isinstance(currency, str):
             rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
         if offset != 1:
@@ -386,6 +392,37 @@ class DataBuilderTools(object):
                                                    seed=seed)
         rtn_list = [selection[i] for i in select_index]
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
+
+    @staticmethod
+    def get_one_hot(selection: list, prefix: str=None, prefix_sep: str=None, not_hot: bool=False, size: int=None,
+                    quantity: float=None, weight_pattern: list=None, bounded_weighting: bool=None, at_most: int=None,
+                    seed: int=None):
+        """ returns a pandas dataframe of one-hot values based upon the selection list
+
+        :param selection: the selection headers for the one hots
+        :param prefix: (optional) a prefix for the header column names
+        :param prefix_sep: (optional) a separator of the prefix, default '_'
+        :param not_hot: (optional) if to include not hot columns
+        :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param quantity: a number between 0 and 1 representing the percentage in the NaN one-hot
+        :param size: an optional size of the return. default to 1
+        :param at_most: the most times a selection should be chosen
+        :param bounded_weighting: if the weighting pattern should have a soft or hard boundary (default False)
+        :param seed: a seed value for the random function: default to None
+        :return: pd.Dataframe of one-hots
+        """
+        dummy_na = True if isinstance(quantity, float) else False
+        not_hot = False if not isinstance(not_hot, bool) else not_hot
+        values = DataBuilderTools.get_category(selection=selection, weight_pattern=weight_pattern, size=size,
+                                               bounded_weighting=bounded_weighting, at_most=at_most, quantity=quantity,
+                                               seed=seed)
+        values = pd.Series(values).replace('', np.nan)
+        df = pd.get_dummies(values, prefix=prefix, prefix_sep=prefix_sep, dummy_na=dummy_na)
+        if not_hot:
+            for header in selection:
+                if header not in df.columns:
+                    df[header] = [0] * size
+        return df
 
     @staticmethod
     def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,

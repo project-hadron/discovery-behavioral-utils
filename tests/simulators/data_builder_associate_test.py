@@ -8,7 +8,6 @@ import unittest
 import os
 import warnings
 
-from ds_behavioral.generator.data_builder import DataBuilder
 from ds_behavioral import DataBuilderTools
 
 
@@ -20,33 +19,22 @@ def ignore_warnings(test_func):
     return do_test
 
 
-class FileBuilderTest(unittest.TestCase):
+class AssociateTest(unittest.TestCase):
 
     def setUp(self):
-        self.name='test_build'
         pass
 
     def tearDown(self):
-        _tmp = DataBuilder(self.name).fbpm
-        _tmp.remove(_tmp.KEY.manager_key)
-        try:
-            os.remove('config_data_builder.yaml')
-            os.remove('customer.csv')
-        except:
-            pass
-
-    def test_runs(self):
-        """Basic smoke test"""
-        DataBuilder(self.name)
+        pass
 
     def test_associate_custom(self):
         tools = DataBuilderTools()
         df = pd.DataFrame()
         df['cat'] = tools.get_category(list('MFU'), size=10, seed=31)
         df['values'] = tools.get_number(10, size=10, seed=31)
-        control = [2.0,np.nan,0.0,np.nan,2.0,np.nan,np.nan,np.nan,5.0,3.0]
+        control = [5.0, np.nan, 1.0, np.nan, np.nan, 6.0, np.nan, np.nan, 5.0, 3.0]
         result = tools.associate_custom(df=df, code_str="df.loc[df['cat'] == 'U', 'values'] = new_value", use_exec=True, new_value=None)
-        # self.assertEqual(control,list(result['values']))
+        self.assertEqual(control,list(result['values']))
         df['values'] = tools.get_number(10, size=10, seed=31)
         result = tools.associate_custom(df=df, code_str="df['values'] = np.where(df['cat'] == 'U', None, df['values'])", use_exec=True, new_value=None)
         control = [None, 2, 0, 4, None, None, 3, 5, 4, 2]

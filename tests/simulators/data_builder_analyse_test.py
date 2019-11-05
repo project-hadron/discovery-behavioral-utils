@@ -21,7 +21,7 @@ def ignore_warnings(test_func):
     return do_test
 
 
-class MyTestCase(unittest.TestCase):
+class AnalysisTest(unittest.TestCase):
 
     def setUp(self):
         pass
