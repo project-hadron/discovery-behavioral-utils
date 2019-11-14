@@ -10,7 +10,6 @@ import warnings
 
 from ds_behavioral.generator.data_builder import DataBuilder
 from ds_behavioral import DataBuilderTools
-from ds_discovery.cleaners.pandas_cleaners import PandasCleaners as cleaner
 
 
 def ignore_warnings(test_func):

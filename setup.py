@@ -55,8 +55,9 @@ setup(
         # If any package contains *.yaml or *.csv files, include them:
         '': ['*.yaml', '*.csv'],
     },
+    python_requires='>=3.6',
     install_requires=[
-        'pandas',
+        'pandas>0.25',
         'discovery-foundation',
         'discovery-connectors',
         'matplotlib',

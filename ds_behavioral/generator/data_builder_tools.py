@@ -237,11 +237,13 @@ class DataBuilderTools(object):
         dominance = 0 if not isinstance(dominance, (int, float)) else dominance
         dominance = dominance/100 if 1 < dominance <= 100 else dominance
         _seed = DataBuilderTools._seed() if seed is None else seed
-        # Resolve how many of the size will be
-        is_int = True if isinstance(to_value, int) and isinstance(from_value, int) or precision == 0 else False
+        precision = 3 if not isinstance(precision, int) else precision
+        if precision == 0:
+            from_value = int(round(from_value, 0))
+            to_value = int(round(to_value, 0))
+        is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
         if is_int:
             precision = 0
-        precision = 3 if not isinstance(precision, int) else precision
         dominant_list = []
         if isinstance(dominant_value, (int, float, list)):
             sample_count = int(round(size * dominance, 1)) if size > 1 else 0
@@ -409,7 +411,7 @@ class DataBuilderTools(object):
         :param at_most: the most times a selection should be chosen
         :param bounded_weighting: if the weighting pattern should have a soft or hard boundary (default False)
         :param seed: a seed value for the random function: default to None
-        :return: pd.Dataframe of one-hots
+        :return: pd.DataFrame of one-hots
         """
         dummy_na = True if isinstance(quantity, float) else False
         not_hot = False if not isinstance(not_hot, bool) else not_hot
