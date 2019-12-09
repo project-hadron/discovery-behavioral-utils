@@ -768,7 +768,7 @@ class DataBuilderTools(object):
         return df.iloc[:size]
 
     @staticmethod
-    def associate_analysis(analysis_dict: dict, size: int=None, df_ref: pd.DataFrame=None, seed: int=None):
+    def associate_analysis(analysis_dict: dict, size: int=None, seed: int=None):
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
@@ -776,7 +776,6 @@ class DataBuilderTools(object):
 
         :param analysis_dict: the analysis dictionary (see analyse_association(...))
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
-        :param df_ref: (optional) an already constructed df of size 'size' to take reference values from
         :param seed: seed: (optional) a seed value for the random function: default to None
         :return: a DataFrame based on the association dictionary
         """
