@@ -36,9 +36,13 @@ class AnalysisTest(unittest.TestCase):
     def test_anaysis(self):
         tools = DataBuilderTools
         df = pd.DataFrame()
-        df['values'] = tools.get_number(from_value=20, weight_pattern=[1,3,7,3,2,1], dominant_value=0, dominance=0.6, size=1000)
-        assosiate = [{'values': {'granularity': 5, 'precision': 3, 'lower': 0.001}}]
-        analysis = discover.analyse_association(df, columns_list=assosiate)
-        pprint(analysis)
-        result = tools.associate_analysis(analysis, size=10)
-        print(result)
+        df['cat'] = tools.get_category(selection=list('ABC'), quantity=0.9, size=1000)
+        df['values'] = tools.get_number(from_value=20, dominant_values=0, dominant_percent=0.6, size=1000)
+        associate = [{'cat': {'dtype': 'category'}},{'values': {'granularity': 5, 'precision': 3, 'lower': 0.001}}]
+        analysis = discover.analyse_association(df, columns_list=associate)
+        sample_size=1973
+        result = tools.associate_analysis(analysis, size=sample_size)
+        self.assertCountEqual(['cat', 'values'], result.keys())
+        for key in result.keys():
+            self.assertEqual(sample_size, len(result.get(key)))
+

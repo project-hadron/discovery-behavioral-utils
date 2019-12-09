@@ -42,19 +42,24 @@ class FileBuilderTest(unittest.TestCase):
         """Basic smoke test"""
         DataBuilder.from_env(self.name)
 
-    def test_scratch(self):
-        df = pd.DataFrame()
-        tools = DataBuilderTools
-        df['service_start_dte'] = tools.get_datetime(start='01/01/2017', until='31/07/2019', date_format='%y-%m-%d', size=10)
-
-        dates = tools.correlate_dates(df['service_start_dte'], year_first=True, offset={'days': 20}, lower_spread=2, date_format='%y-%m-%d')
-
-        print(dates)
-
     def test_tools(self):
         """test we can get tools"""
         fb = DataBuilder.from_env(self.name)
         self.assertEqual(fb.tool_dir, DataBuilderTools().__dir__())
+
+    def test_from(self):
+        tools = DataBuilderTools()
+        values = list('ABCDEFG')
+        result = tools.get_from(values=values, size=100)
+        self.assertEqual(100, len(result))
+        for v in values:
+            self.assertIn(v, result)
+        result = tools.get_from(values=values, sample_size=3, size=100)
+        self.assertEqual(100, len(result))
+        for v in list('ABC'):
+            self.assertIn(v, result)
+        for v in list('DEFG'):
+            self.assertNotIn(v, result)
 
     def test_file_column(self):
         tools = DataBuilderTools()
@@ -66,8 +71,7 @@ class FileBuilderTest(unittest.TestCase):
                                                module_name='ds_foundation.handlers.python_handlers',
                                                handler='PythonSourceHandler')
         result = tools.get_file_column('cat', connector_contract, size=3, seed=31)
-        self.assertCountEqual(['U','M', 'M'], result['cat'].to_list())
-        self.assertCountEqual(['9','2','0'], result['values'].to_list())
+        self.assertEqual((3,2), result.shape)
 
     def test_category(self):
         tools = DataBuilderTools()
@@ -190,7 +194,7 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_number_dominant(self):
         tools = DataBuilderTools()
-        result = tools.get_number(from_value=20, dominant_value=[0,1], dominance=0.6, dominance_weighting=[7,3], size=10)
+        result = tools.get_number(from_value=20, dominant_values=[0, 1], dominant_percent=0.6, dominance_weighting=[7, 3], size=10)
 
 
     def test_float(self):
@@ -482,12 +486,12 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_profile(self):
         tools = DataBuilderTools()
-        result = tools.get_profiles(size=10, mf_weighting=[0, 1])
+        result = tools.get_profiles(size=10, dominance=[0, 1])
         self.assertEqual(['F'], result['gender'].unique())
-        result = tools.get_profiles(size=10, mf_weighting=[1, 0])
+        result = tools.get_profiles(size=10, dominance=[1, 0])
         self.assertEqual(['M'], result['gender'].unique())
 
-        result = tools.get_profiles(size=6000, mf_weighting=[1, 1])
+        result = tools.get_profiles(size=6000, dominance=[1, 1])
         counter = result.groupby('gender').nunique(dropna=True).drop('gender', axis=1)
         self.assertTrue(counter.iloc[0,0] > counter.iloc[0,1])
         self.assertTrue(counter.iloc[1,0] > counter.iloc[1,1])

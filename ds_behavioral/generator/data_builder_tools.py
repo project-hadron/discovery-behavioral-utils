@@ -9,6 +9,7 @@ from copy import deepcopy
 from typing import Any, List
 import numpy as np
 import pandas as pd
+from ds_discovery.transition.discovery import DataAnalytics
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
@@ -206,7 +207,7 @@ class DataBuilderTools(object):
     @staticmethod
     def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
                    precision: int=None, currency: str=None, bounded_weighting: bool=True, at_most: int=None,
-                   dominant_value: [float, list]=None, dominance: float=None, dominance_weighting: list=None,
+                   dominant_values: [float, list]=None, dominant_percent: float=None, dominance_weighting: list=None,
                    size: int = None, quantity: float=None, seed: int=None):
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
@@ -218,8 +219,8 @@ class DataBuilderTools(object):
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
         :param at_most: the most times a selection should be chosen
-        :param dominant_value: a value or list of values with dominance. if used MUST provide a dominance
-        :param dominance: a value between 0 and 1 representing the dominance of the dominant value or values
+        :param dominant_values: a value or list of values with dominant_percent. if used MUST provide a dominant_percent
+        :param dominant_percent: a value between 0 and 1 representing the dominant_percent of the dominant value(s)
         :param dominance_weighting: a weighting of the dominant values
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
@@ -234,9 +235,10 @@ class DataBuilderTools(object):
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         offset = 1 if offset is None else offset
-        dominance = 0 if not isinstance(dominance, (int, float)) else dominance
-        dominance = dominance/100 if 1 < dominance <= 100 else dominance
+        dominant_percent = 0 if not isinstance(dominant_percent, (int, float)) else dominant_percent
+        dominant_percent = dominant_percent / 100 if 1 < dominant_percent <= 100 else dominant_percent
         _seed = DataBuilderTools._seed() if seed is None else seed
+        _limit = 10000
         precision = 3 if not isinstance(precision, int) else precision
         if precision == 0:
             from_value = int(round(from_value, 0))
@@ -245,16 +247,16 @@ class DataBuilderTools(object):
         if is_int:
             precision = 0
         dominant_list = []
-        if isinstance(dominant_value, (int, float, list)):
-            sample_count = int(round(size * dominance, 1)) if size > 1 else 0
+        if isinstance(dominant_values, (int, float, list)):
+            sample_count = int(round(size * dominant_percent, 1)) if size > 1 else 0
             dominance_weighting = [1] if not isinstance(dominance_weighting, list) else dominance_weighting
             if sample_count > 0:
-                if isinstance(dominant_value, list):
-                    dominant_list = DataBuilderTools.get_category(selection=dominant_value,
+                if isinstance(dominant_values, list):
+                    dominant_list = DataBuilderTools.get_category(selection=dominant_values,
                                                                   weight_pattern=dominance_weighting,
                                                                   size=sample_count, bounded_weighting=True)
                 else:
-                    dominant_list = [dominant_value] * sample_count
+                    dominant_list = [dominant_values] * sample_count
             size -= sample_count
         if weight_pattern is not None:
             counter = [0] * len(weight_pattern)
@@ -311,7 +313,11 @@ class DataBuilderTools(object):
                     np.random.shuffle(choice)
                     rtn_list += [int(np.round(value, precision)) for value in choice[:counter[index]]]
                 else:
-                    rtn_list += np.random.randint(low=low, high=high, size=counter[index]).tolist()
+                    _remaining = counter[index]
+                    while _remaining > 0:
+                        _size = _limit if _remaining > _limit else _remaining
+                        rtn_list += np.random.randint(low=low, high=high, size=_size).tolist()
+                        _remaining -= _limit
         else:
             value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(counter), closed='both')
             for index in range(len(counter)):
@@ -326,7 +332,11 @@ class DataBuilderTools(object):
                     np.random.shuffle(choice)
                     rtn_list += [np.round(value, precision) for value in choice[:counter[index]]]
                 else:
-                    rtn_list += np.round((np.random.random(size=counter[index])*(high-low)+low), precision).tolist()
+                    _remaining = counter[index]
+                    while _remaining > 0:
+                        _size = _limit if _remaining > _limit else _remaining
+                        rtn_list += np.round((np.random.random(size=_size)*(high-low)+low), precision).tolist()
+                        _remaining -= _limit
         if isinstance(currency, str):
             rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
         if offset != 1:
@@ -335,39 +345,6 @@ class DataBuilderTools(object):
         rtn_list = rtn_list + dominant_list
         np.random.shuffle(rtn_list)
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
-
-    @staticmethod
-    def get_reference(header: str, df: pd.DataFrame, weight_pattern: list = None, selection_size: int=None,
-                      sample_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=True,
-                      quantity: float=None, seed: int=None):
-        """
-        :param header: the name of the header to be selected from
-        :param df: a pandas DataFrame of the reference data
-        :param weight_pattern: (optional) a weighting pattern of the final selection
-        :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
-        :param sample_size: (optional) the size of the sample to take from the reference file
-        :param at_most: (optional) the most times a selection should be chosen
-        :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
-        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
-        :param size: (optional) size of the return. default to 1
-        :param seed: (optional) a seed value for the random function: default to None
-        :return:
-        """
-        quantity = DataBuilderTools._quantity(quantity)
-        _seed = DataBuilderTools._seed() if seed is None else seed
-        if not isinstance(df, pd.DataFrame):
-            raise ValueError("The df parameter is not a valid pandas DataFrame")
-        df = df.iloc[:sample_size]
-        if header not in df.columns:
-            raise ValueError("The header '{}' does not exist in the ".format(header))
-        rtn_list = df[header].tolist()
-        if shuffled:
-            np.random.seed(_seed)
-            np.random.shuffle(rtn_list)
-        if isinstance(selection_size, int) and 0 < selection_size < len(rtn_list):
-            rtn_list = rtn_list[:selection_size]
-        return DataBuilderTools.get_category(selection=rtn_list, weight_pattern=weight_pattern,
-                                             quantity=quantity, size=size, at_most=at_most, seed=_seed)
 
     @staticmethod
     def get_category(selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
@@ -687,23 +664,48 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
-    def get_profiles(size: int=None, mf_weighting: list=None, seed: int=None, quantity: float = None):
+    def get_from(values: Any, weight_pattern: list=None, selection_size: int=None, sample_size: int=None,
+                 size: int=None, at_most: bool=None, shuffled: bool=True, quantity: float=None, seed: int=None):
+        """ returns a random list of values where the selection of those values is taken from the values passed.
+
+        :param values: the reference values to select from
+        :param weight_pattern: (optional) a weighting pattern of the final selection
+        :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
+        :param sample_size: (optional) the size of the sample to take from the reference file
+        :param at_most: (optional) the most times a selection should be chosen
+        :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param size: (optional) size of the return. default to 1
+        :param seed: (optional) a seed value for the random function: default to None
+        :return:
+        """
+        quantity = DataBuilderTools._quantity(quantity)
+        _seed = DataBuilderTools._seed() if seed is None else seed
+        _values = pd.Series(values).iloc[:sample_size]
+        if shuffled:
+            _values = _values.sample(frac=1).reset_index(drop=True)
+        if isinstance(selection_size, int) and 0 < selection_size < _values.size:
+            _values = _values.iloc[:selection_size]
+        return DataBuilderTools.get_category(selection=_values.tolist(), weight_pattern=weight_pattern,
+                                             quantity=quantity, size=size, at_most=at_most, seed=_seed)
+
+    @staticmethod
+    def get_profiles(size: int=None, dominance: float=None, seed: int=None, quantity: float = None):
         """ returns a DataFrame of forename, surname and gender.
 
         :param size: the size of the sample, if None then set to 1
-        :param mf_weighting (optional) Male (idx 0) to Female (idx 1) weighting. if None then just random
+        :param dominance (optional) the dominant_percent of 'Male' as a value between 0 and 1. if None then just random
         :param quantity: the quantity of values that are not null. Number between 0 and 1
         :param seed: (optional) a seed value for the random function: default to None
         :return: a pandas DataFrame of males and females
         """
-        if not isinstance(mf_weighting, list):
-            mf_weighting = [1, 1]
+        if not isinstance(dominance, float) or 0 < dominance < 1:
+            weight_pattern = [1, 1]
+        else:
+            weight_pattern = [dominance, 1-dominance]
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-        if len(mf_weighting) != 2:
-            raise ValueError("if used, mf_weighting must be a list of len 2 representing Male to female ratio")
-
         df = pd.DataFrame()
         df['surname'] = ProfileSample.surnames(size=size, seed=_seed)
 
@@ -713,8 +715,7 @@ class DataBuilderTools(object):
         gender = []
         for idx in range(size):
             _seed = DataBuilderTools._next_seed(_seed, seed)
-            pattern = DataBuilderTools._normailse_weights(mf_weighting, size=size, count=idx)
-            weight_idx = DataBuilderTools._weighted_choice(pattern, seed=_seed)
+            weight_idx = DataBuilderTools._weighted_choice(weight_pattern, seed=_seed)
             if weight_idx:
                 fn = np.random.choice(f_names)
                 forename.append(fn)
@@ -781,73 +782,49 @@ class DataBuilderTools(object):
         """
         tools = DataBuilderTools
 
-        def get_row(analysis: dict):
+        def get_level(analysis: dict, sample_size: int):
             for label, values in analysis.items():
-                if not values.get('analysis'):
-                    raise KeyError("the lable '{}' does not have an 'analysis', key".format(label))
-                dtype = values.get('analysis').get('dtype')
-                selection = values.get('analysis').get('selection')
-                weight_pattern = values.get('analysis').get('weighting')
-                null_values = values.get('analysis').get('null_values')
-                null_dict[label] = null_values
-                result = tools.get_category(selection=selection, weight_pattern=weight_pattern, seed=seed, size=1)[0]
-                row_dict[label] = result
-                if isinstance(result, tuple) and str(dtype).startswith('num'):
-                    precision = values.get('analysis').get('precision', 0)
-                    currency = values.get('analysis').get('currency')
-                    dominant_value = values.get('analysis').get('dominant_value')
-                    dominance = values.get('analysis').get('dominance')
-                    dominance_weighting = values.get('analysis').get('dominance_weighting')
-                    if len(result) == 2:
-                        (lower, upper) = result
-                        if index == 0:
-                            closed = 'both'
-                        else:
-                            closed = 'right'
-                    else:
-                        (lower, upper, closed) = result
-                    margin = 10 ** (((-1) * precision) - 1)
-                    if str.lower(closed) == 'neither':
-                        lower += margin
-                        upper -= margin
-                    elif str.lower(closed) == 'left':
-                        upper -= margin
-                    elif str.lower(closed) == 'right':
-                        lower += margin
-                    row_dict[label] = tools.get_number(lower, upper, weight_pattern=weight_pattern, precision=precision,
-                                                       dominant_value=dominant_value, dominance=dominance,
-                                                       dominance_weighting=dominance_weighting, currency=currency,
-                                                       seed=seed, size=1)[0]
-                if isinstance(result, tuple) and str(dtype).startswith('date'):
-                    date_format = values.get('analysis').get('date_format')
-                    day_first = values.get('analysis').get('day_first')
-                    year_first = values.get('analysis').get('year_first')
-                    year_pattern = values.get('analysis').get('year_pattern')
-                    month_pattern = values.get('analysis').get('month_pattern')
-                    weekday_pattern = values.get('analysis').get('weekday_pattern')
-                    hour_pattern = values.get('analysis').get('hour_pattern')
-                    minute_pattern = values.get('analysis').get('minute_pattern')
-                    (lower, upper) = result
-                    # overwrite the results
-                    row_dict[label] = tools.get_datetime(start=lower, until=upper, date_pattern=weight_pattern,
-                                                         year_pattern=year_pattern, month_pattern=month_pattern,
-                                                         weekday_pattern=weekday_pattern, hour_pattern=hour_pattern,
-                                                         minute_pattern=minute_pattern, date_format=date_format,
-                                                         size=1, seed=seed, day_first=day_first, year_first=year_first)
+                if row_dict.get(label) is None:
+                    row_dict[label] = list()
+                _analysis = DataAnalytics(label, values.get('analysis', {}))
+                if str(_analysis.dtype).startswith('cat'):
+                    row_dict[label] += tools.get_category(selection=_analysis.selection,
+                                                          weight_pattern=_analysis.weight_pattern,
+                                                          quantity=1-_analysis.nulls_percent,
+                                                          seed=seed, size=sample_size)
+                if str(_analysis.dtype).startswith('num'):
+                    row_dict[label] += tools.get_number(from_value=_analysis.lower, to_value=_analysis.upper,
+                                                        weight_pattern=_analysis.weight_pattern,
+                                                        precision=_analysis.precision,
+                                                        dominant_values=_analysis.dominant_values,
+                                                        dominant_percent=_analysis.dominant_percent,
+                                                        dominance_weighting=_analysis.dominance_weighting,
+                                                        quantity=1-_analysis.nulls_percent,
+                                                        seed=seed, size=sample_size)
+                if str(_analysis.dtype).startswith('date'):
+                    row_dict[label] += tools.get_datetime(start=_analysis.lower, until=_analysis.upper,
+                                                          date_pattern=_analysis.weight_pattern,
+                                                          date_format=_analysis.data_format,
+                                                          day_first=_analysis.day_first,
+                                                          year_first=_analysis.year_first,
+                                                          quantity=1 - _analysis.nulls_percent,
+                                                          seed=seed, size=sample_size)
+
+                unit = sample_size / sum(_analysis.weight_pattern)
                 if values.get('sub_category'):
-                    next_item = values.get('sub_category').get(result)
-                    get_row(next_item)
+                    section_map = _analysis.weight_map
+                    for i in section_map.index:
+                        section_size = int(round(_analysis.weight_map.loc[i] * unit, 0))+1
+                        next_item = values.get('sub_category').get(i)
+                        get_level(next_item, section_size)
             return
 
+        row_dict = {}
         size = 1 if not isinstance(size, int) else size
-        size = df_ref.shape[0] if isinstance(df_ref, pd.DataFrame) else size
-        rtn_df = pd.DataFrame()
-        for index in range(size):
-            row_dict = {}
-            null_dict = {}
-            get_row(analysis_dict)
-            rtn_df = rtn_df.append([row_dict], ignore_index=True)
-        return rtn_df
+        get_level(analysis_dict, sample_size=size)
+        for key in row_dict.keys():
+            row_dict[key] = row_dict[key][:size]
+        return row_dict
 
     @staticmethod
     def associate_dataset(dataset: Any, associations: list, actions: dict, default_value: Any=None,
