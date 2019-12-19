@@ -134,7 +134,7 @@ you are trying to create such as ``customer``, ``accounts`` or
 
 .. code:: python
 
-    builder = DataBuilder('SimpleExample')
+    builder = DataBuilder.from_env('SimpleExample')
 
 Building a basic dataset
 ------------------------
@@ -347,49 +347,6 @@ age.
     _ = sns.kdeplot(age, shade=True)
 
 .. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_27_0.png
-
-
-Complex Weighting patterns
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Weighting patterns acn be multi dimensial representing controlling
-distribution over time.
-
-In this example we don't want there to be any values below 50 in the
-first half then only values below 50 in the second
-
-.. code:: python
-
-    split_pattern = [[0,1],[1,0]]
-    numbers = tools.get_number(100, weight_pattern=split_pattern, size=100)
-    
-    fig = plt.figure(figsize=(8,4))
-    plt.style.use('seaborn-whitegrid')
-    plt.plot(list(range(100)), numbers);
-    _ = plt.axhline(y=50, linewidth=0.75, color='red')
-    _ = plt.axvline(x=50, linewidth=0.75, color='red')
-
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_29_1.png
-
-
-we can even build more complex numbering where we always get numbers
-around the middle but first 3rd and last 3rd additionally high and low
-numbers respectively
-
-.. code:: python
-
-    mid_pattern = [[0,0,1],1,[1,0,0]]
-    numbers = tools.get_number(100, weight_pattern=mid_pattern, size=100)
-    fig = plt.figure(figsize=(8,4))
-    _ = plt.plot(list(range(100)), numbers);
-    _ = plt.axhline(y=33, linewidth=0.75, color='red')
-    _ = plt.axhline(y=67, linewidth=0.75, color='red')
-    _ = plt.axvline(x=33, linewidth=0.75, color='red')
-    _ = plt.axvline(x=67, linewidth=0.75, color='red')
-
-
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_31_0.png
-
 
 Random Seed
 ~~~~~~~~~~~

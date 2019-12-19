@@ -2,18 +2,15 @@ import random
 import re
 import string
 import threading
-import time
 import warnings
 from collections import Counter
 from copy import deepcopy
 from typing import Any, List
-import numpy as np
-import pandas as pd
 from ds_discovery.transition.discovery import DataAnalytics
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
-from ds_behavioral.sample.sample_data import ProfileSample
+from ds_behavioral.sample.sample_data import *
 
 
 class DataBuilderTools(object):
@@ -470,7 +467,7 @@ class DataBuilderTools(object):
         :param seed: a seed value for the random function: default to None
         :return: amstring based on the pattern
         """
-        choice_only = True if choice_only is None or not isinstance(choice_only, bool) else choice_only
+        choice_only = False if choice_only is None or not isinstance(choice_only, bool) else choice_only
         quantity = DataBuilderTools._quantity(quantity)
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
@@ -490,15 +487,15 @@ class DataBuilderTools(object):
                         "The key '{}' must contain a 'list' of replacements opotions. '{}' found".format(k, type(v)))
 
         rtn_list = []
-        for _ in range(size):
-            _seed = DataBuilderTools._next_seed(_seed, seed)
-            result = []
-            for c in list(pattern):
-                if c in choices.keys():
-                    result.append(np.random.choice(choices[c]))
-                elif not choice_only:
-                    result.append(c)
-            rtn_list.append(''.join(result))
+        _seed = DataBuilderTools._next_seed(_seed, seed)
+        for c in list(pattern):
+            if c in choices.keys():
+                result = np.random.choice(choices[c], size=size)
+            elif not choice_only:
+                result = [c]*size
+            else:
+                continue
+            rtn_list = [i + j for i, j in zip(rtn_list, result)] if len(rtn_list) > 0 else result
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
@@ -690,50 +687,28 @@ class DataBuilderTools(object):
                                              quantity=quantity, size=size, at_most=at_most, seed=_seed)
 
     @staticmethod
-    def get_profiles(size: int=None, dominance: float=None, seed: int=None, quantity: float = None):
-        """ returns a DataFrame of forename, surname and gender.
+    def get_profiles(size: int=None, dominance: float=None, seed: int=None):
+        """ returns a DataFrame of forename, surname and gender with first names matching gender.
 
         :param size: the size of the sample, if None then set to 1
         :param dominance (optional) the dominant_percent of 'Male' as a value between 0 and 1. if None then just random
-        :param quantity: the quantity of values that are not null. Number between 0 and 1
         :param seed: (optional) a seed value for the random function: default to None
         :return: a pandas DataFrame of males and females
         """
-        if not isinstance(dominance, float) or 0 < dominance < 1:
-            weight_pattern = [1, 1]
-        else:
-            weight_pattern = [dominance, 1-dominance]
-        quantity = DataBuilderTools._quantity(quantity)
+        dominance = dominance if isinstance(dominance, float) and 0 <= dominance <= 1 else 0.5
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-        df = pd.DataFrame()
-        df['surname'] = ProfileSample.surnames(size=size, seed=_seed)
+        middle = DataBuilderTools.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['']*4, size=int(size*0.95))
+        choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
+        middle += DataBuilderTools.get_string_pattern(pattern="U U", choices=choices, choice_only=False,
+                                                      size=size-len(middle))
+        m_names = DataBuilderTools.get_category(selection=ProfileSample.male_names(), size=int(size*dominance))
+        f_names = DataBuilderTools.get_category(selection=ProfileSample.female_names(), size=size-len(m_names))
+        surname = DataBuilderTools.get_category(selection=ProfileSample.surnames(), size=size)
 
-        m_names = ProfileSample.male_names(size=size, seed=_seed)
-        f_names = ProfileSample.female_names(size=size, seed=_seed)
-        forename = []
-        gender = []
-        for idx in range(size):
-            _seed = DataBuilderTools._next_seed(_seed, seed)
-            weight_idx = DataBuilderTools._weighted_choice(weight_pattern, seed=_seed)
-            if weight_idx:
-                fn = np.random.choice(f_names)
-                forename.append(fn)
-                f_names.remove(fn)
-                gender.append('F')
-                if len(f_names) < 1:
-                    f_names = ProfileSample.female_names(seed=_seed)
-            else:
-                mn = np.random.choice(m_names)
-                forename.append(mn)
-                m_names.remove(mn)
-                gender.append('M')
-                if len(m_names) < 1:
-                    m_names = ProfileSample.male_names(seed=_seed)
-        df['forename'] = forename
-        df['gender'] = DataBuilderTools._set_quantity(gender, quantity=quantity, seed=_seed)
-        df['gender'] = df['gender'].astype('category')
-        return df
+        df = pd.DataFrame(zip(m_names + f_names, middle, surname, ['M'] * len(m_names) + ['F'] * len(f_names)),
+                          columns=['forename', 'initials', 'surname', 'gender'])
+        return df.sample(frac=1).reset_index(drop=True)
 
     @staticmethod
     def get_file_column(labels: [str, list], connector_contract: ConnectorContract, size: int=None,
