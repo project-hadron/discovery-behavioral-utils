@@ -687,15 +687,17 @@ class DataBuilderTools(object):
                                              quantity=quantity, size=size, at_most=at_most, seed=_seed)
 
     @staticmethod
-    def get_profiles(size: int=None, dominance: float=None, seed: int=None):
+    def get_profiles(size: int=None, dominance: float=None, include_id: bool=False, seed: int=None):
         """ returns a DataFrame of forename, surname and gender with first names matching gender.
 
         :param size: the size of the sample, if None then set to 1
-        :param dominance (optional) the dominant_percent of 'Male' as a value between 0 and 1. if None then just random
+        :param dominance: (optional) the dominant_percent of 'Male' as a value between 0 and 1. if None then just random
+        :param include_id: (optional) generate a unique identifier for each row
         :param seed: (optional) a seed value for the random function: default to None
         :return: a pandas DataFrame of males and females
         """
         dominance = dominance if isinstance(dominance, float) and 0 <= dominance <= 1 else 0.5
+        include_id = include_id if isinstance(include_id, bool) else False
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
         middle = DataBuilderTools.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['']*4, size=int(size*0.95))
@@ -708,6 +710,8 @@ class DataBuilderTools(object):
 
         df = pd.DataFrame(zip(m_names + f_names, middle, surname, ['M'] * len(m_names) + ['F'] * len(f_names)),
                           columns=['forename', 'initials', 'surname', 'gender'])
+        if include_id:
+            df['id'] = DataBuilderTools.get_number(size*10, (size*100)-1, at_most=1, size=size)
         return df.sample(frac=1).reset_index(drop=True)
 
     @staticmethod
@@ -735,7 +739,7 @@ class DataBuilderTools(object):
             df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
         for label in labels:
             if label not in df.columns:
-                raise NameError("The label '{}' could not be found in {}".format(label, connector_contract.resource))
+                raise NameError("The label '{}' could not be found in the file".format(label))
         if not isinstance(size, int):
             size = df.shape[0]
         if df.shape[1] == 1:
