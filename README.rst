@@ -181,7 +181,7 @@ the ``tools`` property and using the ``help`` build-in
 
 .. parsed-literal::
 
-    Help on function get_number in module ds_discovery.simulators.data_builder:
+    Help on function get_number in module ds_behavioral.simulators.data_builder:
     
     get_number(to_value: , from_value: = None, weight_pattern: list = None, precision: int = None, size: int = None,
                quantity: float = None, seed: int = None)

@@ -6,11 +6,74 @@ import warnings
 from collections import Counter
 from copy import deepcopy
 from typing import Any, List
-from ds_discovery.transition.discovery import DataAnalytics
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_behavioral.sample.sample_data import *
+
+
+class DataAnalytics(object):
+
+    label: str
+    associate: str
+    dtype: str
+    selection: list
+    granularity: [int, float, list]
+    lower: [int, float]
+    upper: [int, float]
+    top: int
+    precision: int
+    year_first: bool
+    day_first: bool
+    data_format: str
+    weighting_precision: int
+    exclude_dominant: bool
+    weight_pattern: list
+    weight_map: pd.Series
+    weight_mean: list
+    weight_std: list
+    dominant_values: list
+    dominance_weighting: list
+    dominant_percent: float
+    dominance_map: pd.Series
+    nulls_percent: float
+    sample: int
+    outlier_percent: float
+    mean: [int, float]
+    var: float
+    skew: float
+    kurtosis: float
+
+    def __init__(self, label: str, analysis: dict):
+        self.label = label
+        self.dtype = analysis.get('intent', {}).get('dtype', 'object')
+        self.selection = analysis.get('intent', {}).get('selection', [])
+        self.granularity = analysis.get('intent', {}).get('granularity', 1)
+        self.lower = analysis.get('intent', {}).get('lower', 0.0)
+        self.upper = analysis.get('intent', {}).get('upper', 1.0)
+        self.top = analysis.get('intent', {}).get('top', None)
+        self.precision = analysis.get('intent', {}).get('precision', 3)
+        self.year_first = analysis.get('intent', {}).get('year_first', False)
+        self.day_first = analysis.get('intent', {}).get('day_first', False)
+        self.data_format = analysis.get('intent', {}).get('data_format', None)
+        self.weighting_precision = analysis.get('intent', {}).get('weighting_precision', None)
+
+        self.weight_pattern = analysis.get('patterns', {}).get('weight_pattern', [1])
+        self.weight_map = pd.Series(data=self.weight_pattern, index=self.selection, copy=True)
+        self.weight_mean = analysis.get('patterns', {}).get('weight_mean', [])
+        self.weight_std = analysis.get('patterns', {}).get('weight_std', [])
+        self.dominant_values = analysis.get('patterns', {}).get('dominant_values', [])
+        self.dominance_weighting = analysis.get('patterns', {}).get('dominance_weighting', [])
+        self.dominance_map = pd.Series(data=self.dominance_weighting, index=self.dominant_values, copy=True)
+        self.dominant_percent = analysis.get('patterns', {}).get('dominant_percent', 0)
+
+        self.nulls_percent = analysis.get('stats', {}).get('nulls_percent', 0)
+        self.sample = analysis.get('stats', {}).get('sample', 0)
+        self.outlier_percent = analysis.get('stats', {}).get('outlier_percent', 0)
+        self.mean = analysis.get('stats', {}).get('mean', 0)
+        self.var = analysis.get('stats', {}).get('var', 0)
+        self.skew = analysis.get('stats', {}).get('skew', 0)
+        self.kurtosis = analysis.get('stats', {}).get('kurtosis', 0)
 
 
 class DataBuilderTools(object):
