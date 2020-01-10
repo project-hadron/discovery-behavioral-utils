@@ -774,7 +774,7 @@ class DataBuilderTools(object):
         df = pd.DataFrame(zip(m_names + f_names, middle, surname, ['M'] * len(m_names) + ['F'] * len(f_names)),
                           columns=['forename', 'initials', 'surname', 'gender'])
         if include_id:
-            df['id'] = DataBuilderTools.get_number(size*10, (size*100)-1, at_most=1, size=size)
+            df['profile_id'] = DataBuilderTools.get_number(size*10, (size*100)-1, at_most=1, size=size)
         return df.sample(frac=1).reset_index(drop=True)
 
     @staticmethod
