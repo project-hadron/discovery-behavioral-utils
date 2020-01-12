@@ -9,31 +9,33 @@ class Models(object):
     @staticmethod
     def recommend_heuristic(profile: pd.Series, items: pd.DataFrame, recommend: int=None, top: int=None,
                             exclude_items: list=None) -> list:
-        """ takes a profile of an entity where the index is the coresponds to the
+        """ takes a profile of an entity where the index of the profile represents the columns in the items.
+        for example the profile will be an index list or film genres and how many times these categories
+        have been watched. The items will be columns of categories with the index the films and row values
+        being the count of film watches in the column categories
 
-
-        :param profile:
-        :param entities:
-        :param items:
-        :param recommend:
-        :param top:
-        :param exclude_items:
-        :return:
+        :param profile: a pandas series of categories (index) counters for a single profile
+        :param items: a pandas dataframe of item counts (index) of columns (categories
+        :param recommend: the number of recomended items to select from
+        :param top: limits the cut-off of the top categories to select from
+        :param exclude_items: item index to not include
+        :return: a list of recomendations
         """
-        recommend = 5 if recommend is None else recommend
-        top = 3 if top is None else top
+        recommend = 10 if recommend is None else recommend
+        top = 10 if top is None or top < 1 else top
         # drop the entities in the exclude
-        items.drop(exclude_items, axis=0, inplace=True)
-        if profile is None:
+        _df = items.drop(index=exclude_items, errors='ignore')
+        if profile is None or profile.size == 0:
             return []
         categories = profile.sort_values(ascending=False).iloc[:top]
-        choice = DataBuilderTools.get_category(selection=categories.index.to_list(),
-                                               weight_pattern=categories.values.tolist(), size=recommend)
-        item_select = dict()
-        for col in categories.index:
-            item_select.update({col: items[col].sort_values(ascending=False).iloc[:recommend].index.to_list()})
+        choices = DataBuilderTools.get_category(selection=categories.index.to_list(),
+                                                weight_pattern=categories.values.tolist(), size=recommend)
+        choices_count = pd.Series(choices).value_counts()
+        selection_dict = {}
+        for index in choices_count.index:
+            selection_dict.update({index: _df[index].sort_values(ascending=False).iloc[
+                                          :choices_count.loc[index]].index.to_list()})
         rtn_list = []
-        for item_choice in choice:
-            rtn_list.append(item_select.get(item_choice).pop())
+        for item in choices:
+            rtn_list.append(selection_dict[item].pop())
         return rtn_list
-

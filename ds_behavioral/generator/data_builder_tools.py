@@ -807,7 +807,8 @@ class DataBuilderTools(object):
             size = df.shape[0]
         if df.shape[1] == 1:
             return list(df.iloc[:size, 0])
-        return df.iloc[:size]
+        df = df.iloc[:size]
+        return DataBuilderTools._filter_columns(df, headers=labels)
 
     @staticmethod
     def associate_analysis(analysis_dict: dict, size: int=None, seed: int=None):
