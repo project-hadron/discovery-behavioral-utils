@@ -270,7 +270,7 @@ class ProfileSample(AbstractSample):
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return CallCentreSamples._get_dataset(filename='lookup_us_zip.csv', size=size, seed=seed, shuffle=shuffle)
+        return CallCentreSamples._get_dataset(filename='lookup_us_zipcode.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def us_states(size: int = None, shuffle: bool=True, seed: int = None) -> list:
