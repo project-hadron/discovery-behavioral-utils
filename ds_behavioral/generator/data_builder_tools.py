@@ -433,6 +433,55 @@ class DataBuilderTools(object):
         return list(DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
     @staticmethod
+    def get_datetime(start: Any, until: Any, weight_pattern: list=None, at_most: int=None,  date_format: str=None,
+                     as_num: bool=False, ignore_time: bool=False, size: int=None, quantity: float=None, seed: int=None,
+                     day_first: bool=False, year_first: bool=False) -> list:
+        """ returns a random date between two date and times. weighted patterns can be applied to the overall date
+        range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
+        Note: If no patterns are set this will return a linearly random number between the range boundaries.
+              Also if no patterns are set and a default date is given, that default date will be returnd each time
+
+        :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+        :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+        :param quantity: the quantity of values that are not null. Number between 0 and 1
+        :param weight_pattern: (optional) A pattern across the whole date range.
+        :param at_most: the most times a selection should be chosen
+        :param ignore_time: ignore time elements and only select from Year, Month, Day elements. Default is False
+        :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
+        :param as_num: returns a list of Matplotlib date values as a float. Default is False
+        :param size: the size of the sample to return. Default to 1
+        :param seed: a seed value for the random function: default to None
+        :param year_first: specifies if to parse with the year first
+                If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
+                If both dayfirst and yearfirst are True, yearfirst is preceded (same as dateutil).
+        :param day_first: specifies if to parse with the day first
+                If True, parses dates with the day first, eg %d-%m-%Y.
+                If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
+        :return: a date or size of dates in the format given.
+         """
+        as_num = False if not isinstance(as_num, bool) else as_num
+        ignore_time = False if not isinstance(ignore_time, bool) else ignore_time
+        if start is None or until is None:
+            raise ValueError("The start or until parameters cannot be of NoneType")
+        quantity = DataBuilderTools._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = DataBuilderTools._seed() if seed is None else seed
+        _dt_start = DataBuilderTools._convert_date2value(start, day_first=day_first, year_first=year_first)[0]
+        _dt_until = DataBuilderTools._convert_date2value(until, day_first=day_first, year_first=year_first)[0]
+        precision = 15
+        if ignore_time:
+            _dt_start = int(_dt_start)
+            _dt_until = int(_dt_until)
+            precision = 0
+        rtn_list = DataBuilderTools.get_number(from_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
+                                               at_most=at_most, precision=precision, size=size, seed=seed)
+        if not as_num:
+            rtn_list = mdates.num2date(rtn_list)
+            if isinstance(date_format, str):
+                rtn_list = pd.Series(rtn_list).dt.strftime(date_format).tolist()
+        return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    @staticmethod
     def get_one_hot(selection: list, prefix: str=None, prefix_sep: str=None, not_hot: bool=False, size: int=None,
                     quantity: float=None, weight_pattern: list=None, bounded_weighting: bool=None, at_most: int=None,
                     seed: int=None):
@@ -562,11 +611,11 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
-    def get_datetime(start: Any, until: Any, default: Any = None, ordered: bool=None,
-                     date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
-                     weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
-                     quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
-                     day_first: bool = True, year_first: bool = False):
+    def get_datetime_pattern(start: Any, until: Any, default: Any = None, ordered: bool=None,
+                             date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
+                             weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
+                             quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
+                             day_first: bool = True, year_first: bool = False):
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -763,7 +812,7 @@ class DataBuilderTools(object):
         include_id = include_id if isinstance(include_id, bool) else False
         size = 1 if size is None else size
         _seed = DataBuilderTools._seed() if seed is None else seed
-        middle = DataBuilderTools.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['']*4, size=int(size*0.95))
+        middle = DataBuilderTools.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['  ']*4, size=int(size*0.95))
         choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
         middle += DataBuilderTools.get_string_pattern(pattern="U U", choices=choices, choice_only=False,
                                                       size=size-len(middle))
@@ -1442,7 +1491,7 @@ class DataBuilderTools(object):
         return mdates.date2num(pd.Series(values)).tolist()
 
     @staticmethod
-    def _convert_value2date(values: [int, float], date_format: str = None):
+    def _convert_value2date(values: Any, date_format: str = None):
         dates = []
         for date in mdates.num2date(values):
             date = pd.Timestamp(date)

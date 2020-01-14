@@ -25,7 +25,7 @@ class FileBuilderTest(unittest.TestCase):
         os.environ['SYNTHETIC_PERSIST_PATH'] = os.path.join(os.environ['PWD'], 'work', 'data')
         self.name = 'TestBuilder'
         try:
-            shutil.copytree('data', os.path.join(os.environ['PWD'], 'work'))
+            shutil.copytree('../simulators/data', os.path.join(os.environ['PWD'], 'work'))
         except:
             pass
 
