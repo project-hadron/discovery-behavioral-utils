@@ -894,7 +894,7 @@ class DataBuilderTools(object):
                                                         seed=seed, size=sample_size)
                 if str(_analysis.dtype).startswith('date'):
                     row_dict[label] += tools.get_datetime(start=_analysis.lower, until=_analysis.upper,
-                                                          date_pattern=_analysis.weight_pattern,
+                                                          weight_pattern=_analysis.weight_pattern,
                                                           date_format=_analysis.data_format,
                                                           day_first=_analysis.day_first,
                                                           year_first=_analysis.year_first,
@@ -1333,13 +1333,15 @@ class DataBuilderTools(object):
                 counter = 0
                 while not _result:
                     counter += 1
-                    sample_list = DataBuilderTools.get_datetime(start=_lower_spread_date, until=_upper_spread_date,
-                                                                ordered=ordered,
-                                                                date_pattern=date_pattern, year_pattern=year_pattern,
-                                                                month_pattern=month_pattern,
-                                                                weekday_pattern=weekday_pattern,
-                                                                hour_pattern=hour_pattern,
-                                                                minute_pattern=minute_pattern, seed=_seed)
+                    sample_list = DataBuilderTools.get_datetime_pattern(start=_lower_spread_date,
+                                                                        until=_upper_spread_date,
+                                                                        ordered=ordered,
+                                                                        date_pattern=date_pattern,
+                                                                        year_pattern=year_pattern,
+                                                                        month_pattern=month_pattern,
+                                                                        weekday_pattern=weekday_pattern,
+                                                                        hour_pattern=hour_pattern,
+                                                                        minute_pattern=minute_pattern, seed=_seed)
                     _sample_date = sample_list[0]
                     if _sample_date is None or _sample_date is pd.NaT:
                         raise ValueError("Unable to generate a random datetime, {} returned".format(sample_list))
@@ -1358,8 +1360,8 @@ class DataBuilderTools(object):
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     @staticmethod
-    def unique_identifiers(from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
-                           quantity: float=None, seed: int=None):
+    def get_identifiers(from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
+                        quantity: float=None, seed: int=None):
         """ returns a list of unique identifiers randomly selected between the from_value and to_value
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -1379,110 +1381,10 @@ class DataBuilderTools(object):
         if suffix is None:
             suffix = ''
         rtn_list = []
-        for i in DataBuilderTools.unique_numbers(start=from_value, until=to_value, size=size, precision=0, seed=seed):
+        for i in DataBuilderTools.get_number(from_value=from_value, to_value=to_value, at_most=1, size=size,
+                                             precision=0, seed=seed):
             rtn_list.append("{}{}{}".format(prefix, i, suffix))
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=seed)
-
-    @staticmethod
-    def unique_numbers(start: [int, float], until: [int, float]=None, precision: int=None, at_most: int=None,
-                       weight_pattern: list=None, quantity: float=None, size: int=None, seed: int=None) -> list:
-        """Generate a number tokens of a specified length.
-
-        :param start: the start number
-        :param until: (optional) then end boundary
-        :param precision:(optional) the precision of the returned number. if None then assumes int value else float
-        :param at_most: (optional) allows for a certain number of occurrences of uniqueness, default to 1
-        :param size: (optional) The number of tokens to return
-        :param weight_pattern: (optional) a weighting pattern of the final selection
-        :param quantity: a number between 0 and 1 preresenting the percentage quantity of the data
-        :param seed: (optional) a seed value for the random function: default to None
-        """
-        at_most = 1 if not isinstance(at_most, int) else at_most
-        return DataBuilderTools.get_number(from_value=start, to_value=until, weight_pattern=weight_pattern,
-                                           precision=precision, at_most=at_most, quantity=quantity, size=size,
-                                           seed=seed)
-
-    @staticmethod
-    def unique_date_seq(start: Any, until: Any, default: Any = None, ordered: bool=None,
-                        date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
-                        weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
-                        date_format: str = None, size: int = None, seed: int = None,
-                        day_first: bool = True, year_first: bool = False):
-        """creates an ordered and unique date sequence based on the parameters passed
-
-        :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
-        :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
-        :param default: (optional) a fixed starting date that patterns are applied too.
-        :param ordered: (optional) if the return list should be date ordered
-        :param date_pattern: (optional) A pattern across the whole date range.
-                If set, is the primary pattern with each subsequent pattern overriding this result
-                If no other pattern is set, this will return a random date based on this pattern
-        :param year_pattern: (optional) adjusts the year selection to this pattern
-        :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
-        :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
-        :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
-        :param minute_pattern: (optional) adjusts the minutes selection to this pattern
-        :param date_format: the format of the date to be returned. default '%d-%m-%Y'
-        :param size: the size of the sample to return. Default to 1
-        :param seed: a seed value for the random function: default to None
-        :param year_first: specifies if to parse with the year first
-                If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
-                If both dayfirst and yearfirst are True, yearfirst is preceded (same as dateutil).
-        :param day_first: specifies if to parse with the day first
-                If True, parses dates with the day first, eg %d-%m-%Y.
-                If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
-        :return: a date or size of dates in the format given.
-        """
-        size = 1 if size is None or not isinstance(size, int) else size
-        _seed = DataBuilderTools._seed() if seed is None else seed
-        seen = set()
-        add = seen.add
-        attempt = 0
-        max_attempts = 5
-        while len(seen) < size:
-            if attempt > max_attempts:
-                raise InterruptedError(
-                    "Unique Date Sequence stopped: After {} attempts unable to create unique set".format(max_attempts))
-            for token in DataBuilderTools.get_datetime(start=start, until=until, default=default, ordered=ordered,
-                                                       date_pattern=date_pattern, year_pattern=year_pattern,
-                                                       month_pattern=month_pattern, weekday_pattern=weekday_pattern,
-                                                       hour_pattern=hour_pattern, minute_pattern=minute_pattern,
-                                                       date_format=date_format, day_first=day_first,
-                                                       year_first=year_first, size=size+10, seed=_seed):
-                add(token)
-                if len(seen) == size:
-                    break
-            _seed = DataBuilderTools._next_seed(_seed, seed)
-            attempt += 1
-        return list(seen)
-
-    @staticmethod
-    def unique_str_tokens(length: int=None, size: int=None, pool: str=None) -> list:
-        """Generate a list of str tokens of a specified length.
-
-        :param length: Length of each token
-        :param size: number of tokens or size of sample
-        :param pool: Iterable of characters to choose from
-        """
-        if not isinstance(pool, str):
-            pool = string.ascii_letters
-        if not isinstance(size, int):
-            size = np.random.randint(1, 5)
-        seen = set()
-        add = seen.add
-        attempts = 0
-        max_attempts = size + size * size
-        while len(seen) < size:
-            if attempts > max_attempts:
-                raise InterruptedError(
-                    "After {} attempts unable to create unique set. "
-                    "The pool might not be big enough for the length and size to be unique".format(max_attempts))
-            if length == 0:
-                length = np.random.randint(2, 8)
-            token = ''.join(np.random.choice(list(pool), size=length))
-            add(token)
-            attempts += 1
-        return list(seen)
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):

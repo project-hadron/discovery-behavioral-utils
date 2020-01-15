@@ -1,7 +1,6 @@
 import datetime
 import unittest
 from ds_behavioral import DataBuilderTools as tools
-from matplotlib import dates as mdates
 
 
 class MyTestCase(unittest.TestCase):
