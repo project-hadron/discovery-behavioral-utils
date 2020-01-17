@@ -62,10 +62,6 @@ setup(
         'discovery-connectors',
         'matplotlib',
         'numpy',
-        # sqlalchemy,
-        # lxml,
-        # html5lib,
-        # BeautifulSoup4,
     ],
     test_suite='tests',
 )

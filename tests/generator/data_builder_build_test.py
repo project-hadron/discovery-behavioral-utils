@@ -3,7 +3,7 @@ import unittest
 import os
 import string
 
-from ds_behavioral import DataBuilder
+from ds_behavioral import DataBuilderComponent
 
 
 class MyTestCase(unittest.TestCase):
@@ -14,7 +14,7 @@ class MyTestCase(unittest.TestCase):
             os.mkdir('../simulators/data')
 
     def tearDown(self):
-        _tmp = DataBuilder(self.name).fbpm
+        _tmp = DataBuilderComponent(self.name).fbpm
         _tmp.remove(_tmp.KEY.contract_key)
         try:
             os.remove('config_data_builder.yaml')
@@ -24,10 +24,10 @@ class MyTestCase(unittest.TestCase):
 
     def test_runs(self):
         """Basic smoke test"""
-        DataBuilder(self.name)
+        DataBuilderComponent(self.name)
 
     def test_case(self):
-        fb = DataBuilder('case')
+        fb = DataBuilderComponent('case')
         # clear out the previous configuration
         _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
@@ -71,7 +71,7 @@ class MyTestCase(unittest.TestCase):
         fb.build_columns(rows=1000, filename='../simulators/data/comms.csv')
 
     def test_Comms(self):
-        fb = DataBuilder('Comms')
+        fb = DataBuilderComponent('Comms')
         # clear out the previous configuration
         _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
@@ -106,7 +106,7 @@ class MyTestCase(unittest.TestCase):
         fb.build_columns(rows=1000, filename='../simulators/data/comms.csv')
 
     def test_transaction(self):
-        fb = DataBuilder('Account')
+        fb = DataBuilderComponent('Account')
         # clear out the previous configuration
         _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
@@ -127,7 +127,7 @@ class MyTestCase(unittest.TestCase):
 
 
     def test_account(self):
-        fb = DataBuilder('Account')
+        fb = DataBuilderComponent('Account')
         # clear out the previous configuration
         _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()
@@ -162,7 +162,7 @@ class MyTestCase(unittest.TestCase):
         fb.build_columns(rows=1000, filename='../simulators/data/account.csv')
 
     def test_customer_build(self):
-        fb = DataBuilder('Customer')
+        fb = DataBuilderComponent('Customer')
         # clear out the previous configuration
         _ = fb.fbpm.remove(fb.fbpm.KEY.contract_key)
         fb.fbpm.save()

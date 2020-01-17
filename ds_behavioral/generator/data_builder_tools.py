@@ -7,6 +7,7 @@ from collections import Counter
 from copy import deepcopy
 from typing import Any, List
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
+from ds_foundation.intent.abstract_intent import AbstractIntent
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_behavioral.sample.sample_data import *
@@ -76,14 +77,27 @@ class DataAnalytics(object):
         self.kurtosis = analysis.get('stats', {}).get('kurtosis', 0)
 
 
-class DataBuilderTools(object):
+class DataBuilderTools(AbstractIntent):
 
-    def __dir__(self):
-        rtn_list = []
-        for m in dir(DataBuilderTools):
-            if not m.startswith('_'):
-                rtn_list.append(m)
-        return rtn_list
+    def run_contract_pipeline(self, df: Any, intent_contract: dict, inplace: bool = True):
+        """ Collectively runs all parameterised intent against the code base as defined by the
+        intent_contract.
+
+        :param df: the DataFrame to apply the parameterised intent too
+        :param intent_contract: the parameterised intent contract to run against the code base
+        :param inplace: change data in place or to return a deep copy. default True
+        :return Canonical with parameterised intent applied
+        """
+        if not isinstance(intent_contract, dict) or intent_contract is None:
+            if not inplace:
+                return df
+
+        # create the copy and use this for all the operations
+        if not inplace:
+            with threading.Lock():
+                df = deepcopy(df)
+
+        return df
 
     @staticmethod
     def _filter_headers(df: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
@@ -828,7 +842,7 @@ class DataBuilderTools(object):
 
     @staticmethod
     def get_file_column(labels: [str, list], connector_contract: ConnectorContract, size: int=None,
-                        randomize: bool=None, seed: int=None):
+                        randomize: bool=None, seed: int=None) -> [pd.DataFrame, list]:
         """ gets a column or columns of data from a CSV file returning them as a Series or DataFrame
         column is requested
 

@@ -8,7 +8,7 @@ import unittest
 import os
 import warnings
 
-from ds_behavioral.generator.data_builder import DataBuilder
+from ds_behavioral.generator.data_builder import DataBuilderComponent
 from ds_behavioral import DataBuilderTools
 
 
@@ -27,7 +27,7 @@ class FileBuilderTest(unittest.TestCase):
         pass
 
     def tearDown(self):
-        _tmp = DataBuilder(self.name).fbpm
+        _tmp = DataBuilderComponent(self.name).fbpm
         _tmp.remove(_tmp.KEY.manager_key)
         try:
             os.remove('config_data_builder.yaml')
@@ -37,7 +37,7 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_runs(self):
         """Basic smoke test"""
-        DataBuilder(self.name)
+        DataBuilderComponent(self.name)
 
     def test_correlate_numbers(self):
         tools = DataBuilderTools()

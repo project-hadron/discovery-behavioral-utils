@@ -6,18 +6,6 @@ __author__ = 'Darryl Oatridge'
 
 class DataBuilderPropertyManager(AbstractPropertyManager):
     """Class to deal with the properties of a data contract"""
-    MANAGER_NAME = 'synthetic'
-
-    def __init__(self, contract_name):
-        """ initialises the class specific to a data properties contract name
-
-        :param contract_name: the contract reference name for these data properties
-        """
-        if contract_name is None or not isinstance(contract_name, str):
-            assert ValueError("The contract_name can't be None or of zero length. '{}' passed".format(contract_name))
-        keys = ['generator']
-        super().__init__(manager=self.MANAGER_NAME, contract=contract_name, keys=keys)
-        self._create_property_structure()
 
     @classmethod
     def from_properties(cls, contract_name: str, connector_contract: ConnectorContract, replace: bool=True):
@@ -27,15 +15,11 @@ class DataBuilderPropertyManager(AbstractPropertyManager):
         :param connector_contract: the SourceContract bean for the SourcePersistHandler
         :param replace: (optional) if the loaded properties should replace any in memory
         """
-        replace = replace if isinstance(replace, bool) else False
-        instance = cls(contract_name=contract_name)
-        instance.set_property_connector(resource=connector_contract.resource,
-                                        connector_type=connector_contract.connector_type,
-                                        location=connector_contract.location,
-                                        module_name=connector_contract.module_name,
-                                        handler=connector_contract.handler, **connector_contract.kwargs)
-        if instance.get_connector_handler(instance.CONTRACT_CONNECTOR).exists():
-            instance.load_properties(replace=replace)
+        manager = 'aistac_synthetic'
+        instance = cls(property_manager=manager, task_name=contract_name, root_keys=[], knowledge_keys=[])
+        instance.set_property_connector(connector_contract=connector_contract)
+        if instance.get_connector_handler(instance.CONNECTOR_PM_CONTRACT).exists():
+            instance.load_properties(replace=False)
         return instance
 
     def reset_contract_properties(self):

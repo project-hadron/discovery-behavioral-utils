@@ -15,7 +15,7 @@ import unittest
 import os
 import warnings
 
-from ds_behavioral import DataBuilder
+from ds_behavioral import DataBuilderComponent
 
 class FileBuilderTest(unittest.TestCase):
 
@@ -40,11 +40,11 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_runs(self):
         """Basic smoke test"""
-        DataBuilder.from_env(self.name)
+        DataBuilderComponent.from_env(self.name)
 
     def test_tools(self):
         """test we can get tools"""
-        fb = DataBuilder.from_env(self.name)
+        fb = DataBuilderComponent.from_env(self.name)
         self.assertEqual(fb.tool_dir, DataBuilderTools().__dir__())
 
     def test_from(self):
