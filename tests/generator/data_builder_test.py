@@ -19,8 +19,7 @@ class FileBuilderTest(unittest.TestCase):
 
     def setUp(self):
         # set environment variables
-        os.environ['SYNTHETIC_CONTRACT_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
-        os.environ['SYNTHETIC_PERSIST_PATH'] = os.path.join(os.environ['PWD'], 'work', 'data')
+        os.environ['AISTAC_PM_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
         self.name = 'TestBuilder'
         try:
             shutil.copytree('../simulators/data', os.path.join(os.environ['PWD'], 'work'))
@@ -43,10 +42,10 @@ class FileBuilderTest(unittest.TestCase):
     def test_tools(self):
         """test we can get tools"""
         fb = DataBuilderComponent.from_env(self.name)
-        self.assertEqual(fb.tool_dir, DataBuilderTools().__dir__())
+        self.assertEqual(fb.tool_dir, DataBuilderTools.__dir__())
 
     def test_from(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         values = list('ABCDEFG')
         result = tools.get_from(values=values, size=100)
         self.assertEqual(100, len(result))
@@ -60,19 +59,19 @@ class FileBuilderTest(unittest.TestCase):
             self.assertNotIn(v, result)
 
     def test_file_column(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         df = pd.DataFrame()
         df['cat'] = tools.get_category(list('MFU'), size=10, seed=31)
         df['values'] = tools.get_number(10, size=10, seed=31)
         df.to_csv("test_df.csv", sep=',',  index=False)
-        connector_contract = ConnectorContract(resource="test_df.csv", connector_type='csv', location='.',
+        connector_contract = ConnectorContract(uri="test_df.csv",
                                                module_name='ds_foundation.handlers.python_handlers',
                                                handler='PythonSourceHandler')
         result = tools.get_file_column('cat', connector_contract, size=3, seed=31)
-        self.assertEqual((3,2), result.shape)
+        self.assertEqual((3,1), result.shape)
 
     def test_category(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         gender = list('MFTU')
         int_values = [1,2,3,4]
         float_values = [0.1,0.2,0.3,0.4]
@@ -85,14 +84,14 @@ class FileBuilderTest(unittest.TestCase):
                 self.assertTrue(220 < c < 280)
 
     def test_category_weight_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         selection = list('MFTU')
         weight_pattern=[5,3,0.1,0.9]
         result = tools.get_category(selection=selection, weight_pattern=weight_pattern, size=1000)
         print(pd.Series(result).value_counts())
 
     def test_category_at_most(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         selection = list('MFTU')
         result = tools.get_category(selection=selection, at_most=1, size=4)
         self.assertEqual(1, max(pd.Series(result).value_counts()))
@@ -103,7 +102,7 @@ class FileBuilderTest(unittest.TestCase):
         print(pd.Series(result).value_counts())
 
     def test_custom(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_custom('round(np.random.random(),3)', seed=101)
         self.assertEqual([0.598], result)
         result = tools.get_custom("DataBuilderTools.unique_str_tokens(length, ntokens)", length=3, ntokens=4, seed=101, size=3)
@@ -118,7 +117,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_quantity_number(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_number(100, size=10, quantity=1, seed=101)
         control = [60, 68, 30, 73, 58, 81, 17, 31, 36, 49]
         self.assertEqual(control, result)
@@ -136,7 +135,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_quality_cat(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         cats = ['B', 'L', 'W', 'C', 'V', 'I', 'A', 'K', 'N', 'F', 'R', 'X', 'J', 'M', 'T']
         result = tools.get_category(cats, size=10, quantity=1, seed=99)
         control = list('NKNAWLBWCF')
@@ -152,12 +151,12 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(''.join(control), ''.join(result))
 
     def test_distribution(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_distribution(method='beta', seed=101, a=5, b=2)
         self.assertEqual([0.745], result)
 
     def test_interval(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         intervals = [(0,10),(10,20),(20,30),(30,40)]
         weighting = [1,1,1,1]
         result = tools.get_intervals(intervals, weight_pattern=weighting, size=10, seed=31)
@@ -165,14 +164,14 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(10, len(result))
 
     def test_get_one_hot(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         selection = list('ABCDE')
         result = tools.get_one_hot(selection=selection, size=10, weight_pattern=[0,0,1,1,1], quantity=0.5)
         print(result)
 
 
     def test_int(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_number(1,1.0, size=3)
         control = [1.0, 1.0, 1.0]
         self.assertEqual(control, result)
@@ -191,12 +190,12 @@ class FileBuilderTest(unittest.TestCase):
         self.assertTrue(min(result) >= 50)
 
     def test_number_dominant(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_number(from_value=20, dominant_values=[0, 1], dominant_percent=0.6, dominance_weighting=[7, 3], size=10)
 
 
     def test_float(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_number(from_value=1.0, precision=3, seed=101)
         self.assertEqual([0.598], result)
         pattern = [1,1]
@@ -211,13 +210,13 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_number_offset(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_number(20, seed=101, size=10, offset=1000)
         control = [12000, 14000, 6000, 15000, 12000, 16000, 3000, 6000, 7000, 10000]
         self.assertEqual(control, result)
 
     def test_unique_num(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.unique_numbers(4, 100, size=5, seed=101)
         self.assertEqual([56, 15, 19, 25, 44], result)
         result = tools.unique_numbers(4, 100090, size=10000,)
@@ -226,7 +225,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(3, max(Counter(result).values()))
 
     def test_bool(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         count_weight = 0
         count_probability = 0
         count_default = 0
@@ -244,7 +243,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(53, count_weight)
 
     def test_quantity_nulls(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         test = [1,5,3]
         result = tools._set_quantity(test, quantity=0)
         control = [None, None, None]
@@ -263,7 +262,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_string_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         pattern = 'cd-Uls:ddp'
         result = tools.get_string_pattern(pattern, size=2, seed=101)
         control = ['a3-Os :22,', 'h9-Tz :61{']
@@ -279,7 +278,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_string_pattern_choices(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         choices = {'?': list('ABC'), '|': ['Code','Ref', 'id'], '#': list('1234')}
         pattern = 'Hi ?, your reference is: |#'
         result = tools.get_string_pattern(pattern, choices=choices, size=3, seed=101)
@@ -298,14 +297,14 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_tagged_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         text = "My name is <name>, how do you do"
         tags = {"<name>": {'action': 'get_category', 'kwargs': {'selection': ['fred', 'jim']}}}
         result = tools.get_tagged_pattern(text, tags=tags)
         print(result)
 
     def test_unique_date(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         start = "01/01/2016"
         end = "31/12/2018"
         result = tools.unique_date_seq(start, end, date_format="%d-%m-%Y", size=100)
@@ -321,7 +320,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(1000, len(set(result)))
 
     def test_datetime(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         start = "11/11/1964"
         until = "01/01/2018"
         control = ['15-08-1996', '28-10-1987', '20-09-1972']
@@ -332,7 +331,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_date_pattern_exceptions(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         valid = '23-12-2016'
         for d in ['', 'text', None]:
             with self.assertRaises(ValueError) as context:
@@ -343,7 +342,7 @@ class FileBuilderTest(unittest.TestCase):
             self.assertTrue("The start or until parameters cannot be" in str(context.exception))
 
     def test_date_year_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         start = '01/01/2010'
         until = '31/12/2019'
         result = tools.get_datetime(start=start, until=until, default='28/01/2017', year_pattern=[1], size=100, seed=101)
@@ -371,7 +370,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(control, result)
 
     def test_date_month_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         start = '01/01/2017'
         until = '01/01/2018'
         result = tools.get_datetime(start=start, until=until, default='31/01/2016', month_pattern=[1], size=100, seed=101)
@@ -400,7 +399,7 @@ class FileBuilderTest(unittest.TestCase):
         result = tools.get_datetime('01/01/2017', '31/12/2017', size=100, date_format='%d/%m/%Y', ordered=True, month_pattern=[4,0,1,4])
 
     def test_date_week_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         start = '01/01/2017'
         until = '31/01/2017'
         start_days = ['02', '03', '04', '05', '06', '07', '01']
@@ -438,7 +437,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(['NaT'], result)
 
     def test_date_hour_pattern(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         start = '01/01/2018 00:00'
         until = '01/02/2018 00:00'
         result = tools.get_datetime(start=start, until=until, default='01/02/2018 12:23:00', hour_pattern=[1], size=100, seed=101)
@@ -473,7 +472,7 @@ class FileBuilderTest(unittest.TestCase):
         self.assertEqual(len(selection), len(result))
 
     def test_category_replace(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         selection = [1,2,3,4,5,6,7,8,9,0]
         control = [9, 3, 1, 5, 8, 0, 4, 6, 5, 3]
         result = tools.get_category(selection, size=10, seed=31)
@@ -483,7 +482,7 @@ class FileBuilderTest(unittest.TestCase):
             self.assertIn(i, selection)
 
     def test_profile(self):
-        tools = DataBuilderTools()
+        tools = DataBuilderTools
         result = tools.get_profiles(size=10, dominance=[0, 1])
         self.assertEqual(['F'], result['gender'].unique())
         result = tools.get_profiles(size=10, dominance=[1, 0])

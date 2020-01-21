@@ -9,9 +9,8 @@ from typing import Any, List
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_behavioral.sample.sample_data import *
-from ds_foundation.handlers.abstract_handlers import ConnectorContract
+from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from ds_foundation.intent.abstract_intent import AbstractIntentModel
-from ds_behavioral.managers.synthetic_properties import DataBuilderPropertyManager
 
 
 class DataAnalytics(object):
@@ -79,13 +78,6 @@ class DataAnalytics(object):
 
 
 class DataBuilderTools(AbstractIntentModel):
-
-    def __int__(self, property_manager: DataBuilderPropertyManager=None, default_save_intent: bool=True,
-                intent_param_exclude: list=None):
-        """ initialise the Data Builder tools"""
-        if not isinstance(property_manager, DataBuilderPropertyManager):
-            property_manager = DataBuilderPropertyManager('synthetic_default', root_keys=[], knowledge_keys=[])
-        super().__init__(property_manager=property_manager, default_save_intent=False)
 
     @staticmethod
     def _filter_headers(df: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
@@ -539,7 +531,7 @@ class DataBuilderTools(AbstractIntentModel):
         pattern = DataBuilderTools.list_formatter(pattern)
         if not isinstance(tags, dict):
             raise ValueError("The 'tags' parameter must be a dictionary")
-        class_methods = DataBuilderTools().__dir__()
+        class_methods = DataBuilderTools.__dir__
 
         rtn_list = []
         for _ in range(size):
@@ -980,7 +972,7 @@ class DataBuilderTools(AbstractIntentModel):
             _associations = tmp
         if not isinstance(_dataset, pd.DataFrame):
             raise TypeError("The dataset given is not or could not be convereted to a pandas DataFrame")
-        class_methods = DataBuilderTools().__dir__()
+        class_methods = DataBuilderTools.__dir__
 
         rtn_list = []
         for index in range(_dataset.shape[0]):
@@ -1179,7 +1171,7 @@ class DataBuilderTools(AbstractIntentModel):
             corr_list.append(DataBuilderTools.list_formatter(corr))
         if values is None or len(values) == 0:
             return list()
-        class_methods = DataBuilderTools().__dir__()
+        class_methods = DataBuilderTools.__dir__
 
         rtn_list = []
         for value_index in range(len(values)):
