@@ -2,7 +2,7 @@ import shutil
 from collections import Counter
 
 import matplotlib
-from ds_behavioral.generator.data_builder_tools import DataBuilderTools
+from ds_behavioral.intent.data_builder_tools import DataBuilderTools
 from ds_foundation.handlers.abstract_handlers import ConnectorContract
 from ds_foundation.properties.property_manager import PropertyManager
 
@@ -10,10 +10,8 @@ matplotlib.use("TkAgg")
 
 import pandas as pd
 import numpy as np
-import seaborn as sns
 import unittest
 import os
-import warnings
 
 from ds_behavioral import DataBuilderComponent
 

@@ -1,14 +1,13 @@
 import matplotlib
 import pandas as pd
 
-from ds_behavioral.generator.data_builder_tools import DataBuilderTools
+from ds_behavioral.intent.data_builder_tools import DataBuilderTools
 
 matplotlib.use("TkAgg")
 
 import unittest
 import warnings
 
-from ds_behavioral.sample.sample_data import MappedSample
 
 def ignore_warnings(message: str = None):
     def real_ignore_warnings(func):

@@ -6,11 +6,12 @@ import warnings
 from collections import Counter
 from copy import deepcopy
 from typing import Any, List
-from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
-from ds_foundation.intent.abstract_intent import AbstractIntent
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_behavioral.sample.sample_data import *
+from ds_foundation.handlers.abstract_handlers import ConnectorContract
+from ds_foundation.intent.abstract_intent import AbstractIntentModel
+from ds_behavioral.managers.synthetic_properties import DataBuilderPropertyManager
 
 
 class DataAnalytics(object):
@@ -77,27 +78,14 @@ class DataAnalytics(object):
         self.kurtosis = analysis.get('stats', {}).get('kurtosis', 0)
 
 
-class DataBuilderTools(AbstractIntent):
+class DataBuilderTools(AbstractIntentModel):
 
-    def run_contract_pipeline(self, df: Any, intent_contract: dict, inplace: bool = True):
-        """ Collectively runs all parameterised intent against the code base as defined by the
-        intent_contract.
-
-        :param df: the DataFrame to apply the parameterised intent too
-        :param intent_contract: the parameterised intent contract to run against the code base
-        :param inplace: change data in place or to return a deep copy. default True
-        :return Canonical with parameterised intent applied
-        """
-        if not isinstance(intent_contract, dict) or intent_contract is None:
-            if not inplace:
-                return df
-
-        # create the copy and use this for all the operations
-        if not inplace:
-            with threading.Lock():
-                df = deepcopy(df)
-
-        return df
+    def __int__(self, property_manager: DataBuilderPropertyManager=None, default_save_intent: bool=True,
+                intent_param_exclude: list=None):
+        """ initialise the Data Builder tools"""
+        if not isinstance(property_manager, DataBuilderPropertyManager):
+            property_manager = DataBuilderPropertyManager('synthetic_default', root_keys=[], knowledge_keys=[])
+        super().__init__(property_manager=property_manager, default_save_intent=False)
 
     @staticmethod
     def _filter_headers(df: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
@@ -176,7 +164,7 @@ class DataBuilderTools(AbstractIntent):
         return df.loc[:, obj_cols]
 
     @staticmethod
-    def get_custom(code_str: str, quantity: float=None, size: int=None, seed: int=None, **kwargs):
+    def get_custom(code_str: str, quantity: float=None, size: int=None, seed: int=None, **kwargs) -> list:
         """returns a number based on the random func. The code should generate a value per line
         example:
             code_str = 'round(np.random.normal(loc=loc, scale=scale), 3)'
@@ -201,7 +189,7 @@ class DataBuilderTools(AbstractIntent):
 
     @staticmethod
     def get_distribution(method: str=None, offset: float=None, precision: int=None, size: int=None,
-                         quantity: float=None, seed: int=None, **kwargs):
+                         quantity: float=None, seed: int=None, **kwargs) -> list:
         """returns a number based the distribution type. Supports Normal, Beta and
 
         :param method: any method name under np.random. Default is 'normal'
@@ -229,7 +217,7 @@ class DataBuilderTools(AbstractIntent):
 
     @staticmethod
     def get_intervals(intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
-                      size: int=None, quantity: float=None, seed: int=None):
+                      size: int=None, quantity: float=None, seed: int=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
 
         :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
@@ -282,7 +270,7 @@ class DataBuilderTools(AbstractIntent):
     def get_number(from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
                    precision: int=None, currency: str=None, bounded_weighting: bool=True, at_most: int=None,
                    dominant_values: [float, list]=None, dominant_percent: float=None, dominance_weighting: list=None,
-                   size: int = None, quantity: float=None, seed: int=None):
+                   size: int = None, quantity: float=None, seed: int=None) -> list:
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -422,7 +410,7 @@ class DataBuilderTools(AbstractIntent):
 
     @staticmethod
     def get_category(selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
-                     bounded_weighting: bool=None, at_most: int=None, seed: int=None):
+                     bounded_weighting: bool=None, at_most: int=None, seed: int=None) -> list:
         """ returns a category from a list. Of particular not is the at_least parameter that allows you to
         control the number of times a selection can be chosen.
 
@@ -498,7 +486,7 @@ class DataBuilderTools(AbstractIntent):
     @staticmethod
     def get_one_hot(selection: list, prefix: str=None, prefix_sep: str=None, not_hot: bool=False, size: int=None,
                     quantity: float=None, weight_pattern: list=None, bounded_weighting: bool=None, at_most: int=None,
-                    seed: int=None):
+                    seed: int=None) -> pd.DataFrame:
         """ returns a pandas dataframe of one-hot values based upon the selection list
 
         :param selection: the selection headers for the one hots
@@ -528,7 +516,7 @@ class DataBuilderTools(AbstractIntent):
 
     @staticmethod
     def get_tagged_pattern(pattern: [str, list], tags: dict, weight_pattern: list=None, quantity: [float, int]=None,
-                           size: int=None, seed: int=None):
+                           size: int=None, seed: int=None) -> list:
         """ Returns the pattern with the tags substituted by tag choice
             example ta dictionary:
                 { '<slogan>': {'action': '', 'kwargs': {}},
@@ -570,7 +558,7 @@ class DataBuilderTools(AbstractIntent):
 
     @staticmethod
     def get_string_pattern(pattern: str, choices: dict=None, quantity: [float, int]=None, size: int=None,
-                           choice_only: bool=None, seed: int=None):
+                           choice_only: bool=None, seed: int=None) -> list:
         """ Returns a random string based on the pattern given. The pattern is made up from the choices passed but
             by default is as follows:
                 c = random char [a-z][A-Z]
@@ -629,7 +617,7 @@ class DataBuilderTools(AbstractIntent):
                              date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
                              weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
                              quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
-                             day_first: bool = True, year_first: bool = False):
+                             day_first: bool = True, year_first: bool = False) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -788,7 +776,7 @@ class DataBuilderTools(AbstractIntent):
 
     @staticmethod
     def get_from(values: Any, weight_pattern: list=None, selection_size: int=None, sample_size: int=None,
-                 size: int=None, at_most: bool=None, shuffled: bool=True, quantity: float=None, seed: int=None):
+                 size: int=None, at_most: bool=None, shuffled: bool=True, quantity: float=None, seed: int=None) -> list:
         """ returns a random list of values where the selection of those values is taken from the values passed.
 
         :param values: the reference values to select from
@@ -813,7 +801,7 @@ class DataBuilderTools(AbstractIntent):
                                              quantity=quantity, size=size, at_most=at_most, seed=_seed)
 
     @staticmethod
-    def get_profiles(size: int=None, dominance: float=None, include_id: bool=False, seed: int=None):
+    def get_profiles(size: int=None, dominance: float=None, include_id: bool=False, seed: int=None) -> pd.DataFrame:
         """ returns a DataFrame of forename, surname and gender with first names matching gender.
 
         :param size: the size of the sample, if None then set to 1
@@ -874,7 +862,7 @@ class DataBuilderTools(AbstractIntent):
         return DataBuilderTools._filter_columns(df, headers=labels)
 
     @staticmethod
-    def associate_analysis(analysis_dict: dict, size: int=None, seed: int=None):
+    def associate_analysis(analysis_dict: dict, size: int=None, seed: int=None) -> dict:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
@@ -883,7 +871,7 @@ class DataBuilderTools(AbstractIntent):
         :param analysis_dict: the analysis dictionary (see analyse_association(...))
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
-        :return: a DataFrame based on the association dictionary
+        :return: a dictionary
         """
         tools = DataBuilderTools
 
