@@ -14,7 +14,6 @@ from ds_foundation.intent.abstract_intent import AbstractIntentModel
 
 
 class DataAnalytics(object):
-
     label: str
     associate: str
     dtype: str
@@ -33,6 +32,8 @@ class DataAnalytics(object):
     weight_map: pd.Series
     weight_mean: list
     weight_std: list
+    sample_distribution: list
+    sample_map: pd.Series
     dominant_values: list
     dominance_weighting: list
     dominant_percent: float
@@ -45,8 +46,8 @@ class DataAnalytics(object):
     skew: float
     kurtosis: float
 
-    def __init__(self, label: str, analysis: dict):
-        self.label = label
+    def __init__(self, analysis: dict, label: str = None):
+        self.label = label if isinstance(label, str) else 'unnamed'
         self.dtype = analysis.get('intent', {}).get('dtype', 'object')
         self.selection = analysis.get('intent', {}).get('selection', [])
         self.granularity = analysis.get('intent', {}).get('granularity', 1)
@@ -63,6 +64,8 @@ class DataAnalytics(object):
         self.weight_map = pd.Series(data=self.weight_pattern, index=self.selection, copy=True)
         self.weight_mean = analysis.get('patterns', {}).get('weight_mean', [])
         self.weight_std = analysis.get('patterns', {}).get('weight_std', [])
+        self.sample_distribution = analysis.get('patterns', {}).get('sample_distribution', [0])
+        self.sample_map = pd.Series(data=self.sample_distribution, index=self.selection, copy=True)
         self.dominant_values = analysis.get('patterns', {}).get('dominant_values', [])
         self.dominance_weighting = analysis.get('patterns', {}).get('dominance_weighting', [])
         self.dominance_map = pd.Series(data=self.dominance_weighting, index=self.dominant_values, copy=True)
@@ -77,7 +80,7 @@ class DataAnalytics(object):
         self.kurtosis = analysis.get('stats', {}).get('kurtosis', 0)
 
 
-class DataBuilderTools(AbstractIntentModel):
+class DataBuilderTools(object):
 
     @staticmethod
     def _filter_headers(df: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,

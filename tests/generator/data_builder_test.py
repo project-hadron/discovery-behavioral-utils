@@ -2,7 +2,7 @@ import shutil
 from collections import Counter
 
 import matplotlib
-from ds_behavioral.intent.data_builder_tools import DataBuilderTools
+from ds_behavioral.generator.data_builder_tools import DataBuilderTools
 from ds_foundation.handlers.abstract_handlers import ConnectorContract
 from ds_foundation.properties.property_manager import PropertyManager
 

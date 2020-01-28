@@ -1,6 +1,6 @@
 from ds_foundation.components.abstract_component import AbstractComponent
 from ds_behavioral.managers.data_builder_property_manager import DataBuilderPropertyManager
-from ds_behavioral.intent.data_builder_tools import DataBuilderTools
+from ds_behavioral.generator.data_builder_tools import DataBuilderTools
 
 __author__ = 'Darryl Oatridge'
 
