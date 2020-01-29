@@ -7,6 +7,8 @@ import warnings
 from collections import Counter
 from copy import deepcopy
 from typing import Any, List
+
+from ds_discovery.transition.discovery import DataAnalytics
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_foundation.intent.abstract_intent import AbstractIntentModel
@@ -37,10 +39,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         # globals
         self._default_intent_level = -1 if isinstance(intent_next_available, bool) and intent_next_available else 0
 
-    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, offset: int=None,
-                   precision: int=None, currency: str=None, bounded_weighting: bool=True, at_most: int=None,
-                   dominant_values: [float, list]=None, dominant_percent: float=None, dominance_weighting: list=None,
-                   size: int = None, quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None) -> list:
+    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
+                   offset: int=None, precision: int=None, currency: str=None, bounded_weighting: bool=True,
+                   at_most: int=None, dominant_values: [float, list]=None, dominant_percent: float=None,
+                   dominance_weighting: list=None, size: int = None, quantity: float=None, seed: int=None,
+                   save_intent: bool=True, intent_level: [int, str]=None) -> list:
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -57,16 +60,13 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
         :return: a random number
         """
         # intent persist options
-        if not isinstance(save_intent, bool):
-            save_intent = self._default_save_intent
-        if save_intent:
-            intent_level = intent_level if isinstance(intent_level, (int, str)) else 0
-            _intent_method = inspect.currentframe().f_code.co_name
-            self._set_intend_signature(self._intent_builder(method=_intent_method, params=locals()), level=intent_level,
-                                       save_intent=save_intent)
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
         # intent code
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         at_most = 0 if not isinstance(at_most, int) else at_most
@@ -93,9 +93,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             dominance_weighting = [1] if not isinstance(dominance_weighting, list) else dominance_weighting
             if sample_count > 0:
                 if isinstance(dominant_values, list):
-                    dominant_list = self.get_category(selection=dominant_values,
-                                                                  weight_pattern=dominance_weighting,
-                                                                  size=sample_count, bounded_weighting=True)
+                    dominant_list = self.get_category(selection=dominant_values, weight_pattern=dominance_weighting,
+                                                      size=sample_count, bounded_weighting=True)
                 else:
                     dominant_list = [dominant_values] * sample_count
             size -= sample_count
@@ -188,7 +187,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_category(self, selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
-                     bounded_weighting: bool=None, at_most: int=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None) -> list:
+                     bounded_weighting: bool=None, at_most: int=None, seed: int=None, save_intent: bool=True,
+                     intent_level: [int, str]=None) -> list:
         """ returns a category from a list. Of particular not is the at_least parameter that allows you to
         control the number of times a selection can be chosen.
 
@@ -199,31 +199,28 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param at_most: the most times a selection should be chosen
         :param bounded_weighting: if the weighting pattern should have a soft or hard boundary (default False)
         :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
         :return: an item or list of items chosen from the list
         """
-         # intent persist options
-        if not isinstance(save_intent, bool):
-            save_intent = self._default_save_intent
-        if save_intent:
-            intent_level = intent_level if isinstance(intent_level, (int, str)) else 0
-            _intent_method = inspect.currentframe().f_code.co_name
-            self._set_intend_signature(self._intent_builder(method=_intent_method, params=locals()), level=intent_level,
-                                       save_intent=save_intent)
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
         # intent code
         if not isinstance(selection, list) or len(selection) == 0:
             return [None]*size
         bounded_weighting = False if not isinstance(bounded_weighting, bool) else bounded_weighting
         _seed = self._seed() if seed is None else seed
         quantity = self._quantity(quantity)
-        select_index = self.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most,
-                                                   size=size, bounded_weighting=bounded_weighting, quantity=1,
-                                                   seed=seed)
+        select_index = self.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most, size=size,
+                                       bounded_weighting=bounded_weighting, quantity=1, seed=seed)
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
     def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, at_most: int=None,  date_format: str=None,
                      as_num: bool=False, ignore_time: bool=False, size: int=None, quantity: float=None, seed: int=None,
-                     day_first: bool=False, year_first: bool=False, save_intent: bool=True, intent_level: [int, str]=None) -> list:
+                     day_first: bool=False, year_first: bool=False, save_intent: bool=True,
+                     intent_level: [int, str]=None) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -245,6 +242,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param day_first: specifies if to parse with the day first
                 If True, parses dates with the day first, eg %d-%m-%Y.
                 If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
         :return: a date or size of dates in the format given.
          """
         # intent persist options
@@ -271,15 +270,181 @@ class SyntheticIntentModel(AbstractIntentModel):
             _dt_until = int(_dt_until)
             precision = 0
         rtn_list = self.get_number(from_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
-                                               at_most=at_most, precision=precision, size=size, seed=seed)
+                                   at_most=at_most, precision=precision, size=size, seed=seed)
         if not as_num:
             rtn_list = mdates.num2date(rtn_list)
             if isinstance(date_format, str):
                 rtn_list = pd.Series(rtn_list).dt.strftime(date_format).tolist()
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
+    def get_datetime_pattern(self, start: Any, until: Any, default: Any = None, ordered: bool=None,
+                             date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
+                             weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
+                             quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
+                             day_first: bool = True, year_first: bool = False, save_intent: bool=True,
+                             intent_level: [int, str]=None) -> list:
+        """ returns a random date between two date and times. weighted patterns can be applied to the overall date
+        range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
+        Note: If no patterns are set this will return a linearly random number between the range boundaries.
+              Also if no patterns are set and a default date is given, that default date will be returnd each time
+
+        :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+        :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+        :param default: (optional) a fixed starting date that patterns are applied too.
+        :param ordered: (optional) if the return list should be date ordered
+        :param date_pattern: (optional) A pattern across the whole date range.
+                If set, is the primary pattern with each subsequent pattern overriding this result
+                If no other pattern is set, this will return a random date based on this pattern
+        :param year_pattern: (optional) adjusts the year selection to this pattern
+        :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
+        :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
+        :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
+        :param minute_pattern: (optional) adjusts the minutes selection to this pattern
+        :param quantity: the quantity of values that are not null. Number between 0 and 1
+        :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
+        :param size: the size of the sample to return. Default to 1
+        :param seed: a seed value for the random function: default to None
+        :param year_first: specifies if to parse with the year first
+                If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
+                If both dayfirst and yearfirst are True, yearfirst is preceded (same as dateutil).
+        :param day_first: specifies if to parse with the day first
+                If True, parses dates with the day first, eg %d-%m-%Y.
+                If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a date or size of dates in the format given.
+         """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        ordered = False if not isinstance(ordered, bool) else ordered
+        if start is None or until is None:
+            raise ValueError("The start or until parameters cannot be of NoneType")
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+        _dt_start = pd.to_datetime(start, errors='coerce', infer_datetime_format=True,
+                                   dayfirst=day_first, yearfirst=year_first)
+        _dt_until = pd.to_datetime(until, errors='coerce', infer_datetime_format=True,
+                                   dayfirst=day_first, yearfirst=year_first)
+        _dt_base = pd.to_datetime(default, errors='coerce', infer_datetime_format=True,
+                                  dayfirst=day_first, yearfirst=year_first)
+        if _dt_start is pd.NaT or _dt_until is pd.NaT:
+            raise ValueError("The start or until parameters cannot be converted to a timestamp")
+
+        # ### Apply the patterns if any ###
+        rtn_dates = []
+        for _ in range(size):
+            _seed = self._next_seed(_seed, seed)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+                _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0,
+                                                                                second=0, microsecond=0, nanosecond=0)
+                _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
+                                                                                 second=59, microsecond=0, nanosecond=0)
+                # reset the starting base
+            _dt_default = _dt_base
+            if not isinstance(_dt_default, pd.Timestamp):
+                _dt_default = np.random.random() * (_dt_until - _dt_start) + _dt_start
+            # ### date ###
+            if date_pattern is not None:
+                _dp_start = self._convert_date2value(_dt_start)[0]
+                _dp_until = self._convert_date2value(_dt_until)[0]
+                value = self.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed)
+                _dt_default = self._convert_value2date(value)[0]
+            # ### years ###
+            rand_year = _dt_default.year
+            if year_pattern is not None:
+                rand_select = self._date_choice(_dt_start, _dt_until, year_pattern, seed=_seed)
+                if rand_select is pd.NaT:
+                    rtn_dates.append(rand_select)
+                    continue
+                rand_year = rand_select.year
+            _max_date = _max_date.replace(year=rand_year)
+            _min_date = _min_date.replace(year=rand_year)
+            _dt_default = _dt_default.replace(year=rand_year)
+            # ### months ###
+            rand_month = _dt_default.month
+            rand_day = _dt_default.day
+            if month_pattern is not None:
+                month_start = _dt_start if _dt_start.year == _min_date.year else _min_date
+                month_end = _dt_until if _dt_until.year == _max_date.year else _max_date
+                rand_select = self._date_choice(month_start, month_end, month_pattern, limits='month', seed=_seed)
+                if rand_select is pd.NaT:
+                    rtn_dates.append(rand_select)
+                    continue
+                rand_month = rand_select.month
+                rand_day = _dt_default.day if _dt_default.day <= rand_select.daysinmonth else rand_select.daysinmonth
+            _max_date = _max_date.replace(month=rand_month, day=rand_day)
+            _min_date = _min_date.replace(month=rand_month, day=rand_day)
+            _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
+            # ### weekday ###
+            if weekday_pattern is not None:
+                if not len(weekday_pattern) == 7:
+                    raise ValueError("The weekday_pattern mut be a list of size 7 with index 0 as Monday")
+                _weekday = self._weighted_choice(weekday_pattern, seed=_seed)
+                if _weekday != _min_date.dayofweek:
+                    if _dt_start <= (_dt_default + Week(weekday=_weekday)) <= _dt_until:
+                        rand_day = (_dt_default + Week(weekday=_weekday)).day
+                        rand_month = (_dt_default + Week(weekday=_weekday)).month
+                    elif _dt_start <= (_dt_default - Week(weekday=_weekday)) <= _dt_until:
+                        rand_day = (_dt_default - Week(weekday=_weekday)).day
+                        rand_month = (_dt_default - Week(weekday=_weekday)).month
+                    else:
+                        rtn_dates.append(pd.NaT)
+                        continue
+            _max_date = _max_date.replace(month=rand_month, day=rand_day)
+            _min_date = _min_date.replace(month=rand_month, day=rand_day)
+            _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
+            # ### hour ###
+            rand_hour = _dt_default.hour
+            if hour_pattern is not None:
+                hour_start = _dt_start if _min_date.strftime('%d%m%Y') == _dt_start.strftime('%d%m%Y') else _min_date
+                hour_end = _dt_until if _max_date.strftime('%d%m%Y') == _dt_until.strftime('%d%m%Y') else _max_date
+                rand_select = self._date_choice(hour_start, hour_end, hour_pattern, limits='hour', seed=seed)
+                if rand_select is pd.NaT:
+                    rtn_dates.append(rand_select)
+                    continue
+                rand_hour = rand_select.hour
+            _max_date = _max_date.replace(hour=rand_hour)
+            _min_date = _min_date.replace(hour=rand_hour)
+            _dt_default = _dt_default.replace(hour=rand_hour)
+            # ### minutes ###
+            rand_minute = _dt_default.minute
+            if minute_pattern is not None:
+                minute_start = _dt_start \
+                    if _min_date.strftime('%d%m%Y%H') == _dt_start.strftime('%d%m%Y%H') else _min_date
+                minute_end = _dt_until \
+                    if _max_date.strftime('%d%m%Y%H') == _dt_until.strftime('%d%m%Y%H') else _max_date
+                rand_select = self._date_choice(minute_start, minute_end, minute_pattern, seed=seed)
+                if rand_select is pd.NaT:
+                    rtn_dates.append(rand_select)
+                    continue
+                rand_minute = rand_select.minute
+            _max_date = _max_date.replace(minute=rand_minute)
+            _min_date = _min_date.replace(minute=rand_minute)
+            _dt_default = _dt_default.replace(minute=rand_minute)
+            # ### get the date ###
+            _dt_default = _dt_default.replace(second=np.random.randint(60))
+            if isinstance(_dt_default, pd.Timestamp):
+                _dt_default = _dt_default.tz_localize(None)
+            rtn_dates.append(_dt_default)
+        if ordered:
+            rtn_dates = sorted(rtn_dates)
+        rtn_list = []
+        if isinstance(date_format, str):
+            for d in rtn_dates:
+                if isinstance(d, pd.Timestamp):
+                    rtn_list.append(d.strftime(date_format))
+                else:
+                    rtn_list.append(str(d))
+        else:
+            rtn_list = rtn_dates
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
     def get_intervals(self, intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
-                      size: int=None, quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None) -> list:
+                      size: int=None, quantity: float=None, seed: int=None, save_intent: bool=True,
+                      intent_level: [int, str]=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
 
         :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
@@ -289,16 +454,13 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
         :return: a random number
         """
-         # intent persist options
-        if not isinstance(save_intent, bool):
-            save_intent = self._default_save_intent
-        if save_intent:
-            intent_level = intent_level if isinstance(intent_level, (int, str)) else 0
-            _intent_method = inspect.currentframe().f_code.co_name
-            self._set_intend_signature(self._intent_builder(method=_intent_method, params=locals()), level=intent_level,
-                                       save_intent=save_intent)
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
         # intent code
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -307,8 +469,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         if not all(isinstance(value, tuple) for value in intervals):
             raise ValueError("The intervals list but be a list of tuples")
-        interval_list = self.get_category(selection=intervals, weight_pattern=weight_pattern, size=size,
-                                                      seed=_seed)
+        interval_list = self.get_category(selection=intervals, weight_pattern=weight_pattern, size=size, seed=_seed)
         interval_counts = pd.Series(interval_list).value_counts()
         rtn_list = []
         for index in interval_counts.index:
@@ -331,14 +492,15 @@ class SyntheticIntentModel(AbstractIntentModel):
                 upper -= margin
             elif str.lower(closed) == 'right':
                 lower += margin
-            rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, currency=currency,
-                                                              size=size, seed=_seed)
+            rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, currency=currency, size=size,
+                                                  seed=_seed)
         np.random.seed(_seed)
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_distribution(self, method: str=None, offset: float=None, precision: int=None, size: int=None,
-                         quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None, **kwargs) -> list:
+                         quantity: float=None, seed: int=None, save_intent: bool=True,
+                         intent_level: [int, str]=None, **kwargs) -> list:
         """returns a number based the distribution type. Supports Normal, Beta and
 
         :param method: any method name under np.random. Default is 'normal'
@@ -348,16 +510,13 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
         :param kwargs: the parameters of the method
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
         :return: a random number
         """
         # intent persist options
-        if not isinstance(save_intent, bool):
-            save_intent = self._default_save_intent
-        if save_intent:
-            intent_level = intent_level if isinstance(intent_level, (int, str)) else 0
-            _intent_method = inspect.currentframe().f_code.co_name
-            self._set_intend_signature(self._intent_builder(method=_intent_method, params=locals()), level=intent_level,
-                                       save_intent=save_intent)
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
         # intent code
         offset = 1 if offset is None or not isinstance(offset, (float, int)) else offset
         quantity = self._quantity(quantity)
@@ -372,6 +531,724 @@ class SyntheticIntentModel(AbstractIntentModel):
             _seed = self._next_seed(_seed, seed)
             rtn_list.append(round(eval(func) * offset, precision))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def get_string_pattern(self, pattern: str, choices: dict=None, quantity: [float, int]=None, size: int=None,
+                           choice_only: bool=None, seed: int=None, save_intent: bool=True,
+                           intent_level: [int, str]=None) -> list:
+        """ Returns a random string based on the pattern given. The pattern is made up from the choices passed but
+            by default is as follows:
+                c = random char [a-z][A-Z]
+                d = digit [0-9]
+                l = lower case char [a-z]
+                U = upper case char [A-Z]
+                p = all punctuation
+                s = space
+            you can also use punctuation in the pattern that will be retained
+            A pattern example might be
+                    uuddsduu => BA12 2NE or dl-{uu} => 4g-{FY}
+
+            to create your own choices pass a dictionary with a reference char key with a list of choices as a value
+
+        :param pattern: the pattern to create the string from
+        :param choices: an optional dictionary of list of choices to replace the default.
+        :param quantity: a number between 0 and 1 representing the percentage quantity of the data
+        :param size: the size of the return list. if None returns a single value
+        :param choice_only: if to only use the choices given or to take not found characters as is
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a string based on the pattern
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        choice_only = False if choice_only is None or not isinstance(choice_only, bool) else choice_only
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+        if choices is None or not isinstance(choices, dict):
+            choices = {'c': list(string.ascii_letters),
+                       'd': list(string.digits),
+                       'l': list(string.ascii_lowercase),
+                       'U': list(string.ascii_uppercase),
+                       'p': list(string.punctuation),
+                       's': [' '],
+                       }
+            choices.update({p: [p] for p in list(string.punctuation)})
+        else:
+            for k, v in choices.items():
+                if not isinstance(v, list):
+                    raise ValueError(
+                        "The key '{}' must contain a 'list' of replacements opotions. '{}' found".format(k, type(v)))
+
+        rtn_list = []
+        _seed = self._next_seed(_seed, seed)
+        for c in list(pattern):
+            if c in choices.keys():
+                result = np.random.choice(choices[c], size=size)
+            elif not choice_only:
+                result = [c]*size
+            else:
+                continue
+            rtn_list = [i + j for i, j in zip(rtn_list, result)] if len(rtn_list) > 0 else result
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def get_from(self, values: Any, weight_pattern: list=None, selection_size: int=None, sample_size: int=None,
+                 size: int=None, at_most: bool=None, shuffled: bool=True, quantity: float=None, seed: int=None,
+                 save_intent: bool=True, intent_level: [int, str]=None) -> list:
+        """ returns a random list of values where the selection of those values is taken from the values passed.
+
+        :param values: the reference values to select from
+        :param weight_pattern: (optional) a weighting pattern of the final selection
+        :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
+        :param sample_size: (optional) the size of the sample to take from the reference file
+        :param at_most: (optional) the most times a selection should be chosen
+        :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param size: (optional) size of the return. default to 1
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return:
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+        _values = pd.Series(values).iloc[:sample_size]
+        if shuffled:
+            _values = _values.sample(frac=1).reset_index(drop=True)
+        if isinstance(selection_size, int) and 0 < selection_size < _values.size:
+            _values = _values.iloc[:selection_size]
+        return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
+                                 size=size, at_most=at_most, seed=_seed)
+
+    def get_profiles(self, size: int=None, dominance: float=None, include_id: bool=False, seed: int=None,
+                     save_intent: bool=True, intent_level: [int, str]=None) -> pd.DataFrame:
+        """ returns a DataFrame of forename, surname and gender with first names matching gender.
+
+        :param size: the size of the sample, if None then set to 1
+        :param dominance: (optional) the dominant_percent of 'Male' as a value between 0 and 1. if None then just random
+        :param include_id: (optional) generate a unique identifier for each row
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a pandas DataFrame of males and females
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        dominance = dominance if isinstance(dominance, float) and 0 <= dominance <= 1 else 0.5
+        include_id = include_id if isinstance(include_id, bool) else False
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+        middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['  ']*4, size=int(size*0.95))
+        choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
+        middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size-len(middle))
+        m_names = self.get_category(selection=ProfileSample.male_names(), size=int(size*dominance))
+        f_names = self.get_category(selection=ProfileSample.female_names(), size=size-len(m_names))
+        surname = self.get_category(selection=ProfileSample.surnames(), size=size)
+
+        df = pd.DataFrame(zip(m_names + f_names, middle, surname, ['M'] * len(m_names) + ['F'] * len(f_names)),
+                          columns=['forename', 'initials', 'surname', 'gender'])
+        if include_id:
+            df['profile_id'] = self.get_number(size*10, (size*100)-1, at_most=1, size=size)
+        return df.sample(frac=1).reset_index(drop=True)
+
+    def get_file_column(self, labels: [str, list], connector_contract: ConnectorContract, size: int=None,
+                        randomize: bool=None, seed: int=None, save_intent: bool=True,
+                        intent_level: [int, str]=None) -> [pd.DataFrame, list]:
+        """ gets a column or columns of data from a CSV file returning them as a Series or DataFrame
+        column is requested
+
+        :param labels: the header labels to extract
+        :param connector_contract: the connector contract for the data to upload
+        :param size: (optional) the size of the sample to retrieve, if None then it assumes all
+        :param randomize: (optional) if the selection should be randomised. Default is False
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: DataFrame or List
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        if not isinstance(connector_contract, ConnectorContract):
+            raise TypeError("The connector_contract must be a ConnectorContract instance")
+        _seed = self._seed() if seed is None else seed
+        randomize = False if not isinstance(randomize, bool) else randomize
+        labels = self.list_formatter(labels)
+        df = HandlerFactory.instantiate(connector_contract).load_canonical()
+        if isinstance(df, dict):
+            df = pd.DataFrame(df)
+        if randomize:
+            df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
+        for label in labels:
+            if label not in df.columns:
+                raise NameError("The label '{}' could not be found in the file".format(label))
+        if not isinstance(size, int):
+            size = df.shape[0]
+        if df.shape[1] == 1:
+            return list(df.iloc[:size, 0])
+        df = df.iloc[:size]
+        return self._filter_columns(df, headers=labels)
+
+    def associate_analysis(self, analysis_dict: dict, size: int=None, seed: int=None, save_intent: bool=True,
+                           intent_level: [int, str]=None) -> dict:
+        """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
+        if a reference DataFrame is passed then as the analysis is run if the column already exists the row
+        value will be taken as the reference to the sub category and not the random value. This allows already
+        constructed association to be used as reference for a sub category.
+
+        :param analysis_dict: the analysis dictionary (see analyse_association(...))
+        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
+        :param seed: seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a dictionary
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+
+        def get_level(analysis: dict, sample_size: int):
+            for label, values in analysis.items():
+                if row_dict.get(label) is None:
+                    row_dict[label] = list()
+                _analysis = DataAnalytics(label, values.get('analysis', {}))
+                if str(_analysis.dtype).startswith('cat'):
+                    row_dict[label] += self.get_category(selection=_analysis.selection,
+                                                         weight_pattern=_analysis.weight_pattern,
+                                                         quantity=1-_analysis.nulls_percent,
+                                                         seed=seed, size=sample_size)
+                if str(_analysis.dtype).startswith('num'):
+                    row_dict[label] += self.get_number(from_value=_analysis.lower, to_value=_analysis.upper,
+                                                       weight_pattern=_analysis.weight_pattern,
+                                                       precision=_analysis.precision,
+                                                       dominant_values=_analysis.dominant_values,
+                                                       dominant_percent=_analysis.dominant_percent,
+                                                       dominance_weighting=_analysis.dominance_weighting,
+                                                       quantity=1-_analysis.nulls_percent,
+                                                       seed=seed, size=sample_size)
+                if str(_analysis.dtype).startswith('date'):
+                    row_dict[label] += self.get_datetime(start=_analysis.lower, until=_analysis.upper,
+                                                         weight_pattern=_analysis.weight_pattern,
+                                                         date_format=_analysis.data_format,
+                                                         day_first=_analysis.day_first,
+                                                         year_first=_analysis.year_first,
+                                                         quantity=1 - _analysis.nulls_percent,
+                                                         seed=seed, size=sample_size)
+
+                unit = sample_size / sum(_analysis.weight_pattern)
+                if values.get('sub_category'):
+                    section_map = _analysis.weight_map
+                    for i in section_map.index:
+                        section_size = int(round(_analysis.weight_map.loc[i] * unit, 0))+1
+                        next_item = values.get('sub_category').get(i)
+                        get_level(next_item, section_size)
+            return
+
+        row_dict = {}
+        size = 1 if not isinstance(size, int) else size
+        get_level(analysis_dict, sample_size=size)
+        for key in row_dict.keys():
+            row_dict[key] = row_dict[key][:size]
+        return row_dict
+
+    def associate_dataset(self, dataset: Any, associations: list, actions: dict, default_value: Any=None,
+                          default_header: str=None, day_first: bool=True, quantity:  float=None, seed: int=None,
+                          save_intent: bool=True, intent_level: [int, str]=None):
+        """ Associates a a -set of criteria of an input values to a set of actions
+            The association dictionary takes the form of a set of dictionaries in a list with each item in the list
+            representing an index key for the action dictionary. Each dictionary are to associated relationship.
+            In this example for the first index the associated values should be header1 is within a date range
+            and header2 has a value of 'M'
+                association = [{'header1': {'expect': 'date',
+                                            'value': ['12/01/1984', '14/01/2014']},
+                                'header2': {'expect': 'category',
+                                            'value': ['M']}},
+                                {...}]
+
+            if the dataset is not a DataFrame then the header should be omitted. in this example the association is
+            a range comparison between 2 and 7 inclusive.
+                association= [{'expect': 'number', 'value': [2, 7]},
+                              {...}]
+
+            The actions dictionary takes the form of an index referenced dictionary of actions, where the key value
+            of the dictionary corresponds to the index of the association list. In other words, if a match is found
+            in the association, that list index is used as reference to the action to execute.
+                {0: {'action': '', 'kwargs' : {}},
+                 1: {...}}
+            you can also use the action to specify a specific value:
+                {0: {'action': ''},
+                 1: {'action': ''}}
+
+        :param dataset: the dataset to map against, this can be a str, int, float, list, Series or DataFrame
+        :param associations: a list of categories (can also contain lists for multiple references.
+        :param actions: the correlated set of categories that should map to the index
+        :param default_header: (optional) if no association, the default column header to take the value from.
+                    if None then the default_value is taken.
+                    Note for non-DataFrame datasets the default header is '_default'
+        :param default_value: (optional) if no default header then this value is taken if no association
+        :param day_first: (optional) if expected type is date, indicates if the day is first. Default to true
+        :param quantity: (optional) a number between 0 and 1 presenting the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a list of equal length to the one passed
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+
+        if not isinstance(dataset, (str, int, float, list, pd.Series, pd.DataFrame)):
+            raise TypeError("The parameter values is not an accepted type")
+        if not isinstance(associations, (list, dict)):
+            raise TypeError("The parameter reference must be a list or dict")
+        _dataset = dataset
+        _associations = associations
+        if isinstance(_dataset, (str, int, float)):
+            _dataset = self.list_formatter(_dataset)
+        if isinstance(_dataset, (list, pd.Series)):
+            tmp = pd.DataFrame()
+            tmp['_default'] = _dataset
+            _dataset = tmp
+            tmp = []
+            for item in _associations:
+                tmp.append({'_default': item})
+            _associations = tmp
+        if not isinstance(_dataset, pd.DataFrame):
+            raise TypeError("The dataset given is not or could not be convereted to a pandas DataFrame")
+        class_methods = self.__dir__
+
+        rtn_list = []
+        for index in range(_dataset.shape[0]):
+            action_idx = None
+            for idx in range(len(_associations)):
+                associate_dict = _associations[idx]
+                is_match = [0] * len(associate_dict.keys())
+                match_idx = 0
+                for header, lookup in associate_dict.items():
+                    df_value = _dataset[header].iloc[index]
+                    expect = lookup.get('expect')
+                    chk_value = self.list_formatter(lookup.get('value'))
+                    if expect.lower() in ['number', 'n']:
+                        if len(chk_value) == 1:
+                            [s] = [e] = chk_value
+                        else:
+                            [s, e] = chk_value
+                        if s <= df_value <= e:
+                            is_match[match_idx] = True
+                    elif expect.lower() in ['date', 'datetime', 'd']:
+                        [s, e] = chk_value
+                        value_date = pd.to_datetime(df_value, errors='coerce', infer_datetime_format=True,
+                                                    dayfirst=day_first)
+                        s_date = pd.to_datetime(s, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
+                        e_date = pd.to_datetime(e, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
+                        if value_date is pd.NaT or s_date is pd.NaT or e_date is pd.NaT:
+                            break
+                        if s_date <= value_date <= e_date:
+                            is_match[match_idx] = True
+                    elif expect.lower() in ['category', 'c']:
+                        if df_value in chk_value:
+                            is_match[match_idx] = True
+                    else:
+                        break
+                    match_idx += 1
+                if all(x for x in is_match):
+                    action_idx = idx
+                    break
+            if action_idx is None or actions.get(action_idx) is None:
+                if default_header is not None and default_header in _dataset.columns:
+                    rtn_list.append(_dataset[default_header].iloc[index])
+                else:
+                    rtn_list.append(default_value)
+                continue
+            method = actions.get(action_idx).get('action')
+            if method is None:
+                raise ValueError("There is no 'action' key at index [{}]".format(action_idx))
+            if method in class_methods:
+                kwargs = actions.get(action_idx).get('kwargs').copy()
+                for k, v in kwargs.items():
+                    if isinstance(v, dict) and '_header' in v.keys():
+                        if v.get('_header') not in dataset.columns:
+                            raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: {}".format(
+                                v.get('_header'), action_idx, k))
+                        kwargs[k] = dataset[v.get('_header')].iloc[index]
+                result = eval("self.{}(**{})".format(method, kwargs).replace('nan', 'None'))
+                if isinstance(result, list):
+                    if len(result) > 0:
+                        rtn_list.append(result.pop())
+                    else:
+                        rtn_list.append(None)
+                else:
+                    rtn_list.append(result)
+            else:
+                if isinstance(method, dict):
+                    if method.get('_header') not in dataset.columns:
+                        raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: action".format(
+                            method.get('_header'), action_idx))
+                    rtn_list.append(dataset[method.get('_header')].iloc[index])
+                else:
+                    rtn_list.append(method)
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def associate_custom(self, df: pd.DataFrame, code_str: str, use_exec: bool=False, save_intent: bool=True,
+                         intent_level: [int, str]=None, **kwargs):
+        """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
+        the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
+        as it's parameter name 'df'.
+
+        :param df: a pd.DataFrame used in the action
+        :param code_str: an action on those column values
+        :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
+        :param kwargs: a set of kwargs to include in any executable function
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a list or pandas.DataFrame
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
+        if 'df' not in local_kwargs:
+            local_kwargs['df'] = df
+
+        result = exec(code_str, globals(), local_kwargs) if use_exec else eval(code_str, globals(), local_kwargs)
+        if result is None:
+            return df
+        return result
+
+    def correlate_numbers(self, values: Any, spread: float=None, offset: float=None, action: str=None,
+                          precision: int=None, fill_nulls: bool=None, quantity: float=None, seed: int=None,
+                          keep_zero: bool=None, min_value: [int, float]= None, max_value: [int, float]= None,
+                          save_intent: bool=True, intent_level: [int, str]=None):
+        """ returns a number that correlates to the value given. The spread is based on a normal distribution
+        with the value being the mean and the spread its standard deviation from that mean
+
+        :param values: a single value or list of values to correlate
+        :param spread: (optional) the random spread or deviation from the value. defaults to 0
+        :param offset: (optional) how far from the value to offset. defaults to zero
+        :param action: (optional) what action on the offset. Options are: 'add'(default),'multiply'
+        :param precision: (optional) how many decimal places. default to 3
+        :param fill_nulls: (optional) if True then fills nulls with the most common values
+        :param quantity: (optional) a number between 0 and 1 preresenting the percentage quantity of the data
+        :param seed: (optional) the random seed. defaults to current datetime
+        :param keep_zero: (optional) if True then zeros passed remain zero, Default is False
+        :param min_value: a minimum value not to go below
+        :param max_value: a max value not to go above
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: an equal length list of correlated values
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        offset = 0.0 if offset is None else offset
+        spread = 0.0 if spread is None else spread
+        precision = 3 if precision is None else precision
+        action = 'add' if not isinstance(action, str) else action
+        keep_zero = False if not isinstance(keep_zero, bool) else True
+        fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+
+        values = self.list_formatter(values)
+
+        if values is None or len(values) == 0:
+            return list()
+        mode_choice = self._mode_choice(values) if fill_nulls else list()
+        rtn_list = []
+        for index in range(len(values)):
+            if keep_zero and values[index] == 0:
+                rtn_list.append(0)
+                continue
+            next_index = False
+            counter = 0
+            while not next_index:
+                counter += 1
+                v = values[index]
+                _seed = self._next_seed(_seed, seed)
+                if fill_nulls and len(mode_choice) > 0 and (str(v) == 'nan' or not isinstance(v, (int, float))):
+                    v = int(np.random.choice(mode_choice))
+                if isinstance(v, (int, float)):
+                    v = v * offset if action == 'multiply' else v + offset
+                    _result = round(np.random.normal(loc=v, scale=spread), precision)
+                    if precision == 0:
+                        _result = int(_result)
+                else:
+                    _result = v
+                if isinstance(min_value, (int, float)) and _result < min_value:
+                    if counter < 30:
+                        continue
+                    # Set the result to be the minimum
+                    _result = min_value
+                    counter = 0
+                elif isinstance(max_value, (int, float)) and _result > max_value:
+                    if counter < 30:
+                        continue
+                    # Set the result to be the maximum
+                    _result = max_value
+                    counter = 0
+                rtn_list.append(_result)
+                next_index = True
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str,
+                             day_first: bool=True, quantity: float=None, seed: int=None, save_intent: bool=True,
+                             intent_level: [int, str]=None):
+        """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
+        Note. to use the current value in the passed values as a parameter value pass an empty dict {} as the keys
+        value. If you want the action value to be the current value of the passed value then again pass an empty dict
+        action to be the current value
+            simple correlation list:
+                ['A', 'B', 'C'] # if values is 'A' then action is 0 and so on
+            multiple choice correlation
+                [['A','B'], 'C'] # if values is 'A' OR 'B' then action is 0 and so on
+            actions dictionary where the action is a class method name and kwargs its parameters
+                {0: {'action': '', 'kwargs' : {}}, 1: {'action': '', 'kwargs' : {}}}
+            you can also use the action to specify a specific value:
+                {0: {'action': ''}, 1: {'action': ''}}
+
+        :param values: the category values to map against
+        :param correlations: a list of categories (can also contain lists for multiple correlations.
+        :param actions: the correlated set of categories that should map to the index
+        :param value_type: the type found in the values (options are 'category' ('c'), 'number', or 'datetime'('date'))
+        :param day_first: (optional) if type is date indictes if the day is first. Default to true
+        :param quantity: (optional) a number between 0 and 1 presenting the percentage quantity of the data
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a list of equal length to the one passed
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+        if value_type.lower() not in ['c', 'n', 'd', 'category', 'number', 'datetime', 'date']:
+            raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
+        corr_list = []
+        for corr in correlations:
+            corr_list.append(self.list_formatter(corr))
+        if values is None or len(values) == 0:
+            return list()
+        class_methods = self.__dir__
+
+        rtn_list = []
+        for value_index in range(len(values)):
+            value = values[value_index]
+            _seed = self._next_seed(_seed, seed)
+            corr_index = None
+            for i in range(len(corr_list)):
+                if value_type.lower() in ['number', 'n']:
+                    if not isinstance(value, (float, int)):
+                        break
+                    if len(corr_list[i]) == 1:
+                        [s] = [e] = corr_list[i]
+                    else:
+                        [s, e] = corr_list[i]
+                    if s <= value <= e:
+                        corr_index = i
+                        break
+                elif value_type.lower() in ['date', 'datetime', 'd']:
+                    [s, e] = corr_list[i]
+                    value_date = pd.to_datetime(value, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
+                    s_date = pd.to_datetime(s, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
+                    e_date = pd.to_datetime(e, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
+                    if value_date is pd.NaT or s_date is pd.NaT or e_date is pd.NaT:
+                        break
+                    if s <= value <= e:
+                        corr_index = i
+                        break
+                else:
+                    if value in corr_list[i]:
+                        corr_index = i
+                        break
+            if corr_index is None or actions.get(corr_index) is None:
+                rtn_list.append(value)
+                continue
+            method = actions.get(corr_index).get('action')
+            if method is None:
+                raise ValueError("There is no 'action' key at index [{}]".format(corr_index))
+            if method in class_methods:
+                kwargs = actions.get(corr_index).get('kwargs').copy()
+                for k, v in kwargs.items():
+                    if isinstance(v, dict):
+                        kwargs[k] = value
+                result = eval("self.{}(**{})".format(method, kwargs))
+                if isinstance(result, list):
+                    if len(result) > 0:
+                        rtn_list.append(result.pop())
+                    else:
+                        rtn_list.append(None)
+                else:
+                    rtn_list.append(result)
+            else:
+                if isinstance(method, dict):
+                    method = value
+                rtn_list.append(method)
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def correlate_dates(self, dates: Any, offset: [int, dict]=None, date_format: str=None,
+                        lower_spread: [int, dict]=None, upper_spread: [int, dict]=None, ordered: bool=None,
+                        date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
+                        weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
+                        min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=True,
+                        year_first: bool=False, quantity: float = None, seed: int=None, save_intent: bool=True,
+                        intent_level: [int, str]=None):
+        """ correlates dates to an existing date or list of dates.
+
+        :param dates: the date or set of dates to correlate
+        :param offset:  (optional)and offset to the date. if int then assumed a 'years' offset
+                int or dictionary associated with pd.DateOffset(). eg {'months': 1, 'days': 5}
+        :param lower_spread: (optional) the lower boundary from the relative date. if int then assume 'days' spread
+                int or dictionary associated with pd.DateOffset(). eg {'days': 2}
+        :param upper_spread: (optional) the upper boundary from the relative date. if int then assume 'days' spread
+                int or dictionary associated with pd.DateOffset(). eg {'hours': 7}
+        :param ordered: (optional) if the return list should be date ordered
+        :param date_pattern: (optional) A pattern across the whole date range.
+                If set, is the primary pattern with each subsequent pattern overriding this result
+                If no other pattern is set, this will return a random date based on this pattern
+        :param year_pattern: (optional) adjusts the year selection to this pattern
+        :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
+        :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
+        :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
+        :param minute_pattern: (optional) adjusts the minutes selection to this pattern
+        :param min_date: (optional)a minimum date not to go below
+        :param max_date: (optional)a max date not to go above
+        :param fill_nulls: (optional) if no date values should remain untouched or filled based on the list mode date
+        :param day_first: (optional) if the dates given are day first firmat. Default to True
+        :param year_first: (optional) if the dates given are year first. Default to False
+        :param date_format: (optional) the format of the output
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a list of equal size to that given
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+        fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
+        if date_format is None:
+            date_format = '%d-%m-%YT%H:%M:%S'
+
+        offset = {} if offset is None or not isinstance(offset, (int, dict)) else offset
+        offset = {'years': offset} if isinstance(offset, int) else offset
+        lower_spread = {} if lower_spread is None or not isinstance(lower_spread, (int, dict)) else lower_spread
+        upper_spread = {} if upper_spread is None or not isinstance(upper_spread, (int, dict)) else upper_spread
+        lower_spread = {'days': lower_spread} if isinstance(lower_spread, int) else lower_spread
+        upper_spread = {'days': upper_spread} if isinstance(upper_spread, int) else upper_spread
+
+        def _clean(control):
+            _unit_type = ['years', 'months', 'weeks', 'days', 'leapdays', 'hours', 'minutes', 'seconds']
+            _params = {}
+            if isinstance(control, int):
+                return {'years': control}
+            if isinstance(control, dict):
+                for k, v in control.items():
+                    if k in _unit_type:
+                        _params[k] = v
+            return _params
+
+        _min_date = pd.to_datetime(min_date, errors='coerce', infer_datetime_format=True,
+                                   dayfirst=day_first, yearfirst=year_first)
+        if _min_date is None or _min_date is pd.NaT:
+            _min_date = pd.Timestamp.min
+
+        _max_date = pd.to_datetime(max_date, errors='coerce', infer_datetime_format=True,
+                                   dayfirst=day_first, yearfirst=year_first)
+        if _max_date is None or _max_date is pd.NaT:
+            _max_date = pd.Timestamp.max
+
+        if _min_date >= _max_date:
+            raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
+
+        dates = self.list_formatter(dates)
+        if dates is None or len(dates) == 0:
+            return list()
+        mode_choice = self._mode_choice(dates) if fill_nulls else list()
+        rtn_list = []
+        for d in dates:
+            _seed = self._next_seed(_seed, seed)
+            if fill_nulls and len(mode_choice) > 0 and not isinstance(d, str):
+                d = int(np.random.choice(mode_choice))
+            _control_date = pd.to_datetime(d, errors='coerce', infer_datetime_format=True,
+                                           dayfirst=day_first, yearfirst=year_first)
+            if isinstance(_control_date, pd.Timestamp):
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+                    _offset_date = _control_date + pd.DateOffset(**_clean(offset))
+                if _max_date <= _offset_date <= _min_date:
+                    err_date = _offset_date.strftime(date_format)
+                    raise ValueError(
+                        "The offset_date {} is does not fall between the min and max dates".format(err_date))
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+                    _upper_spread_date = _offset_date + pd.DateOffset(**_clean(upper_spread))
+                    _lower_spread_date = _offset_date - pd.DateOffset(**_clean(lower_spread))
+                _result = None
+                counter = 0
+                while not _result:
+                    counter += 1
+                    sample_list = self.get_datetime_pattern(start=_lower_spread_date, until=_upper_spread_date,
+                                                            ordered=ordered, date_pattern=date_pattern,
+                                                            year_pattern=year_pattern, month_pattern=month_pattern,
+                                                            weekday_pattern=weekday_pattern, hour_pattern=hour_pattern,
+                                                            minute_pattern=minute_pattern, seed=_seed)
+                    _sample_date = sample_list[0]
+                    if _sample_date is None or _sample_date is pd.NaT:
+                        raise ValueError("Unable to generate a random datetime, {} returned".format(sample_list))
+                    if not _min_date <= _sample_date <= _max_date:
+                        if counter < 30:
+                            _result = None
+                            continue
+                        if _sample_date < _min_date:
+                            _sample_date = _min_date
+                        if _sample_date > _max_date:
+                            _sample_date = _max_date
+                    _result = _sample_date.strftime(date_format) if isinstance(date_format, str) else _sample_date
+            else:
+                _result = d
+            rtn_list.append(_result)
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
+                        quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None):
+        """ returns a list of unique identifiers randomly selected between the from_value and to_value
+
+        :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
+        :param to_value: optional, (signed) integer to end from.
+        :param size: the size of the sample. Must be smaller than the range
+        :param prefix: a prefix to the number . Default to nothing
+        :param suffix: a suffix to the number. default to nothing
+        :param quantity: a number between 0 and 1 preresenting the percentage quantity of the data
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a unique identifer randomly selected from the range
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        if prefix is None:
+            prefix = ''
+        if suffix is None:
+            suffix = ''
+        rtn_list = []
+        for i in self.get_number(from_value=from_value, to_value=to_value, at_most=1, size=size, precision=0,
+                                 seed=seed):
+            rtn_list.append("{}{}{}".format(prefix, i, suffix))
+        return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     """
         PRIVATE METHODS SECTION
@@ -449,7 +1326,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             with threading.Lock():
                 df = deepcopy(df)
         obj_cols = SyntheticIntentModel._filter_headers(df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
-                                                    regex=regex, re_ignore_case=re_ignore_case)
+                                                        regex=regex, re_ignore_case=re_ignore_case)
         return df.loc[:, obj_cols]
 
     @staticmethod
@@ -457,8 +1334,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         values = pd.to_datetime(dates, errors='coerce', infer_datetime_format=True, dayfirst=day_first,
                                 yearfirst=year_first)
         return mdates.date2num(pd.Series(values)).tolist()
-
-
 
     @staticmethod
     def _convert_value2date(values: Any, date_format: str = None):
@@ -470,7 +1345,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             dates.append(date)
         return dates
 
-    def _date_choice(self, start: pd.Timestamp, until: pd.Timestamp, weight_pattern: list, limits: str=None, seed: int=None):
+    def _date_choice(self, start: pd.Timestamp, until: pd.Timestamp, weight_pattern: list, limits: str=None,
+                     seed: int=None):
         """ Utility method to choose a random date between two dates based on a pattern.
 
         :param start: the start boundary
