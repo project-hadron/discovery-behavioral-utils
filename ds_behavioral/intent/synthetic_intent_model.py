@@ -694,6 +694,113 @@ class SyntheticIntentModel(AbstractIntentModel):
         df = df.iloc[:size]
         return self._filter_columns(df, headers=labels)
 
+    def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
+                        quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None):
+        """ returns a list of unique identifiers randomly selected between the from_value and to_value
+
+        :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
+        :param to_value: optional, (signed) integer to end from.
+        :param size: the size of the sample. Must be smaller than the range
+        :param prefix: a prefix to the number . Default to nothing
+        :param suffix: a suffix to the number. default to nothing
+        :param quantity: a number between 0 and 1 preresenting the percentage quantity of the data
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a unique identifer randomly selected from the range
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        if prefix is None:
+            prefix = ''
+        if suffix is None:
+            suffix = ''
+        rtn_list = []
+        for i in self.get_number(from_value=from_value, to_value=to_value, at_most=1, size=size, precision=0,
+                                 seed=seed):
+            rtn_list.append("{}{}{}".format(prefix, i, suffix))
+        return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
+
+    def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, 
+                           quantity: [float, int]=None, size: int=None, seed: int=None, save_intent: bool=True, 
+                           intent_level: [int, str]=None) -> list:
+        """ Returns the pattern with the tags substituted by tag choice
+            example ta dictionary:
+                { '<slogan>': {'action': '', 'kwargs': {}},
+                  '<phone>': {'action': '', 'kwargs': {}}
+                }
+            where action is a self method name and kwargs are the arguments to pass
+            for sample data use get_custom
+
+        :param pattern: a string or list of strings to apply the ta substitution too
+        :param tags: a dictionary of tas and actions
+        :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param quantity: a number between 0 and 1 representing the percentage quantity of the data
+        :param size: an optional size of the return. default to 1
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a list of patterns with tas replaced
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+        pattern = self.list_formatter(pattern)
+        if not isinstance(tags, dict):
+            raise ValueError("The 'tags' parameter must be a dictionary")
+        class_methods = self.__dir__
+
+        rtn_list = []
+        for _ in range(size):
+            _seed = self._next_seed(_seed, seed)
+            choice = self.get_category(pattern, weight_pattern=weight_pattern, seed=_seed, size=1)[0]
+            for tag, action in tags.items():
+                method = action.get('action')
+                if method in class_methods:
+                    kwargs = action.get('kwargs')
+                    result = eval("self.{}(**{})".format(method, kwargs))[0]
+                else:
+                    result = method
+                choice = re.sub(tag, str(result), str(choice))
+            rtn_list.append(choice)
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
+    def get_custom(self, code_str: str, quantity: float=None, size: int=None, seed: int=None, save_intent: bool=True, 
+                   intent_level: [int, str]=None, **kwargs) -> list:
+        """returns a number based on the random func. The code should generate a value per line
+        example:
+            code_str = 'round(np.random.normal(loc=loc, scale=scale), 3)'
+            fbt.get_custom(code_str, loc=0.4, scale=0.1)
+
+        :param code_str: an evaluable code as a string
+        :param quantity: (optional) a number between 0 and 1 representing data that isn't null
+        :param size: (optional) the size of the sample
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :return: a random value based on function called
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   level=intent_level, save_intent=save_intent)
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+
+        rtn_list = []
+        for _ in range(size):
+            _seed = self._next_seed(_seed, seed)
+            local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
+            rtn_list.append(eval(code_str, globals(), local_kwargs))
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
     def associate_analysis(self, analysis_dict: dict, size: int=None, seed: int=None, save_intent: bool=True,
                            intent_level: [int, str]=None) -> dict:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
@@ -1218,37 +1325,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                 _result = d
             rtn_list.append(_result)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
-
-    def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
-                        quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None):
-        """ returns a list of unique identifiers randomly selected between the from_value and to_value
-
-        :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
-        :param to_value: optional, (signed) integer to end from.
-        :param size: the size of the sample. Must be smaller than the range
-        :param prefix: a prefix to the number . Default to nothing
-        :param suffix: a suffix to the number. default to nothing
-        :param quantity: a number between 0 and 1 preresenting the percentage quantity of the data
-        :param seed: a seed value for the random function: default to None
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param intent_level: (optional) a level to place the intent
-        :return: a unique identifer randomly selected from the range
-        """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
-        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
-        quantity = self._quantity(quantity)
-        size = 1 if size is None else size
-        if prefix is None:
-            prefix = ''
-        if suffix is None:
-            suffix = ''
-        rtn_list = []
-        for i in self.get_number(from_value=from_value, to_value=to_value, at_most=1, size=size, precision=0,
-                                 seed=seed):
-            rtn_list.append("{}{}{}".format(prefix, i, suffix))
-        return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     """
         PRIVATE METHODS SECTION
