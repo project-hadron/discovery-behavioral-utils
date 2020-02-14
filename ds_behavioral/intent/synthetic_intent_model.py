@@ -7,10 +7,10 @@ import warnings
 from collections import Counter
 from copy import deepcopy
 from typing import Any, List
-
-from ds_discovery.transition.discovery import DataAnalytics
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
+
+from ds_discovery.transition.discovery import DataAnalytics
 from ds_foundation.intent.abstract_intent import AbstractIntentModel
 from ds_foundation.properties.abstract_properties import AbstractPropertyManager
 from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
@@ -32,14 +32,31 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param default_save_intent: (optional) The default action for saving intent in the property manager
         :param intent_next_available: (optional) if the default level should be set to next available level or zero
         """
+        # set all the defaults
         default_save_intent = default_save_intent if isinstance(default_save_intent, bool) else True
-        intent_param_exclude = ['df']
+        default_intent_level = -1 if isinstance(intent_next_available, bool) and intent_next_available else 0
+        intent_param_exclude = ['inplace', 'canonical', 'canonical_left', 'canonical_right']
         super().__init__(property_manager=property_manager, intent_param_exclude=intent_param_exclude,
-                         default_save_intent=default_save_intent)
-        # globals
-        self._default_intent_level = -1 if isinstance(intent_next_available, bool) and intent_next_available else 0
+                         default_save_intent=default_save_intent, default_intent_level=default_intent_level)
 
-    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
+    def run_intent_pipeline(self, canonical, intent_level: [int, str, list]=None, **kwargs):
+        # TODO Complete the run pattern
+        # test if there is any intent to run
+        if self._pm.has_intent():
+            # get the list of levels to run
+            if isinstance(intent_level, (int, str, list)):
+                intent_level = self._pm.list_formatter(intent_level)
+            else:
+                intent_level = sorted(self._pm.get_intent().keys())
+            for level in intent_level:
+                for method, params in self._pm.get_intent(level=level).items():
+                    if method in self.__dir__():
+                        if isinstance(kwargs, dict):
+                            params.update(kwargs)
+                        canonical = eval(f"self.{method}(canonical, save_intent=False, **{params})")
+        return canonical
+
+    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, label: str=None,
                    offset: int=None, precision: int=None, currency: str=None, bounded_weighting: bool=True,
                    at_most: int=None, dominant_values: [float, list]=None, dominant_percent: float=None,
                    dominance_weighting: list=None, size: int = None, quantity: float=None, seed: int=None,
@@ -66,7 +83,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         # intent code
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         at_most = 0 if not isinstance(at_most, int) else at_most
@@ -205,7 +222,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         # intent code
         if not isinstance(selection, list) or len(selection) == 0:
             return [None]*size
@@ -217,7 +234,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
-    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, at_most: int=None,  date_format: str=None,
+    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, label: str=None, at_most: int=None,  date_format: str=None,
                      as_num: bool=False, ignore_time: bool=False, size: int=None, quantity: float=None, seed: int=None,
                      day_first: bool=False, year_first: bool=False, save_intent: bool=True,
                      intent_level: [int, str]=None) -> list:
@@ -247,13 +264,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         :return: a date or size of dates in the format given.
          """
         # intent persist options
-        if not isinstance(save_intent, bool):
-            save_intent = self._default_save_intent
-        if save_intent:
-            intent_level = intent_level if isinstance(intent_level, (int, str)) else 0
-            _intent_method = inspect.currentframe().f_code.co_name
-            self._set_intend_signature(self._intent_builder(method=_intent_method, params=locals()), level=intent_level,
-                                       save_intent=save_intent)
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   intent_level=intent_level, save_intent=save_intent)
         # intent code
         as_num = False if not isinstance(as_num, bool) else as_num
         ignore_time = False if not isinstance(ignore_time, bool) else ignore_time
@@ -277,7 +290,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 rtn_list = pd.Series(rtn_list).dt.strftime(date_format).tolist()
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_datetime_pattern(self, start: Any, until: Any, default: Any = None, ordered: bool=None,
+    def get_datetime_pattern(self, start: Any, until: Any, label: str=None, default: Any = None, ordered: bool=None,
                              date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
                              weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
                              quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
@@ -316,7 +329,7 @@ class SyntheticIntentModel(AbstractIntentModel):
          """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         ordered = False if not isinstance(ordered, bool) else ordered
         if start is None or until is None:
             raise ValueError("The start or until parameters cannot be of NoneType")
@@ -442,7 +455,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = rtn_dates
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_intervals(self, intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
+    def get_intervals(self, intervals: list, weight_pattern: list=None, label: str=None, precision: int=None, currency: str=None,
                       size: int=None, quantity: float=None, seed: int=None, save_intent: bool=True,
                       intent_level: [int, str]=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
@@ -460,7 +473,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         # intent code
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -498,7 +511,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_distribution(self, method: str=None, offset: float=None, precision: int=None, size: int=None,
+    def get_distribution(self, label: str=None, method: str=None, offset: float=None, precision: int=None, size: int=None,
                          quantity: float=None, seed: int=None, save_intent: bool=True,
                          intent_level: [int, str]=None, **kwargs) -> list:
         """returns a number based the distribution type. Supports Normal, Beta and
@@ -516,7 +529,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         # intent code
         offset = 1 if offset is None or not isinstance(offset, (float, int)) else offset
         quantity = self._quantity(quantity)
@@ -532,7 +545,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(round(eval(func) * offset, precision))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_string_pattern(self, pattern: str, choices: dict=None, quantity: [float, int]=None, size: int=None,
+    def get_string_pattern(self, pattern: str, label: str=None, choices: dict=None, quantity: [float, int]=None, size: int=None,
                            choice_only: bool=None, seed: int=None, save_intent: bool=True,
                            intent_level: [int, str]=None) -> list:
         """ Returns a random string based on the pattern given. The pattern is made up from the choices passed but
@@ -561,7 +574,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         choice_only = False if choice_only is None or not isinstance(choice_only, bool) else choice_only
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -593,7 +606,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = [i + j for i, j in zip(rtn_list, result)] if len(rtn_list) > 0 else result
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_from(self, values: Any, weight_pattern: list=None, selection_size: int=None, sample_size: int=None,
+    def get_from(self, values: Any, weight_pattern: list=None, label: str=None, selection_size: int=None, sample_size: int=None,
                  size: int=None, at_most: bool=None, shuffled: bool=True, quantity: float=None, seed: int=None,
                  save_intent: bool=True, intent_level: [int, str]=None) -> list:
         """ returns a random list of values where the selection of those values is taken from the values passed.
@@ -613,7 +626,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         _values = pd.Series(values).iloc[:sample_size]
@@ -624,7 +637,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed)
 
-    def get_profiles(self, size: int=None, dominance: float=None, include_id: bool=False, seed: int=None,
+    def get_profiles(self, label: str=None, size: int=None, dominance: float=None, include_id: bool=False, seed: int=None,
                      save_intent: bool=True, intent_level: [int, str]=None) -> pd.DataFrame:
         """ returns a DataFrame of forename, surname and gender with first names matching gender.
 
@@ -638,7 +651,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         dominance = dominance if isinstance(dominance, float) and 0 <= dominance <= 1 else 0.5
         include_id = include_id if isinstance(include_id, bool) else False
         size = 1 if size is None else size
@@ -656,13 +669,13 @@ class SyntheticIntentModel(AbstractIntentModel):
             df['profile_id'] = self.get_number(size*10, (size*100)-1, at_most=1, size=size)
         return df.sample(frac=1).reset_index(drop=True)
 
-    def get_file_column(self, labels: [str, list], connector_contract: ConnectorContract, size: int=None,
+    def get_file_column(self, headers: [str, list], connector_contract: ConnectorContract, label: str=None, size: int=None,
                         randomize: bool=None, seed: int=None, save_intent: bool=True,
                         intent_level: [int, str]=None) -> [pd.DataFrame, list]:
         """ gets a column or columns of data from a CSV file returning them as a Series or DataFrame
         column is requested
 
-        :param labels: the header labels to extract
+        :param headers: the header labels to extract
         :param connector_contract: the connector contract for the data to upload
         :param size: (optional) the size of the sample to retrieve, if None then it assumes all
         :param randomize: (optional) if the selection should be randomised. Default is False
@@ -673,18 +686,18 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         if not isinstance(connector_contract, ConnectorContract):
             raise TypeError("The connector_contract must be a ConnectorContract instance")
         _seed = self._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
-        labels = self.list_formatter(labels)
+        headers = self.list_formatter(headers)
         df = HandlerFactory.instantiate(connector_contract).load_canonical()
         if isinstance(df, dict):
             df = pd.DataFrame(df)
         if randomize:
             df = df.sample(frac=1, random_state=_seed).reset_index(drop=True)
-        for label in labels:
+        for label in headers:
             if label not in df.columns:
                 raise NameError("The label '{}' could not be found in the file".format(label))
         if not isinstance(size, int):
@@ -692,9 +705,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         if df.shape[1] == 1:
             return list(df.iloc[:size, 0])
         df = df.iloc[:size]
-        return self._filter_columns(df, headers=labels)
+        return self._filter_columns(df, headers=headers)
 
-    def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
+    def get_identifiers(self, from_value: int, to_value: int=None, label: str=None, size: int=None, prefix: str=None, suffix: str=None,
                         quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None):
         """ returns a list of unique identifiers randomly selected between the from_value and to_value
 
@@ -709,9 +722,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param intent_level: (optional) a level to place the intent
         :return: a unique identifer randomly selected from the range
         """
-        # intent persist options
+        # resolve intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
+        # intend code block on the canonical
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -725,7 +739,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append("{}{}{}".format(prefix, i, suffix))
         return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
-    def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, 
+    def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, label: str=None,
                            quantity: [float, int]=None, size: int=None, seed: int=None, save_intent: bool=True, 
                            intent_level: [int, str]=None) -> list:
         """ Returns the pattern with the tags substituted by tag choice
@@ -748,7 +762,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
@@ -772,7 +786,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(choice)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_custom(self, code_str: str, quantity: float=None, size: int=None, seed: int=None, save_intent: bool=True, 
+    def get_custom(self, code_str: str, label: str=None, quantity: float=None, size: int=None, seed: int=None, save_intent: bool=True,
                    intent_level: [int, str]=None, **kwargs) -> list:
         """returns a number based on the random func. The code should generate a value per line
         example:
@@ -789,7 +803,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
@@ -801,7 +815,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_analysis(self, analysis_dict: dict, size: int=None, seed: int=None, save_intent: bool=True,
+    def associate_analysis(self, analysis_dict: dict, label: str=None, size: int=None, seed: int=None, save_intent: bool=True,
                            intent_level: [int, str]=None) -> dict:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
@@ -817,13 +831,13 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
 
         def get_level(analysis: dict, sample_size: int):
             for label, values in analysis.items():
                 if row_dict.get(label) is None:
                     row_dict[label] = list()
-                _analysis = DataAnalytics(label, values.get('analysis', {}))
+                _analysis = DataAnalytics(label=label, analysis=values.get('analysis', {}))
                 if str(_analysis.dtype).startswith('cat'):
                     row_dict[label] += self.get_category(selection=_analysis.selection,
                                                          weight_pattern=_analysis.weight_pattern,
@@ -863,7 +877,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             row_dict[key] = row_dict[key][:size]
         return row_dict
 
-    def associate_dataset(self, dataset: Any, associations: list, actions: dict, default_value: Any=None,
+    def associate_dataset(self, dataset: Any, associations: list, actions: dict, label: str=None, default_value: Any=None,
                           default_header: str=None, day_first: bool=True, quantity:  float=None, seed: int=None,
                           save_intent: bool=True, intent_level: [int, str]=None):
         """ Associates a a -set of criteria of an input values to a set of actions
@@ -907,7 +921,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
 
@@ -1003,7 +1017,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     rtn_list.append(method)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_custom(self, df: pd.DataFrame, code_str: str, use_exec: bool=False, save_intent: bool=True,
+    def associate_custom(self, df: pd.DataFrame, code_str: str, label: str=None, use_exec: bool=False, save_intent: bool=True,
                          intent_level: [int, str]=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
@@ -1019,7 +1033,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
         if 'df' not in local_kwargs:
             local_kwargs['df'] = df
@@ -1029,7 +1043,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             return df
         return result
 
-    def correlate_numbers(self, values: Any, spread: float=None, offset: float=None, action: str=None,
+    def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None, action: str=None,
                           precision: int=None, fill_nulls: bool=None, quantity: float=None, seed: int=None,
                           keep_zero: bool=None, min_value: [int, float]= None, max_value: [int, float]= None,
                           save_intent: bool=True, intent_level: [int, str]=None):
@@ -1053,7 +1067,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         offset = 0.0 if offset is None else offset
         spread = 0.0 if spread is None else spread
         precision = 3 if precision is None else precision
@@ -1104,7 +1118,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 next_index = True
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str,
+    def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str, label: str=None,
                              day_first: bool=True, quantity: float=None, seed: int=None, save_intent: bool=True,
                              intent_level: [int, str]=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
@@ -1133,7 +1147,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         if value_type.lower() not in ['c', 'n', 'd', 'category', 'number', 'datetime', 'date']:
@@ -1200,7 +1214,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 rtn_list.append(method)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def correlate_dates(self, dates: Any, offset: [int, dict]=None, date_format: str=None,
+    def correlate_dates(self, dates: Any, label: str=None, offset: [int, dict]=None, date_format: str=None,
                         lower_spread: [int, dict]=None, upper_spread: [int, dict]=None, ordered: bool=None,
                         date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
                         weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
@@ -1239,7 +1253,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls

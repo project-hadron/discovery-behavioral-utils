@@ -808,7 +808,7 @@ class DataBuilderTools(object):
             for label, values in analysis.items():
                 if row_dict.get(label) is None:
                     row_dict[label] = list()
-                _analysis = DataAnalytics(label, values.get('analysis', {}))
+                _analysis = DataAnalytics(label=label, analysis=values.get('analysis', {}))
                 if str(_analysis.dtype).startswith('cat'):
                     row_dict[label] += tools.get_category(selection=_analysis.selection,
                                                           weight_pattern=_analysis.weight_pattern,
