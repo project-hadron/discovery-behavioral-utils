@@ -1074,7 +1074,7 @@ class DataBuilderTools(object):
                 next_index = True
         return DataBuilderTools._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    @ staticmethod
+    @staticmethod
     def correlate_categories(values: Any, correlations: list, actions: dict, value_type: str,
                              day_first: bool = True, quantity:  float=None, seed: int=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.

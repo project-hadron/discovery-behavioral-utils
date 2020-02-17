@@ -21,31 +21,45 @@ __author__ = 'Darryl Oatridge'
 
 class SyntheticIntentModel(AbstractIntentModel):
 
-    def __init__(self, property_manager: AbstractPropertyManager, default_save_intent: bool=True,
-                 intent_next_available: bool=False):
-        """initialisation of the Intent class. The 'intent_param_exclude' is used to exclude commonly used method
-         parameters from being included in the intent contract, this is particularly useful if passing a canonical, or
-         non relevant parameters to an intent method pattern. Any named parameter in the intent_param_exclude list
-         will not be included in the recorded intent contract for that method
+    def __init__(self, property_manager: AbstractPropertyManager, default_save_intent: bool=None,
+                 intent_next_available: bool=None, default_replace_intent: bool=None, intent_type_additions: list=None):
+        """initialisation of the Intent class.
 
         :param property_manager: the property manager class that references the intent contract.
         :param default_save_intent: (optional) The default action for saving intent in the property manager
         :param intent_next_available: (optional) if the default level should be set to next available level or zero
+        :param default_replace_intent: (optional) the default replace strategy for the same intent found at that level
+        :param intent_type_additions: (optional) if additional data types need to be supported as an intent param
         """
         # set all the defaults
+        default_replace_intent = default_replace_intent if isinstance(default_replace_intent, bool) else True
         default_save_intent = default_save_intent if isinstance(default_save_intent, bool) else True
         default_intent_level = -1 if isinstance(intent_next_available, bool) and intent_next_available else 0
         intent_param_exclude = ['inplace', 'canonical', 'canonical_left', 'canonical_right']
+        intent_type_additions = intent_type_additions if isinstance(intent_type_additions, list) else list()
+        intent_type_additions += [np.int8, np.int16, np.int32, np.int64, np.float32, np.float64]
         super().__init__(property_manager=property_manager, intent_param_exclude=intent_param_exclude,
-                         default_save_intent=default_save_intent, default_intent_level=default_intent_level)
+                         default_save_intent=default_save_intent, default_intent_level=default_intent_level,
+                         default_replace_intent=default_replace_intent, intent_type_additions=intent_type_additions)
 
-    def run_intent_pipeline(self, canonical, intent_level: [int, str, list]=None, **kwargs):
-        # TODO Complete the run pattern
+    def run_intent_pipeline(self, run_book: [int, str, list]=None, **kwargs) -> pd.DataFrame:
+        """Collectively runs all parameterised intent taken from the property manager against the code base as
+        defined by the intent_contract.
+
+        :param run_book: a single or list of intent_level to run, if list, run in order given
+        :param kwargs: additional parameters to pass beyond the contracted parameters
+        :return: a pandas dataframe
+        """
+        df = pd.DataFrame()
         # test if there is any intent to run
         if self._pm.has_intent():
+            # default labels
+            label_letter = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            label_number = 1
+            letter_counter = 0
             # get the list of levels to run
-            if isinstance(intent_level, (int, str, list)):
-                intent_level = self._pm.list_formatter(intent_level)
+            if isinstance(run_book, (int, str, list)):
+                intent_level = self._pm.list_formatter(run_book)
             else:
                 intent_level = sorted(self._pm.get_intent().keys())
             for level in intent_level:
@@ -53,19 +67,31 @@ class SyntheticIntentModel(AbstractIntentModel):
                     if method in self.__dir__():
                         if isinstance(kwargs, dict):
                             params.update(kwargs)
-                        canonical = eval(f"self.{method}(canonical, save_intent=False, **{params})")
-        return canonical
+                        label = params.pop('label', None)
+                        if label is None:
+                            label = f"{label_letter[letter_counter]}{str(label_number)}"
+                            letter_counter += 1
+                            if letter_counter == len(label_letter):
+                                letter_counter = 0
+                                label_number += 1
+                        result = eval(f"self.{method}(save_intent=False, **{params})")
+                        if str(method).startswith('create_'):
+                            df = pd.concat([df, result], axis=1)
+                        else:
+                            df[label] = result
+        return df
 
-    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None, label: str=None,
-                   offset: int=None, precision: int=None, currency: str=None, bounded_weighting: bool=True,
-                   at_most: int=None, dominant_values: [float, list]=None, dominant_percent: float=None,
-                   dominance_weighting: list=None, size: int = None, quantity: float=None, seed: int=None,
-                   save_intent: bool=True, intent_level: [int, str]=None) -> list:
+    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
+                   label: str=None, offset: int=None, precision: int=None, currency: str=None,
+                   bounded_weighting: bool=True, at_most: int=None, dominant_values: [float, list]=None,
+                   dominant_percent: float=None, dominance_weighting: list=None, size: int = None, quantity: float=None,
+                   seed: int=None, save_intent: bool=None, intent_level: [int, str]=None) -> list:
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
         :param to_value: optional, (signed) integer to end from.
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
+        :param label: a unique name to use as a label for this column
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param offset: an offset multiplier, if None then assume 1
         :param currency: a currency symbol to prefix the value with. returns string with commas
@@ -203,14 +229,15 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_category(self, selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
-                     bounded_weighting: bool=None, at_most: int=None, seed: int=None, save_intent: bool=True,
-                     intent_level: [int, str]=None) -> list:
+    def get_category(self, selection: list, weight_pattern: list=None, label: str=None, quantity: float=None,
+                     size: int=None, bounded_weighting: bool=None, at_most: int=None, seed: int=None,
+                     save_intent: bool=None, intent_level: [int, str]=None) -> list:
         """ returns a category from a list. Of particular not is the at_least parameter that allows you to
         control the number of times a selection can be chosen.
 
         :param selection: a list of items to select from
         :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param label: a unique name to use as a label for this column
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param size: an optional size of the return. default to 1
         :param at_most: the most times a selection should be chosen
@@ -234,10 +261,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
-    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, label: str=None, at_most: int=None,  date_format: str=None,
-                     as_num: bool=False, ignore_time: bool=False, size: int=None, quantity: float=None, seed: int=None,
-                     day_first: bool=False, year_first: bool=False, save_intent: bool=True,
-                     intent_level: [int, str]=None) -> list:
+    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, label: str=None, at_most: int=None,
+                     date_format: str=None, as_num: bool=None, ignore_time: bool=None, size: int=None,
+                     quantity: float=None, seed: int=None, day_first: bool=None, year_first: bool=None,
+                     save_intent: bool=None, intent_level: [int, str]=None) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -247,6 +274,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
         :param quantity: the quantity of values that are not null. Number between 0 and 1
         :param weight_pattern: (optional) A pattern across the whole date range.
+        :param label: a unique name to use as a label for this column
         :param at_most: the most times a selection should be chosen
         :param ignore_time: ignore time elements and only select from Year, Month, Day elements. Default is False
         :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
@@ -294,7 +322,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                              date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
                              weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
                              quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
-                             day_first: bool = True, year_first: bool = False, save_intent: bool=True,
+                             day_first: bool = True, year_first: bool = False, save_intent: bool=None,
                              intent_level: [int, str]=None) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
@@ -304,6 +332,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
         :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
         :param default: (optional) a fixed starting date that patterns are applied too.
+        :param label: a unique name to use as a label for this column
         :param ordered: (optional) if the return list should be date ordered
         :param date_pattern: (optional) A pattern across the whole date range.
                 If set, is the primary pattern with each subsequent pattern overriding this result
@@ -358,7 +387,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 # reset the starting base
             _dt_default = _dt_base
             if not isinstance(_dt_default, pd.Timestamp):
-                _dt_default = np.random.random() * (_dt_until - _dt_start) + _dt_start
+                _dt_default = np.random.random() * (_dt_until - _dt_start) + pd.to_timedelta(_dt_start)
             # ### date ###
             if date_pattern is not None:
                 _dp_start = self._convert_date2value(_dt_start)[0]
@@ -455,13 +484,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = rtn_dates
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_intervals(self, intervals: list, weight_pattern: list=None, label: str=None, precision: int=None, currency: str=None,
-                      size: int=None, quantity: float=None, seed: int=None, save_intent: bool=True,
+    def get_intervals(self, intervals: list, weight_pattern: list=None, label: str=None, precision: int=None,
+                      currency: str=None, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                       intent_level: [int, str]=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
 
         :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
+        :param label: a unique name to use as a label for this column
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param size: the size of the sample
@@ -511,11 +541,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_distribution(self, label: str=None, method: str=None, offset: float=None, precision: int=None, size: int=None,
-                         quantity: float=None, seed: int=None, save_intent: bool=True,
+    def get_distribution(self, label: str=None, method: str=None, offset: float=None, precision: int=None,
+                         size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                          intent_level: [int, str]=None, **kwargs) -> list:
         """returns a number based the distribution type. Supports Normal, Beta and
 
+        :param label: a unique name to use as a label for this column
         :param method: any method name under np.random. Default is 'normal'
         :param offset: a value to offset the number by. n * offset
         :param precision: the precision of the returned number
@@ -545,8 +576,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(round(eval(func) * offset, precision))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_string_pattern(self, pattern: str, label: str=None, choices: dict=None, quantity: [float, int]=None, size: int=None,
-                           choice_only: bool=None, seed: int=None, save_intent: bool=True,
+    def get_string_pattern(self, pattern: str, label: str=None, choices: dict=None, quantity: [float, int]=None,
+                           size: int=None, choice_only: bool=None, seed: int=None, save_intent: bool=None,
                            intent_level: [int, str]=None) -> list:
         """ Returns a random string based on the pattern given. The pattern is made up from the choices passed but
             by default is as follows:
@@ -563,6 +594,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             to create your own choices pass a dictionary with a reference char key with a list of choices as a value
 
         :param pattern: the pattern to create the string from
+        :param label: a unique name to use as a label for this column
         :param choices: an optional dictionary of list of choices to replace the default.
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param size: the size of the return list. if None returns a single value
@@ -606,13 +638,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = [i + j for i, j in zip(rtn_list, result)] if len(rtn_list) > 0 else result
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_from(self, values: Any, weight_pattern: list=None, label: str=None, selection_size: int=None, sample_size: int=None,
-                 size: int=None, at_most: bool=None, shuffled: bool=True, quantity: float=None, seed: int=None,
-                 save_intent: bool=True, intent_level: [int, str]=None) -> list:
+    def get_from(self, values: Any, weight_pattern: list=None, label: str=None, selection_size: int=None,
+                 sample_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=None, quantity: float=None,
+                 seed: int=None, save_intent: bool=None, intent_level: [int, str]=None) -> list:
         """ returns a random list of values where the selection of those values is taken from the values passed.
 
         :param values: the reference values to select from
         :param weight_pattern: (optional) a weighting pattern of the final selection
+        :param label: a unique name to use as a label for this column
         :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
         :param sample_size: (optional) the size of the sample to take from the reference file
         :param at_most: (optional) the most times a selection should be chosen
@@ -630,16 +663,17 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         _values = pd.Series(values).iloc[:sample_size]
-        if shuffled:
+        if isinstance(selection_size, bool) and shuffled:
             _values = _values.sample(frac=1).reset_index(drop=True)
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed)
 
-    def get_profiles(self, label: str=None, size: int=None, dominance: float=None, include_id: bool=False, seed: int=None,
-                     save_intent: bool=True, intent_level: [int, str]=None) -> pd.DataFrame:
-        """ returns a DataFrame of forename, surname and gender with first names matching gender.
+    def create_profiles(self, size: int=None, dominance: float=None, include_id: bool=None, seed: int=None,
+                        save_intent: bool=None, intent_level: [int, str]=None) -> pd.DataFrame:
+        """ returns a DataFrame of forename, middle initials, surname and gender with first names matching gender.
+        In addition the the gender can be weighted by specifying a male dominance.
 
         :param size: the size of the sample, if None then set to 1
         :param dominance: (optional) the dominant_percent of 'Male' as a value between 0 and 1. if None then just random
@@ -669,14 +703,15 @@ class SyntheticIntentModel(AbstractIntentModel):
             df['profile_id'] = self.get_number(size*10, (size*100)-1, at_most=1, size=size)
         return df.sample(frac=1).reset_index(drop=True)
 
-    def get_file_column(self, headers: [str, list], connector_contract: ConnectorContract, label: str=None, size: int=None,
-                        randomize: bool=None, seed: int=None, save_intent: bool=True,
+    def get_file_column(self, headers: [str, list], connector_contract: ConnectorContract, label: str=None,
+                        size: int=None, randomize: bool=None, seed: int=None, save_intent: bool=None,
                         intent_level: [int, str]=None) -> [pd.DataFrame, list]:
         """ gets a column or columns of data from a CSV file returning them as a Series or DataFrame
         column is requested
 
         :param headers: the header labels to extract
         :param connector_contract: the connector contract for the data to upload
+        :param label: a unique name to use as a label for this column
         :param size: (optional) the size of the sample to retrieve, if None then it assumes all
         :param randomize: (optional) if the selection should be randomised. Default is False
         :param seed: (optional) a seed value for the random function: default to None
@@ -707,12 +742,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         df = df.iloc[:size]
         return self._filter_columns(df, headers=headers)
 
-    def get_identifiers(self, from_value: int, to_value: int=None, label: str=None, size: int=None, prefix: str=None, suffix: str=None,
-                        quantity: float=None, seed: int=None, save_intent: bool=True, intent_level: [int, str]=None):
+    def get_identifiers(self, from_value: int, to_value: int=None, label: str=None, size: int=None, prefix: str=None,
+                        suffix: str=None, quantity: float=None, seed: int=None, save_intent: bool=None,
+                        intent_level: [int, str]=None):
         """ returns a list of unique identifiers randomly selected between the from_value and to_value
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
         :param to_value: optional, (signed) integer to end from.
+        :param label: a unique name to use as a label for this column
         :param size: the size of the sample. Must be smaller than the range
         :param prefix: a prefix to the number . Default to nothing
         :param suffix: a suffix to the number. default to nothing
@@ -740,7 +777,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, label: str=None,
-                           quantity: [float, int]=None, size: int=None, seed: int=None, save_intent: bool=True, 
+                           quantity: [float, int]=None, size: int=None, seed: int=None, save_intent: bool=None, 
                            intent_level: [int, str]=None) -> list:
         """ Returns the pattern with the tags substituted by tag choice
             example ta dictionary:
@@ -753,6 +790,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param pattern: a string or list of strings to apply the ta substitution too
         :param tags: a dictionary of tas and actions
         :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param label: a unique name to use as a label for this column
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param size: an optional size of the return. default to 1
         :param seed: a seed value for the random function: default to None
@@ -786,14 +824,15 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(choice)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_custom(self, code_str: str, label: str=None, quantity: float=None, size: int=None, seed: int=None, save_intent: bool=True,
-                   intent_level: [int, str]=None, **kwargs) -> list:
+    def get_custom(self, code_str: str, label: str=None, quantity: float=None, size: int=None, seed: int=None,
+                   save_intent: bool=None, intent_level: [int, str]=None, **kwargs) -> list:
         """returns a number based on the random func. The code should generate a value per line
         example:
             code_str = 'round(np.random.normal(loc=loc, scale=scale), 3)'
             fbt.get_custom(code_str, loc=0.4, scale=0.1)
 
         :param code_str: an evaluable code as a string
+        :param label: a unique name to use as a label for this column
         :param quantity: (optional) a number between 0 and 1 representing data that isn't null
         :param size: (optional) the size of the sample
         :param seed: (optional) a seed value for the random function: default to None
@@ -815,14 +854,15 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_analysis(self, analysis_dict: dict, label: str=None, size: int=None, seed: int=None, save_intent: bool=True,
-                           intent_level: [int, str]=None) -> dict:
+    def associate_analysis(self, analysis_dict: dict, label: str=None, size: int=None, seed: int=None,
+                           save_intent: bool=None, intent_level: [int, str]=None) -> dict:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
         constructed association to be used as reference for a sub category.
 
         :param analysis_dict: the analysis dictionary (see analyse_association(...))
+        :param label: a unique name to use as a label for this column
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -834,32 +874,32 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    intent_level=intent_level, save_intent=save_intent)
 
         def get_level(analysis: dict, sample_size: int):
-            for label, values in analysis.items():
-                if row_dict.get(label) is None:
-                    row_dict[label] = list()
-                _analysis = DataAnalytics(label=label, analysis=values.get('analysis', {}))
+            for name, values in analysis.items():
+                if row_dict.get(name) is None:
+                    row_dict[name] = list()
+                _analysis = DataAnalytics(label=name, analysis=values.get('analysis', {}))
                 if str(_analysis.dtype).startswith('cat'):
-                    row_dict[label] += self.get_category(selection=_analysis.selection,
-                                                         weight_pattern=_analysis.weight_pattern,
-                                                         quantity=1-_analysis.nulls_percent,
-                                                         seed=seed, size=sample_size)
+                    row_dict[name] += self.get_category(selection=_analysis.selection,
+                                                        weight_pattern=_analysis.weight_pattern,
+                                                        quantity=1-_analysis.nulls_percent,
+                                                        seed=seed, size=sample_size)
                 if str(_analysis.dtype).startswith('num'):
-                    row_dict[label] += self.get_number(from_value=_analysis.lower, to_value=_analysis.upper,
-                                                       weight_pattern=_analysis.weight_pattern,
-                                                       precision=_analysis.precision,
-                                                       dominant_values=_analysis.dominant_values,
-                                                       dominant_percent=_analysis.dominant_percent,
-                                                       dominance_weighting=_analysis.dominance_weighting,
-                                                       quantity=1-_analysis.nulls_percent,
-                                                       seed=seed, size=sample_size)
+                    row_dict[name] += self.get_number(from_value=_analysis.lower, to_value=_analysis.upper,
+                                                      weight_pattern=_analysis.weight_pattern,
+                                                      precision=_analysis.precision,
+                                                      dominant_values=_analysis.dominant_values,
+                                                      dominant_percent=_analysis.dominant_percent,
+                                                      dominance_weighting=_analysis.dominance_weighting,
+                                                      quantity=1 - _analysis.nulls_percent,
+                                                      seed=seed, size=sample_size)
                 if str(_analysis.dtype).startswith('date'):
-                    row_dict[label] += self.get_datetime(start=_analysis.lower, until=_analysis.upper,
-                                                         weight_pattern=_analysis.weight_pattern,
-                                                         date_format=_analysis.data_format,
-                                                         day_first=_analysis.day_first,
-                                                         year_first=_analysis.year_first,
-                                                         quantity=1 - _analysis.nulls_percent,
-                                                         seed=seed, size=sample_size)
+                    row_dict[name] += self.get_datetime(start=_analysis.lower, until=_analysis.upper,
+                                                        weight_pattern=_analysis.weight_pattern,
+                                                        date_format=_analysis.data_format,
+                                                        day_first=_analysis.day_first,
+                                                        year_first=_analysis.year_first,
+                                                        quantity=1 - _analysis.nulls_percent,
+                                                        seed=seed, size=sample_size)
 
                 unit = sample_size / sum(_analysis.weight_pattern)
                 if values.get('sub_category'):
@@ -877,9 +917,9 @@ class SyntheticIntentModel(AbstractIntentModel):
             row_dict[key] = row_dict[key][:size]
         return row_dict
 
-    def associate_dataset(self, dataset: Any, associations: list, actions: dict, label: str=None, default_value: Any=None,
-                          default_header: str=None, day_first: bool=True, quantity:  float=None, seed: int=None,
-                          save_intent: bool=True, intent_level: [int, str]=None):
+    def associate_dataset(self, dataset: Any, associations: list, actions: dict, label: str=None,
+                          default_value: Any=None, default_header: str=None, day_first: bool=None, quantity: float=None,
+                          seed: int=None, save_intent: bool=None, intent_level: [int, str]=None):
         """ Associates a a -set of criteria of an input values to a set of actions
             The association dictionary takes the form of a set of dictionaries in a list with each item in the list
             representing an index key for the action dictionary. Each dictionary are to associated relationship.
@@ -908,6 +948,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param dataset: the dataset to map against, this can be a str, int, float, list, Series or DataFrame
         :param associations: a list of categories (can also contain lists for multiple references.
         :param actions: the correlated set of categories that should map to the index
+        :param label: a unique name to use as a label for this column
         :param default_header: (optional) if no association, the default column header to take the value from.
                     if None then the default_value is taken.
                     Note for non-DataFrame datasets the default header is '_default'
@@ -1017,14 +1058,15 @@ class SyntheticIntentModel(AbstractIntentModel):
                     rtn_list.append(method)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_custom(self, df: pd.DataFrame, code_str: str, label: str=None, use_exec: bool=False, save_intent: bool=True,
-                         intent_level: [int, str]=None, **kwargs):
+    def associate_custom(self, df: pd.DataFrame, code_str: str, label: str=None, use_exec: bool=None,
+                         save_intent: bool=None, intent_level: [int, str]=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
         as it's parameter name 'df'.
 
         :param df: a pd.DataFrame used in the action
         :param code_str: an action on those column values
+        :param label: a unique name to use as a label for this column
         :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
         :param kwargs: a set of kwargs to include in any executable function
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -1034,6 +1076,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    intent_level=intent_level, save_intent=save_intent)
+        use_exec = use_exec if isinstance(use_exec, bool) else False
         local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
         if 'df' not in local_kwargs:
             local_kwargs['df'] = df
@@ -1046,11 +1089,12 @@ class SyntheticIntentModel(AbstractIntentModel):
     def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None, action: str=None,
                           precision: int=None, fill_nulls: bool=None, quantity: float=None, seed: int=None,
                           keep_zero: bool=None, min_value: [int, float]= None, max_value: [int, float]= None,
-                          save_intent: bool=True, intent_level: [int, str]=None):
+                          save_intent: bool=None, intent_level: [int, str]=None):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
         :param values: a single value or list of values to correlate
+        :param label: a unique name to use as a label for this column
         :param spread: (optional) the random spread or deviation from the value. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
         :param action: (optional) what action on the offset. Options are: 'add'(default),'multiply'
@@ -1119,7 +1163,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str, label: str=None,
-                             day_first: bool=True, quantity: float=None, seed: int=None, save_intent: bool=True,
+                             day_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                              intent_level: [int, str]=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
         Note. to use the current value in the passed values as a parameter value pass an empty dict {} as the keys
@@ -1138,6 +1182,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param correlations: a list of categories (can also contain lists for multiple correlations.
         :param actions: the correlated set of categories that should map to the index
         :param value_type: the type found in the values (options are 'category' ('c'), 'number', or 'datetime'('date'))
+        :param label: a unique name to use as a label for this column
         :param day_first: (optional) if type is date indictes if the day is first. Default to true
         :param quantity: (optional) a number between 0 and 1 presenting the percentage quantity of the data
         :param seed: a seed value for the random function: default to None
@@ -1218,12 +1263,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                         lower_spread: [int, dict]=None, upper_spread: [int, dict]=None, ordered: bool=None,
                         date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
                         weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
-                        min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=True,
-                        year_first: bool=False, quantity: float = None, seed: int=None, save_intent: bool=True,
+                        min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=None,
+                        year_first: bool=None, quantity: float = None, seed: int=None, save_intent: bool=None,
                         intent_level: [int, str]=None):
         """ correlates dates to an existing date or list of dates.
 
         :param dates: the date or set of dates to correlate
+        :param label: a unique name to use as a label for this column
         :param offset:  (optional)and offset to the date. if int then assumed a 'years' offset
                 int or dictionary associated with pd.DateOffset(). eg {'months': 1, 'days': 5}
         :param lower_spread: (optional) the lower boundary from the relative date. if int then assume 'days' spread
@@ -1435,7 +1481,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             dates.append(date)
         return dates
 
-    def _date_choice(self, start: pd.Timestamp, until: pd.Timestamp, weight_pattern: list, limits: str=None,
+    def _date_choice(self, start, until, weight_pattern: list, limits: str=None,
                      seed: int=None):
         """ Utility method to choose a random date between two dates based on a pattern.
 
