@@ -85,7 +85,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                    label: str=None, offset: int=None, precision: int=None, currency: str=None,
                    bounded_weighting: bool=True, at_most: int=None, dominant_values: [float, list]=None,
                    dominant_percent: float=None, dominance_weighting: list=None, size: int = None, quantity: float=None,
-                   seed: int=None, save_intent: bool=None, intent_level: [int, str]=None) -> list:
+                   seed: int=None, save_intent: bool=None, intent_level: [int, str]=None,
+                   replace_intent: bool=None) -> list:
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -105,11 +106,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a random number
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intent code
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         at_most = 0 if not isinstance(at_most, int) else at_most
@@ -137,7 +139,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             if sample_count > 0:
                 if isinstance(dominant_values, list):
                     dominant_list = self.get_category(selection=dominant_values, weight_pattern=dominance_weighting,
-                                                      size=sample_count, bounded_weighting=True)
+                                                      size=sample_count, bounded_weighting=True, save_intent=False)
                 else:
                     dominant_list = [dominant_values] * sample_count
             size -= sample_count
@@ -231,7 +233,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def get_category(self, selection: list, weight_pattern: list=None, label: str=None, quantity: float=None,
                      size: int=None, bounded_weighting: bool=None, at_most: int=None, seed: int=None,
-                     save_intent: bool=None, intent_level: [int, str]=None) -> list:
+                     save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None) -> list:
         """ returns a category from a list. Of particular not is the at_least parameter that allows you to
         control the number of times a selection can be chosen.
 
@@ -245,11 +247,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: an item or list of items chosen from the list
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intent code
         if not isinstance(selection, list) or len(selection) == 0:
             return [None]*size
@@ -257,14 +260,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         quantity = self._quantity(quantity)
         select_index = self.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most, size=size,
-                                       bounded_weighting=bounded_weighting, quantity=1, seed=seed)
+                                       bounded_weighting=bounded_weighting, quantity=1, seed=seed, save_intent=False)
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
     def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, label: str=None, at_most: int=None,
                      date_format: str=None, as_num: bool=None, ignore_time: bool=None, size: int=None,
                      quantity: float=None, seed: int=None, day_first: bool=None, year_first: bool=None,
-                     save_intent: bool=None, intent_level: [int, str]=None) -> list:
+                     save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -289,12 +292,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                 If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a date or size of dates in the format given.
          """
         # intent persist options
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intent code
         as_num = False if not isinstance(as_num, bool) else as_num
         ignore_time = False if not isinstance(ignore_time, bool) else ignore_time
@@ -311,7 +315,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _dt_until = int(_dt_until)
             precision = 0
         rtn_list = self.get_number(from_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
-                                   at_most=at_most, precision=precision, size=size, seed=seed)
+                                   at_most=at_most, precision=precision, size=size, seed=seed, save_intent=False)
         if not as_num:
             rtn_list = mdates.num2date(rtn_list)
             if isinstance(date_format, str):
@@ -323,7 +327,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                              weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
                              quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
                              day_first: bool = True, year_first: bool = False, save_intent: bool=None,
-                             intent_level: [int, str]=None) -> list:
+                             intent_level: [int, str]=None, replace_intent: bool=None) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -354,11 +358,12 @@ class SyntheticIntentModel(AbstractIntentModel):
                 If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a date or size of dates in the format given.
          """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         ordered = False if not isinstance(ordered, bool) else ordered
         if start is None or until is None:
             raise ValueError("The start or until parameters cannot be of NoneType")
@@ -392,7 +397,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             if date_pattern is not None:
                 _dp_start = self._convert_date2value(_dt_start)[0]
                 _dp_until = self._convert_date2value(_dt_until)[0]
-                value = self.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed)
+                value = self.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed,
+                                        save_intent=False)
                 _dt_default = self._convert_value2date(value)[0]
             # ### years ###
             rand_year = _dt_default.year
@@ -485,25 +491,30 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_intervals(self, intervals: list, weight_pattern: list=None, label: str=None, precision: int=None,
+                      dominant_values: [float, list]=None, dominant_percent: float=None, dominance_weighting: list=None,
                       currency: str=None, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                      intent_level: [int, str]=None) -> list:
+                      intent_level: [int, str]=None, replace_intent: bool=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
 
         :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param label: a unique name to use as a label for this column
         :param precision: the precision of the returned number. if None then assumes int value else float
+        :param dominant_values: a value or list of values with dominant_percent. if used MUST provide a dominant_percent
+        :param dominant_percent: a value between 0 and 1 representing the dominant_percent of the dominant value(s)
+        :param dominance_weighting: a weighting of the dominant values
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a random number
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intent code
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -512,7 +523,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         if not all(isinstance(value, tuple) for value in intervals):
             raise ValueError("The intervals list but be a list of tuples")
-        interval_list = self.get_category(selection=intervals, weight_pattern=weight_pattern, size=size, seed=_seed)
+        interval_list = self.get_category(selection=intervals, weight_pattern=weight_pattern, size=size, seed=_seed,
+                                          save_intent=False)
         interval_counts = pd.Series(interval_list).value_counts()
         rtn_list = []
         for index in interval_counts.index:
@@ -536,14 +548,16 @@ class SyntheticIntentModel(AbstractIntentModel):
             elif str.lower(closed) == 'right':
                 lower += margin
             rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, currency=currency, size=size,
-                                                  seed=_seed)
+                                                  dominant_values=dominant_values,
+                                                  dominance_weighting=dominance_weighting,
+                                                  dominant_percent=dominant_percent, seed=_seed, save_intent=False)
         np.random.seed(_seed)
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_distribution(self, label: str=None, method: str=None, offset: float=None, precision: int=None,
                          size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                         intent_level: [int, str]=None, **kwargs) -> list:
+                         intent_level: [int, str]=None, replace_intent: bool=None, **kwargs) -> list:
         """returns a number based the distribution type. Supports Normal, Beta and
 
         :param label: a unique name to use as a label for this column
@@ -556,11 +570,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param kwargs: the parameters of the method
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a random number
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intent code
         offset = 1 if offset is None or not isinstance(offset, (float, int)) else offset
         quantity = self._quantity(quantity)
@@ -578,7 +593,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def get_string_pattern(self, pattern: str, label: str=None, choices: dict=None, quantity: [float, int]=None,
                            size: int=None, choice_only: bool=None, seed: int=None, save_intent: bool=None,
-                           intent_level: [int, str]=None) -> list:
+                           intent_level: [int, str]=None, replace_intent: bool=None) -> list:
         """ Returns a random string based on the pattern given. The pattern is made up from the choices passed but
             by default is as follows:
                 c = random char [a-z][A-Z]
@@ -602,11 +617,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a string based on the pattern
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         choice_only = False if choice_only is None or not isinstance(choice_only, bool) else choice_only
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -640,7 +656,8 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def get_from(self, values: Any, weight_pattern: list=None, label: str=None, selection_size: int=None,
                  sample_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=None, quantity: float=None,
-                 seed: int=None, save_intent: bool=None, intent_level: [int, str]=None) -> list:
+                 seed: int=None, save_intent: bool=None, intent_level: [int, str]=None,
+                 replace_intent: bool=None) -> list:
         """ returns a random list of values where the selection of those values is taken from the values passed.
 
         :param values: the reference values to select from
@@ -655,11 +672,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return:
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         _values = pd.Series(values).iloc[:sample_size]
@@ -668,10 +686,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
-                                 size=size, at_most=at_most, seed=_seed)
+                                 size=size, at_most=at_most, seed=_seed, save_intent=False)
 
     def create_profiles(self, size: int=None, dominance: float=None, include_id: bool=None, seed: int=None,
-                        save_intent: bool=None, intent_level: [int, str]=None) -> pd.DataFrame:
+                        save_intent: bool=None, intent_level: [int, str]=None,
+                        replace_intent: bool=None) -> pd.DataFrame:
         """ returns a DataFrame of forename, middle initials, surname and gender with first names matching gender.
         In addition the the gender can be weighted by specifying a male dominance.
 
@@ -681,31 +700,34 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a pandas DataFrame of males and females
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         dominance = dominance if isinstance(dominance, float) and 0 <= dominance <= 1 else 0.5
         include_id = include_id if isinstance(include_id, bool) else False
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
-        middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['  ']*4, size=int(size*0.95))
+        middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW")+['  ']*4, size=int(size*0.95),
+                                   save_intent=False)
         choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
-        middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size-len(middle))
-        m_names = self.get_category(selection=ProfileSample.male_names(), size=int(size*dominance))
-        f_names = self.get_category(selection=ProfileSample.female_names(), size=size-len(m_names))
-        surname = self.get_category(selection=ProfileSample.surnames(), size=size)
+        middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size-len(middle),
+                                          save_intent=False)
+        m_names = self.get_category(selection=ProfileSample.male_names(), size=int(size*dominance), save_intent=False)
+        f_names = self.get_category(selection=ProfileSample.female_names(), size=size-len(m_names), save_intent=False)
+        surname = self.get_category(selection=ProfileSample.surnames(), size=size, save_intent=False)
 
         df = pd.DataFrame(zip(m_names + f_names, middle, surname, ['M'] * len(m_names) + ['F'] * len(f_names)),
                           columns=['forename', 'initials', 'surname', 'gender'])
         if include_id:
-            df['profile_id'] = self.get_number(size*10, (size*100)-1, at_most=1, size=size)
+            df['profile_id'] = self.get_number(size*10, (size*100)-1, at_most=1, size=size, save_intent=False)
         return df.sample(frac=1).reset_index(drop=True)
 
     def get_file_column(self, headers: [str, list], connector_contract: ConnectorContract, label: str=None,
                         size: int=None, randomize: bool=None, seed: int=None, save_intent: bool=None,
-                        intent_level: [int, str]=None) -> [pd.DataFrame, list]:
+                        intent_level: [int, str]=None, replace_intent: bool=None) -> [pd.DataFrame, list]:
         """ gets a column or columns of data from a CSV file returning them as a Series or DataFrame
         column is requested
 
@@ -717,11 +739,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: DataFrame or List
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         if not isinstance(connector_contract, ConnectorContract):
             raise TypeError("The connector_contract must be a ConnectorContract instance")
         _seed = self._seed() if seed is None else seed
@@ -744,7 +767,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def get_identifiers(self, from_value: int, to_value: int=None, label: str=None, size: int=None, prefix: str=None,
                         suffix: str=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                        intent_level: [int, str]=None):
+                        intent_level: [int, str]=None, replace_intent: bool=None):
         """ returns a list of unique identifiers randomly selected between the from_value and to_value
 
         :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
@@ -757,11 +780,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a unique identifer randomly selected from the range
         """
         # resolve intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intend code block on the canonical
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         quantity = self._quantity(quantity)
@@ -772,13 +796,13 @@ class SyntheticIntentModel(AbstractIntentModel):
             suffix = ''
         rtn_list = []
         for i in self.get_number(from_value=from_value, to_value=to_value, at_most=1, size=size, precision=0,
-                                 seed=seed):
+                                 seed=seed, save_intent=False):
             rtn_list.append("{}{}{}".format(prefix, i, suffix))
         return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
 
     def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, label: str=None,
                            quantity: [float, int]=None, size: int=None, seed: int=None, save_intent: bool=None, 
-                           intent_level: [int, str]=None) -> list:
+                           intent_level: [int, str]=None, replace_intent: bool=None) -> list:
         """ Returns the pattern with the tags substituted by tag choice
             example ta dictionary:
                 { '<slogan>': {'action': '', 'kwargs': {}},
@@ -796,11 +820,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a list of patterns with tas replaced
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
@@ -812,7 +837,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = []
         for _ in range(size):
             _seed = self._next_seed(_seed, seed)
-            choice = self.get_category(pattern, weight_pattern=weight_pattern, seed=_seed, size=1)[0]
+            choice = self.get_category(pattern, weight_pattern=weight_pattern, seed=_seed, size=1, save_intent=False)[0]
             for tag, action in tags.items():
                 method = action.get('action')
                 if method in class_methods:
@@ -825,7 +850,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_custom(self, code_str: str, label: str=None, quantity: float=None, size: int=None, seed: int=None,
-                   save_intent: bool=None, intent_level: [int, str]=None, **kwargs) -> list:
+                   save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None,
+                   **kwargs) -> list:
         """returns a number based on the random func. The code should generate a value per line
         example:
             code_str = 'round(np.random.normal(loc=loc, scale=scale), 3)'
@@ -838,11 +864,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a random value based on function called
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
@@ -854,72 +881,71 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_analysis(self, analysis_dict: dict, label: str=None, size: int=None, seed: int=None,
-                           save_intent: bool=None, intent_level: [int, str]=None) -> dict:
+    def associate_analysis(self, analysis_dict: dict, size: int=None, seed: int=None,
+                           save_intent: bool=None, replace_intent: bool=None) -> dict:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
         constructed association to be used as reference for a sub category.
 
         :param analysis_dict: the analysis dictionary (see analyse_association(...))
-        :param label: a unique name to use as a label for this column
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a dictionary
         """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
-
-        def get_level(analysis: dict, sample_size: int):
+        def get_level(analysis: dict, sample_size: int, level: int):
             for name, values in analysis.items():
                 if row_dict.get(name) is None:
                     row_dict[name] = list()
                 _analysis = DataAnalytics(label=name, analysis=values.get('analysis', {}))
                 if str(_analysis.dtype).startswith('cat'):
-                    row_dict[name] += self.get_category(selection=_analysis.selection,
+                    row_dict[name] += self.get_category(selection=_analysis.selection, label=name,
                                                         weight_pattern=_analysis.weight_pattern,
-                                                        quantity=1-_analysis.nulls_percent,
-                                                        seed=seed, size=sample_size)
+                                                        quantity=1-_analysis.nulls_percent, seed=seed,
+                                                        size=sample_size, save_intent=save_intent, intent_level=level,
+                                                        replace_intent=replace_intent)
                 if str(_analysis.dtype).startswith('num'):
-                    row_dict[name] += self.get_number(from_value=_analysis.lower, to_value=_analysis.upper,
-                                                      weight_pattern=_analysis.weight_pattern,
-                                                      precision=_analysis.precision,
-                                                      dominant_values=_analysis.dominant_values,
-                                                      dominant_percent=_analysis.dominant_percent,
-                                                      dominance_weighting=_analysis.dominance_weighting,
-                                                      quantity=1 - _analysis.nulls_percent,
-                                                      seed=seed, size=sample_size)
+                    row_dict[name] += self.get_intervals(intervals=_analysis.selection, label=name,
+                                                         weight_pattern=_analysis.weight_pattern,
+                                                         dominant_values=_analysis.dominant_values,
+                                                         dominant_percent=_analysis.dominant_percent,
+                                                         dominance_weighting=_analysis.dominance_weighting,
+                                                         precision=_analysis.precision,
+                                                         quantity=1 - _analysis.nulls_percent,
+                                                         seed=seed, size=sample_size, save_intent=save_intent,
+                                                         intent_level=level, replace_intent=replace_intent)
                 if str(_analysis.dtype).startswith('date'):
-                    row_dict[name] += self.get_datetime(start=_analysis.lower, until=_analysis.upper,
+                    row_dict[name] += self.get_datetime(start=_analysis.lower, until=_analysis.upper, label=name,
                                                         weight_pattern=_analysis.weight_pattern,
                                                         date_format=_analysis.data_format,
                                                         day_first=_analysis.day_first,
                                                         year_first=_analysis.year_first,
                                                         quantity=1 - _analysis.nulls_percent,
-                                                        seed=seed, size=sample_size)
-
+                                                        seed=seed, size=sample_size, save_intent=save_intent,
+                                                        intent_level=level, replace_intent=replace_intent)
                 unit = sample_size / sum(_analysis.weight_pattern)
                 if values.get('sub_category'):
                     section_map = _analysis.weight_map
                     for i in section_map.index:
                         section_size = int(round(_analysis.weight_map.loc[i] * unit, 0))+1
                         next_item = values.get('sub_category').get(i)
-                        get_level(next_item, section_size)
+                        level += 1
+                        get_level(next_item, section_size, level=level)
             return
 
         row_dict = {}
         size = 1 if not isinstance(size, int) else size
-        get_level(analysis_dict, sample_size=size)
+        get_level(analysis_dict, sample_size=size, level=0)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
         return row_dict
 
     def associate_dataset(self, dataset: Any, associations: list, actions: dict, label: str=None,
                           default_value: Any=None, default_header: str=None, day_first: bool=None, quantity: float=None,
-                          seed: int=None, save_intent: bool=None, intent_level: [int, str]=None):
+                          seed: int=None, save_intent: bool=None, intent_level: [int, str]=None,
+                          replace_intent: bool=None):
         """ Associates a a -set of criteria of an input values to a set of actions
             The association dictionary takes the form of a set of dictionaries in a list with each item in the list
             representing an index key for the action dictionary. Each dictionary are to associated relationship.
@@ -958,11 +984,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a list of equal length to the one passed
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
 
@@ -1059,7 +1086,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def associate_custom(self, df: pd.DataFrame, code_str: str, label: str=None, use_exec: bool=None,
-                         save_intent: bool=None, intent_level: [int, str]=None, **kwargs):
+                         save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
         as it's parameter name 'df'.
@@ -1071,11 +1098,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param kwargs: a set of kwargs to include in any executable function
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a list or pandas.DataFrame
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         use_exec = use_exec if isinstance(use_exec, bool) else False
         local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
         if 'df' not in local_kwargs:
@@ -1089,7 +1117,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None, action: str=None,
                           precision: int=None, fill_nulls: bool=None, quantity: float=None, seed: int=None,
                           keep_zero: bool=None, min_value: [int, float]= None, max_value: [int, float]= None,
-                          save_intent: bool=None, intent_level: [int, str]=None):
+                          save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
@@ -1107,11 +1135,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param max_value: a max value not to go above
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: an equal length list of correlated values
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         offset = 0.0 if offset is None else offset
         spread = 0.0 if spread is None else spread
         precision = 3 if precision is None else precision
@@ -1164,7 +1193,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str, label: str=None,
                              day_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                             intent_level: [int, str]=None):
+                             intent_level: [int, str]=None, replace_intent: bool=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
         Note. to use the current value in the passed values as a parameter value pass an empty dict {} as the keys
         value. If you want the action value to be the current value of the passed value then again pass an empty dict
@@ -1188,11 +1217,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a list of equal length to the one passed
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         if value_type.lower() not in ['c', 'n', 'd', 'category', 'number', 'datetime', 'date']:
@@ -1265,7 +1295,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
                         min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=None,
                         year_first: bool=None, quantity: float = None, seed: int=None, save_intent: bool=None,
-                        intent_level: [int, str]=None):
+                        intent_level: [int, str]=None, replace_intent: bool=None):
         """ correlates dates to an existing date or list of dates.
 
         :param dates: the date or set of dates to correlate
@@ -1295,11 +1325,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a list of equal size to that given
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent)
+                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
@@ -1368,7 +1399,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                             ordered=ordered, date_pattern=date_pattern,
                                                             year_pattern=year_pattern, month_pattern=month_pattern,
                                                             weekday_pattern=weekday_pattern, hour_pattern=hour_pattern,
-                                                            minute_pattern=minute_pattern, seed=_seed)
+                                                            minute_pattern=minute_pattern, seed=_seed,
+                                                            save_intent=False)
                     _sample_date = sample_list[0]
                     if _sample_date is None or _sample_date is pd.NaT:
                         raise ValueError("Unable to generate a random datetime, {} returned".format(sample_list))
