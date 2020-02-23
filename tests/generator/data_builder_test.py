@@ -3,8 +3,8 @@ from collections import Counter
 
 import matplotlib
 from ds_behavioral.generator.data_builder_tools import DataBuilderTools
-from ds_foundation.handlers.abstract_handlers import ConnectorContract
-from ds_foundation.properties.property_manager import PropertyManager
+from aistac.handlers.abstract_handlers import ConnectorContract
+from aistac.properties.property_manager import PropertyManager
 
 matplotlib.use("TkAgg")
 
@@ -13,7 +13,7 @@ import numpy as np
 import unittest
 import os
 
-from ds_behavioral import DataBuilderComponent
+from ds_behavioral.component.synthetic_component import SyntheticBuilder
 
 class FileBuilderTest(unittest.TestCase):
 
@@ -65,7 +65,7 @@ class FileBuilderTest(unittest.TestCase):
         df['values'] = tools.get_number(10, size=10, seed=31)
         df.to_csv("test_df.csv", sep=',',  index=False)
         connector_contract = ConnectorContract(uri="test_df.csv",
-                                               module_name='ds_foundation.handlers.python_handlers',
+                                               module_name='aistac.handlers.python_handlers',
                                                handler='PythonSourceHandler')
         result = tools.get_file_column('cat', connector_contract, size=3, seed=31)
         self.assertEqual((3,1), result.shape)

@@ -1,7 +1,7 @@
 from pprint import pprint
 import pandas as pd
 import unittest
-from ds_foundation.properties.abstract_properties import AbstractPropertyManager
+from aistac.properties.abstract_properties import AbstractPropertyManager
 from ds_discovery.transition.discovery import DataAnalytics, DataDiscovery as Discovery
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 

@@ -1,7 +1,7 @@
 import pandas as pd
-from ds_foundation.handlers.abstract_handlers import ConnectorContract
+from aistac.handlers.abstract_handlers import ConnectorContract
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
-from ds_foundation.components.abstract_component import AbstractComponent
+from aistac.components.abstract_component import AbstractComponent
 from ds_behavioral.managers.synthetic_property_manager import SyntheticPropertyManager
 
 __author__ = 'Darryl Oatridge'
@@ -10,9 +10,26 @@ __author__ = 'Darryl Oatridge'
 class SyntheticBuilder(AbstractComponent):
 
     CONNECTOR_SYNTHETIC = 'synthetic'
+    PANDAS_MODULE_NAME = 'ds_discovery.handlers.pandas_handlers'
+    PANDAS_SOURCE_HANDLER = 'PandasSourceHandler'
+    PANDAS_PERSIST_HANDLER = 'PandasPersistHandler'
+
+    def __init__(self, property_manager: SyntheticPropertyManager, intent_model: SyntheticIntentModel,
+                 default_save=None):
+        """ Encapsulation class for the discovery set of classes
+
+        :param property_manager: The contract property manager instance for this component
+        :param intent_model: the model codebase containing the parameterizable intent
+        :param default_save: The default behaviour of persisting the contracts:
+                    if False: The connector contracts are kept in memory (useful for restricted file systems)
+        """
+        super().__init__(property_manager=property_manager, intent_model=intent_model,
+                         default_module_name=self.PANDAS_MODULE_NAME, default_source_handler=self.PANDAS_SOURCE_HANDLER,
+                         default_persist_handler=self.PANDAS_PERSIST_HANDLER, default_save=default_save)
 
     @classmethod
-    def from_uri(cls, task_name: str, uri_pm_path: str, pm_file_type: str=None, default_save=None, **kwargs):
+    def from_uri(cls, task_name: str, uri_pm_path: str, pm_file_type: str=None, module_name: str=None,
+                 handler: str=None, default_save=None, **kwargs):
         """ Class Factory Method to instantiates the component application. The Factory Method handles the
         instantiation of the Properties Manager, the Intent Model and the persistence of the uploaded properties.
 
@@ -22,13 +39,16 @@ class SyntheticBuilder(AbstractComponent):
          :param task_name: The reference name that uniquely identifies a task or subset of the property manager
          :param uri_pm_path: A URI that identifies the resource path for the property manager.
          :param pm_file_type: (optional) defines a specific file type for the property manager
+         :param module_name: (optional) the module or package name where the handler can be found
+         :param handler: (optional) the handler for retrieving the resource
          :param default_save: (optional) if the configuration should be persisted. default to 'True'
          :param kwargs: to pass to the connector contract
          :return: the initialised class instance
          """
         _pm = SyntheticPropertyManager(task_name=task_name)
         _intent_model = SyntheticIntentModel(property_manager=_pm)
-        super()._init_properties(property_manager=_pm, uri_pm_path=uri_pm_path, pm_file_type=pm_file_type, **kwargs)
+        super()._init_properties(property_manager=_pm, uri_pm_path=uri_pm_path, module_name=module_name,
+                                 handler=handler, pm_file_type=pm_file_type, **kwargs)
         return cls(property_manager=_pm, intent_model=_intent_model, default_save=default_save)
 
     @classmethod
@@ -45,33 +65,6 @@ class SyntheticBuilder(AbstractComponent):
     @property
     def intent_model(self) -> SyntheticIntentModel:
         return self._intent_model
-
-    def set_outcome_path(self, path: str, file_type: str=None, version: str=None, save: bool=None):
-        """ Sets the outcome persist contract using the PandasPersistHandler
-
-        :param path: A path to place the synthetic outcome
-        :param file_type: (optional) a file type supported by the PandasPersistHandler
-        :param version: (optional) a version number to give the connector used in the output name
-        :param save: (optional) if True, save to file. Default is True
-        """
-        file_type = file_type if isinstance(file_type, str) else 'csv'
-        versioned = True if isinstance(version, str) else False
-        uri = self.pm.file_pattern(path=path, connector_name=self.CONNECTOR_SYNTHETIC, file_type=file_type,
-                                   versioned=versioned)
-        self.set_outcome_uri(uri=uri, save=save)
-        return
-
-    def set_outcome_uri(self, uri: str, save: bool=None):
-        """ Sets the outcome persist contract using the PandasPersistHandler
-
-        :param uri: the URI for the synthetic outcome
-        :param version: (optional) a version number to give the connector used in the output name
-        :param save: (optional) if True, save to file. Default is True
-        """
-        outcome_contract = ConnectorContract(uri=uri, module_name="ds_connectors.handlers.pandas_handlers",
-                                             handler="PandasPersistHandler")
-        self.set_outcome_contract(outcome_contract=outcome_contract, save=save)
-        return
 
     def set_outcome_contract(self, outcome_contract: ConnectorContract, save: bool=None):
         """ Sets the outcome persist contract

@@ -11,7 +11,7 @@ from ds_discovery.transition.discovery import DataAnalytics
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 from ds_behavioral.sample.sample_data import *
-from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
+from aistac.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 
 
 class DataBuilderTools(object):

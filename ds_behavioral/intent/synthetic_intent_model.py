@@ -11,9 +11,9 @@ from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 
 from ds_discovery.transition.discovery import DataAnalytics
-from ds_foundation.intent.abstract_intent import AbstractIntentModel
-from ds_foundation.properties.abstract_properties import AbstractPropertyManager
-from ds_foundation.handlers.abstract_handlers import ConnectorContract, HandlerFactory
+from aistac.intent.abstract_intent import AbstractIntentModel
+from aistac.properties.abstract_properties import AbstractPropertyManager
+from aistac.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'
@@ -881,21 +881,22 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_analysis(self, analysis_dict: dict, size: int=None, seed: int=None,
+    def associate_analysis(self, analytics_model: dict, size: int=None, seed: int=None,
                            save_intent: bool=None, replace_intent: bool=None) -> dict:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
         constructed association to be used as reference for a sub category.
 
-        :param analysis_dict: the analysis dictionary (see analyse_association(...))
+        :param analytics_model: the analytics model from discovery-tranistion-ds discovery model train
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param replace_intent: (optional) replace strategy for the same intent found at that level
         :return: a dictionary
         """
-        def get_level(analysis: dict, sample_size: int, level: int):
+
+        def get_level(analysis: dict, sample_size: int):
             for name, values in analysis.items():
                 if row_dict.get(name) is None:
                     row_dict[name] = list()
@@ -904,7 +905,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     row_dict[name] += self.get_category(selection=_analysis.selection, label=name,
                                                         weight_pattern=_analysis.weight_pattern,
                                                         quantity=1-_analysis.nulls_percent, seed=seed,
-                                                        size=sample_size, save_intent=save_intent, intent_level=level,
+                                                        size=sample_size, save_intent=save_intent, intent_level=-1,
                                                         replace_intent=replace_intent)
                 if str(_analysis.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.selection, label=name,
@@ -915,7 +916,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                          precision=_analysis.precision,
                                                          quantity=1 - _analysis.nulls_percent,
                                                          seed=seed, size=sample_size, save_intent=save_intent,
-                                                         intent_level=level, replace_intent=replace_intent)
+                                                         intent_level=-1, replace_intent=replace_intent)
                 if str(_analysis.dtype).startswith('date'):
                     row_dict[name] += self.get_datetime(start=_analysis.lower, until=_analysis.upper, label=name,
                                                         weight_pattern=_analysis.weight_pattern,
@@ -924,32 +925,31 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                         year_first=_analysis.year_first,
                                                         quantity=1 - _analysis.nulls_percent,
                                                         seed=seed, size=sample_size, save_intent=save_intent,
-                                                        intent_level=level, replace_intent=replace_intent)
+                                                        intent_level=-1, replace_intent=replace_intent)
                 unit = sample_size / sum(_analysis.weight_pattern)
                 if values.get('sub_category'):
                     section_map = _analysis.weight_map
                     for i in section_map.index:
                         section_size = int(round(_analysis.weight_map.loc[i] * unit, 0))+1
                         next_item = values.get('sub_category').get(i)
-                        level += 1
-                        get_level(next_item, section_size, level=level)
+                        get_level(next_item, section_size)
             return
 
-        row_dict = {}
+        row_dict = dict()
         size = 1 if not isinstance(size, int) else size
-        get_level(analysis_dict, sample_size=size, level=0)
+        get_level(analytics_model, sample_size=size)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
         return row_dict
 
-    def associate_dataset(self, dataset: Any, associations: list, actions: dict, label: str=None,
+    def associate_dataset(self, canonical: Any, associations: list, actions: dict, label: str=None,
                           default_value: Any=None, default_header: str=None, day_first: bool=None, quantity: float=None,
                           seed: int=None, save_intent: bool=None, intent_level: [int, str]=None,
                           replace_intent: bool=None):
-        """ Associates a a -set of criteria of an input values to a set of actions
+        """ Associates a set of criteria of an input values to a set of actions
             The association dictionary takes the form of a set of dictionaries in a list with each item in the list
-            representing an index key for the action dictionary. Each dictionary are to associated relationship.
-            In this example for the first index the associated values should be header1 is within a date range
+            representing an index key for the action dictionary. Each dictionary are an associated relationship.
+            In this example for the first index the associated values should be in header1  and within a date range
             and header2 has a value of 'M'
                 association = [{'header1': {'expect': 'date',
                                             'value': ['12/01/1984', '14/01/2014']},
@@ -964,14 +964,14 @@ class SyntheticIntentModel(AbstractIntentModel):
 
             The actions dictionary takes the form of an index referenced dictionary of actions, where the key value
             of the dictionary corresponds to the index of the association list. In other words, if a match is found
-            in the association, that list index is used as reference to the action to execute.
+            in the association, that list index is used as reference to the action.
                 {0: {'action': '', 'kwargs' : {}},
                  1: {...}}
             you can also use the action to specify a specific value:
                 {0: {'action': ''},
                  1: {'action': ''}}
 
-        :param dataset: the dataset to map against, this can be a str, int, float, list, Series or DataFrame
+        :param canonical: the data set to map against, this can be a str, int, float, list, Series or DataFrame
         :param associations: a list of categories (can also contain lists for multiple references.
         :param actions: the correlated set of categories that should map to the index
         :param label: a unique name to use as a label for this column
@@ -993,11 +993,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
 
-        if not isinstance(dataset, (str, int, float, list, pd.Series, pd.DataFrame)):
+        if not isinstance(canonical, (str, int, float, list, pd.Series, pd.DataFrame)):
             raise TypeError("The parameter values is not an accepted type")
         if not isinstance(associations, (list, dict)):
             raise TypeError("The parameter reference must be a list or dict")
-        _dataset = dataset
+        _dataset = canonical
         _associations = associations
         if isinstance(_dataset, (str, int, float)):
             _dataset = self.list_formatter(_dataset)
@@ -1063,10 +1063,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                 kwargs = actions.get(action_idx).get('kwargs').copy()
                 for k, v in kwargs.items():
                     if isinstance(v, dict) and '_header' in v.keys():
-                        if v.get('_header') not in dataset.columns:
+                        if v.get('_header') not in canonical.columns:
                             raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: {}".format(
                                 v.get('_header'), action_idx, k))
-                        kwargs[k] = dataset[v.get('_header')].iloc[index]
+                        kwargs[k] = canonical[v.get('_header')].iloc[index]
                 result = eval("self.{}(**{})".format(method, kwargs).replace('nan', 'None'))
                 if isinstance(result, list):
                     if len(result) > 0:
@@ -1077,21 +1077,21 @@ class SyntheticIntentModel(AbstractIntentModel):
                     rtn_list.append(result)
             else:
                 if isinstance(method, dict):
-                    if method.get('_header') not in dataset.columns:
+                    if method.get('_header') not in canonical.columns:
                         raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: action".format(
                             method.get('_header'), action_idx))
-                    rtn_list.append(dataset[method.get('_header')].iloc[index])
+                    rtn_list.append(canonical[method.get('_header')].iloc[index])
                 else:
                     rtn_list.append(method)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def associate_custom(self, df: pd.DataFrame, code_str: str, label: str=None, use_exec: bool=None,
+    def associate_custom(self, canonical: pd.DataFrame, code_str: str, label: str=None, use_exec: bool=None,
                          save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
-        as it's parameter name 'df'.
+        as it's parameter name 'canonical'.
 
-        :param df: a pd.DataFrame used in the action
+        :param canonical: a pd.DataFrame used in the action
         :param code_str: an action on those column values
         :param label: a unique name to use as a label for this column
         :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
@@ -1106,12 +1106,12 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         use_exec = use_exec if isinstance(use_exec, bool) else False
         local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
-        if 'df' not in local_kwargs:
-            local_kwargs['df'] = df
+        if 'canonical' not in local_kwargs:
+            local_kwargs['canonical'] = canonical
 
         result = exec(code_str, globals(), local_kwargs) if use_exec else eval(code_str, globals(), local_kwargs)
         if result is None:
-            return df
+            return canonical
         return result
 
     def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None, action: str=None,
@@ -1289,7 +1289,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 rtn_list.append(method)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def correlate_dates(self, dates: Any, label: str=None, offset: [int, dict]=None, date_format: str=None,
+    def correlate_dates(self, values: Any, label: str=None, offset: [int, dict]=None, date_format: str=None,
                         lower_spread: [int, dict]=None, upper_spread: [int, dict]=None, ordered: bool=None,
                         date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
                         weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
@@ -1298,7 +1298,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         intent_level: [int, str]=None, replace_intent: bool=None):
         """ correlates dates to an existing date or list of dates.
 
-        :param dates: the date or set of dates to correlate
+        :param values: the date or set of dates to correlate
         :param label: a unique name to use as a label for this column
         :param offset:  (optional)and offset to the date. if int then assumed a 'years' offset
                 int or dictionary associated with pd.DateOffset(). eg {'months': 1, 'days': 5}
@@ -1368,12 +1368,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         if _min_date >= _max_date:
             raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
 
-        dates = self.list_formatter(dates)
-        if dates is None or len(dates) == 0:
+        values = self.list_formatter(values)
+        if values is None or len(values) == 0:
             return list()
-        mode_choice = self._mode_choice(dates) if fill_nulls else list()
+        mode_choice = self._mode_choice(values) if fill_nulls else list()
         rtn_list = []
-        for d in dates:
+        for d in values:
             _seed = self._next_seed(_seed, seed)
             if fill_nulls and len(mode_choice) > 0 and not isinstance(d, str):
                 d = int(np.random.choice(mode_choice))
@@ -1422,11 +1422,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         PRIVATE METHODS SECTION
     """
     @staticmethod
-    def _filter_headers(df: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
+    def _filter_headers(canonical: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
                         exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None) -> list:
         """ returns a list of headers based on the filter criteria
 
-        :param df: the Pandas.DataFrame to get the column headers from
+        :param canonical: the Pandas.DataFrame to get the column headers from
         :param headers: a list of headers to drop or filter on type
         :param drop: to drop or not drop the headers
         :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
@@ -1444,12 +1444,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         if re_ignore_case is None or not isinstance(re_ignore_case, bool):
             re_ignore_case = False
 
-        if not isinstance(df, pd.DataFrame):
+        if not isinstance(canonical, pd.DataFrame):
             raise TypeError("The first function attribute must be a pandas 'DataFrame'")
         _headers = SyntheticIntentModel.list_formatter(headers)
         dtype = SyntheticIntentModel.list_formatter(dtype)
         regex = SyntheticIntentModel.list_formatter(regex)
-        _obj_cols = df.columns
+        _obj_cols = canonical.columns
         _rtn_cols = set()
         unmodified = True
 
@@ -1469,18 +1469,18 @@ class SyntheticIntentModel(AbstractIntentModel):
             _rtn_cols = set(_obj_cols)
 
         if dtype is not None and len(dtype) > 0:
-            _df_selected = df.loc[:, _rtn_cols]
+            _df_selected = canonical.loc[:, _rtn_cols]
             _rtn_cols = (_df_selected.select_dtypes(exclude=dtype) if exclude
                          else _df_selected.select_dtypes(include=dtype)).columns
 
         return [c for c in _rtn_cols]
 
     @staticmethod
-    def _filter_columns(df, headers=None, drop=False, dtype=None, exclude=False, regex=None, re_ignore_case=None,
+    def _filter_columns(canonical, headers=None, drop=False, dtype=None, exclude=False, regex=None, re_ignore_case=None,
                         inplace=False) -> [dict, pd.DataFrame]:
         """ Returns a subset of columns based on the filter criteria
 
-        :param df: the Pandas.DataFrame to get the column headers from
+        :param canonical: the Pandas.DataFrame to get the column headers from
         :param headers: a list of headers to drop or filter on type
         :param drop: to drop or not drop the headers
         :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
@@ -1492,10 +1492,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         if not inplace:
             with threading.Lock():
-                df = deepcopy(df)
-        obj_cols = SyntheticIntentModel._filter_headers(df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
-                                                        regex=regex, re_ignore_case=re_ignore_case)
-        return df.loc[:, obj_cols]
+                canonical = deepcopy(canonical)
+        obj_cols = SyntheticIntentModel._filter_headers(canonical, headers=headers, drop=drop, dtype=dtype,
+                                                        exclude=exclude, regex=regex, re_ignore_case=re_ignore_case)
+        return canonical.loc[:, obj_cols]
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):
