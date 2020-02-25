@@ -56,10 +56,10 @@ class SyntheticBuilder(AbstractComponent):
         _pm = SyntheticPropertyManager(task_name=task_name)
         _intent_model = SyntheticIntentModel(property_manager=_pm)
         super()._init_properties(property_manager=_pm, uri_pm_path=uri_pm_path, **kwargs)
-        super()._add_templates(property_manager=_pm, is_source=True, path=template_source_path,
-                               module=template_source_module, handler=template_source_handler)
-        super()._add_templates(property_manager=_pm, is_source=False, path=template_persist_path,
-                               module=template_persist_module, handler=template_persist_handler)
+        super()._add_templates(property_manager=_pm, source_path=template_source_path, save=default_save,
+                               persist_path=template_persist_path, source_module=template_source_module,
+                               persist_module=template_persist_module, source_handler=template_source_handler,
+                               persist_handler=template_persist_handler)
         return cls(property_manager=_pm, intent_model=_intent_model, default_save=default_save)
 
     @classmethod
