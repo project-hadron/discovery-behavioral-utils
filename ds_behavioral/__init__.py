@@ -2,4 +2,4 @@
 from ds_behavioral.generator.data_builder_tools import DataBuilderTools
 
 # release version number picked up in the setup.py
-__version__ = "2.01.007"
+__version__ = "2.01.008"

@@ -35,24 +35,27 @@ class SyntheticIntentModel(AbstractIntentModel):
         default_replace_intent = default_replace_intent if isinstance(default_replace_intent, bool) else True
         default_save_intent = default_save_intent if isinstance(default_save_intent, bool) else True
         default_intent_level = -1 if isinstance(intent_next_available, bool) and intent_next_available else 0
-        intent_param_exclude = ['inplace', 'canonical', 'canonical_left', 'canonical_right']
+        intent_param_exclude = ['inplace', 'canonical', 'canonical_left', 'canonical_right', 'size']
         intent_type_additions = intent_type_additions if isinstance(intent_type_additions, list) else list()
         intent_type_additions += [np.int8, np.int16, np.int32, np.int64, np.float32, np.float64]
         super().__init__(property_manager=property_manager, intent_param_exclude=intent_param_exclude,
                          default_save_intent=default_save_intent, default_intent_level=default_intent_level,
                          default_replace_intent=default_replace_intent, intent_type_additions=intent_type_additions)
 
-    def run_intent_pipeline(self, run_book: [int, str, list]=None, **kwargs) -> pd.DataFrame:
+    def run_intent_pipeline(self, size: int, run_book: [int, str, list]=None, **kwargs) -> pd.DataFrame:
         """Collectively runs all parameterised intent taken from the property manager against the code base as
         defined by the intent_contract.
 
-        :param run_book: a single or list of intent_level to run, if list, run in order given
+        :param size: the size of the outcome data set
+        :param run_book: (optional) a single or list of intent_level to run, if list, run in order given
         :param kwargs: additional parameters to pass beyond the contracted parameters
         :return: a pandas dataframe
         """
         df = pd.DataFrame()
         # test if there is any intent to run
         if self._pm.has_intent():
+            # size
+            size = size if isinstance(size, int) else 1000
             # default labels
             label_letter = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
             label_number = 1
@@ -74,7 +77,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                             if letter_counter == len(label_letter):
                                 letter_counter = 0
                                 label_number += 1
-                        result = eval(f"self.{method}(save_intent=False, **{params})")
+                        result = eval(f"self.{method}(size={size}, save_intent=False, **{params})")
                         if str(method).startswith('create_'):
                             df = pd.concat([df, result], axis=1)
                         else:
