@@ -21,10 +21,7 @@ class SyntheticBuilder(AbstractComponent):
                     if False: The connector contracts are kept in memory (useful for restricted file systems)
         """
 
-        super().__init__(property_manager=property_manager, intent_model=intent_model, default_save=default_save,
-                         default_module='ds_discovery.handlers.pandas_handlers',
-                         default_source_handler='PandasSourceHandler',
-                         default_persist_handler='PandasPersistHandler')
+        super().__init__(property_manager=property_manager, intent_model=intent_model, default_save=default_save)
 
     @classmethod
     def from_uri(cls, task_name: str, uri_pm_path: str, pm_file_type: str=None, pm_module: str=None,
