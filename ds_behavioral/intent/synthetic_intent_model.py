@@ -197,7 +197,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 # check our range is not also the dominants
                 if set(range(low, high)).issubset(set(Commons.list_formatter(dominant_values))):
                     continue
-                if low >= high:
+                if high - low <= 1:
                     rtn_list += [low] * counter[index]
                 elif at_most > 0:
                     options = [i for i in list(range(low, high)) if i not in Commons.list_formatter(dominant_values)]
@@ -238,7 +238,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if offset != 1:
             rtn_list = [value*offset for value in rtn_list]
         # add in the dominant values
-        rtn_list = rtn_list + dominant_list
+        rtn_list += dominant_list
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
