@@ -14,6 +14,8 @@ from ds_discovery.transition.discovery import DataAnalytics
 from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
 from aistac.handlers.abstract_handlers import ConnectorContract, HandlerFactory
+
+from ds_behavioral.component.commons import Commons
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'
@@ -132,7 +134,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if precision == 0:
             from_value = int(round(from_value, 0))
             to_value = int(round(to_value, 0))
-        is_int = True if isinstance(to_value, int) and isinstance(from_value, int) else False
+        is_int = True if (isinstance(to_value, int) and isinstance(from_value, int)) else False
         if is_int:
             precision = 0
         dominant_list = []
@@ -192,20 +194,24 @@ class SyntheticIntentModel(AbstractIntentModel):
             value_bins.append((ref, to_value))
             for index in range(counter_len):
                 low, high = value_bins[index]
+                # check our range is not also the dominants
+                if set(range(low, high)).issubset(set(Commons.list_formatter(dominant_values))):
+                    continue
                 if low >= high:
                     rtn_list += [low] * counter[index]
                 elif at_most > 0:
-                    choice = []
-                    for _ in range(at_most):
-                        choice += list(range(low, high))
+                    options = [i for i in list(range(low, high)) if i not in Commons.list_formatter(dominant_values)]
+                    choice = options * at_most
                     np.random.shuffle(choice)
                     rtn_list += [int(np.round(value, precision)) for value in choice[:counter[index]]]
                 else:
                     _remaining = counter[index]
                     while _remaining > 0:
                         _size = _limit if _remaining > _limit else _remaining
-                        rtn_list += np.random.randint(low=low, high=high, size=_size).tolist()
-                        _remaining -= _limit
+                        choice = list(np.random.randint(low=low, high=high, size=_size))
+                        choice = [i for i in choice if i not in Commons.list_formatter(dominant_values)]
+                        rtn_list += choice
+                        _remaining -= len(choice)
         else:
             value_bins = pd.interval_range(start=from_value, end=to_value, periods=len(counter), closed='both')
             for index in range(len(counter)):
@@ -214,17 +220,19 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if low >= high:
                     rtn_list += [low] * counter[index]
                 elif at_most > 0:
-                    choice = []
-                    for _ in range(at_most):
-                        choice += list(range(low, high))
+                    at_most_options = set(np.random.random(size=counter[index]*2))
+                    options = [i for i in at_most_options if i not in Commons.list_formatter(dominant_values)]
+                    choice = options * at_most
                     np.random.shuffle(choice)
                     rtn_list += [np.round(value, precision) for value in choice[:counter[index]]]
                 else:
                     _remaining = counter[index]
                     while _remaining > 0:
                         _size = _limit if _remaining > _limit else _remaining
-                        rtn_list += np.round((np.random.random(size=_size)*(high-low)+low), precision).tolist()
-                        _remaining -= _limit
+                        choice = list(np.round((np.random.random(size=_size)*(high-low)+low), precision))
+                        choice = [i for i in choice if i not in Commons.list_formatter(dominant_values)]
+                        rtn_list += choice
+                        _remaining -= len(choice)
         if isinstance(currency, str):
             rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
         if offset != 1:
@@ -542,14 +550,17 @@ class SyntheticIntentModel(AbstractIntentModel):
                     closed = 'right'
             else:
                 (lower, upper, closed) = index
-            margin = 10**(((-1)*precision)-1)
+            if precision == 0:
+                margin = 1
+            else:
+                margin = 10**(((-1)*precision)-1)
             if str.lower(closed) == 'neither':
                 lower += margin
                 upper -= margin
-            elif str.lower(closed) == 'left':
-                upper -= margin
             elif str.lower(closed) == 'right':
                 lower += margin
+            elif str.lower(closed) == 'both':
+                upper += margin
             rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, currency=currency, size=size,
                                                   dominant_values=dominant_values,
                                                   dominance_weighting=dominance_weighting,

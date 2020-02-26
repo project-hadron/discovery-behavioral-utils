@@ -1,5 +1,7 @@
 import pandas as pd
 from aistac.handlers.abstract_handlers import ConnectorContract
+
+from ds_behavioral.component.commons import Commons
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.components.abstract_component import AbstractComponent
 from ds_behavioral.managers.synthetic_property_manager import SyntheticPropertyManager
@@ -87,6 +89,15 @@ class SyntheticBuilder(AbstractComponent):
         self.pm_persist(save)
         return
 
+    def set_outcome(self, uri_file: str, save: bool=None):
+        """sets the persist contract CONNECTOR_SYNTHETIC using the TEMPLATE_PERSIST connector contract
+
+        :param uri_file: the uri_file is appended to the template path
+        :param save: (optional) if True, save to file. Default is True
+        """
+        self.add_connector_from_template(connector_name=self.CONNECTOR_SYNTHETIC, uri_file=uri_file,
+                                         template_name=self.TEMPLATE_PERSIST, save=save)
+
     def save_synthetic_canonical(self, df):
         """Saves the pandas.DataFrame to the clean files folder"""
         self.persist_canonical(self.CONNECTOR_SYNTHETIC, df)
@@ -98,16 +109,10 @@ class SyntheticBuilder(AbstractComponent):
         :param stylise: (optional) returns a stylised DataFrame with formatting
         :return: pd.DataFrame
         """
-        stylise = True if not isinstance(stylise, bool) else stylise
-        style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
-                 {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
         df = pd.DataFrame.from_dict(data=self.pm.report_connectors(connector_filter=connector_filter), orient='columns')
         if stylise:
-            df_style = df.style.set_table_styles(style).set_properties(**{'text-align': 'left'})
-            _ = df_style.set_properties(subset=['connector_name'], **{'font-weight': 'bold'})
-            return df_style
-        else:
-            df.set_index(keys='connector_name', inplace=True)
+            Commons.report(df, index_header='connector_name')
+        df.set_index(keys='connector_name', inplace=True)
         return df
 
     def report_run_book(self, stylise: bool=True):
@@ -116,17 +121,10 @@ class SyntheticBuilder(AbstractComponent):
         :param stylise: returns a stylised dataframe with formatting
         :return: pd.Dataframe
         """
-        stylise = True if not isinstance(stylise, bool) else stylise
-        style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
-                 {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
         df = pd.DataFrame.from_dict(data=self.pm.report_run_book(), orient='columns')
         if stylise:
-            index = df[df['name'].duplicated()].index.to_list()
-            df.loc[index, 'name'] = ''
-            df = df.reset_index(drop=True)
-            df_style = df.style.set_table_styles(style).set_properties(**{'text-align': 'left'})
-            _ = df_style.set_properties(subset=['name'],  **{'font-weight': 'bold', 'font-size': "120%"})
-            return df_style
+            Commons.report(df, index_header='name')
+        df.set_index(keys='name', inplace=True)
         return df
 
     def report_intent(self, stylise: bool=True):
@@ -135,17 +133,10 @@ class SyntheticBuilder(AbstractComponent):
         :param stylise: returns a stylised dataframe with formatting
         :return: pd.Dataframe
         """
-        stylise = True if not isinstance(stylise, bool) else stylise
-        style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
-                 {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
         df = pd.DataFrame.from_dict(data=self.pm.report_intent(), orient='columns')
         if stylise:
-            index = df[df['level'].duplicated()].index.to_list()
-            df.loc[index, 'level'] = ''
-            df = df.reset_index(drop=True)
-            df_style = df.style.set_table_styles(style).set_properties(**{'text-align': 'left'})
-            _ = df_style.set_properties(subset=['level'],  **{'font-weight': 'bold', 'font-size': "120%"})
-            return df_style
+            Commons.report(df, index_header='level')
+        df.set_index(keys='level', inplace=True)
         return df
 
     def report_notes(self, catalog: [str, list]=None, labels: [str, list]=None, regex: [str, list]=None,
@@ -160,16 +151,10 @@ class SyntheticBuilder(AbstractComponent):
         :param drop_dates: (optional) excludes the 'date' column from the report
         :return: pd.Dataframe
         """
-        stylise = True if not isinstance(stylise, bool) else stylise
-        drop_dates = False if not isinstance(drop_dates, bool) else drop_dates
-        style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
-                 {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
         report = self.pm.report_notes(catalog=catalog, labels=labels, regex=regex, re_ignore_case=re_ignore_case,
                                       drop_dates=drop_dates)
         df = pd.DataFrame.from_dict(data=report, orient='columns')
         if stylise:
-            df_style = df.style.set_table_styles(style).set_properties(**{'text-align': 'left'})
-            _ = df_style.set_properties(subset=['section'], **{'font-weight': 'bold'})
-            _ = df_style.set_properties(subset=['label', 'section'], **{'font-size': "120%"})
-            return df_style
+            Commons.report(df, index_header='section', bold='label')
+        df.set_index(keys='section', inplace=True)
         return df

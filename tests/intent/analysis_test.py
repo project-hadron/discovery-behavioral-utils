@@ -39,3 +39,33 @@ class AnalysisTest(unittest.TestCase):
         self.assertCountEqual(['cat', 'values'], result.keys())
         for key in result.keys():
             self.assertEqual(sample_size, len(result.get(key)))
+
+    def test_associate_from_dict(self):
+        analysis = {'income': {'associate': 'income',
+                               'analysis': {'intent': {'selection': [(0, 1, 'both')],
+                                                       'granularity': 1,
+                                                       'dtype': 'number',
+                                                       'precision': 0,
+                                                       'lower': 0,
+                                                       'upper': 1,
+                                                       'weighting_precision': 2},
+                                            'patterns': {'weight_pattern': [100.0],
+                                                         'weight_mean': [0.239],
+                                                         'weight_std': [0.182],
+                                                         'sample_distribution': [48842],
+                                                         'dominant_values': [0],
+                                                         'dominance_weighting': [100.0],
+                                                         'dominant_percent': 5},
+                                            'stats': {'nulls_percent': 0.0,
+                                                      'sample': 48842,
+                                                      'outlier_percent': 0.0,
+                                                      'mean': 0.24,
+                                                      'var': 0.18,
+                                                      'skew': 1.22,
+                                                      'kurtosis': -0.51}}}}
+        sample_size=20
+        result = self.tools.associate_analysis(analysis, size=sample_size)
+        print(pd.DataFrame(result))
+
+        
+
