@@ -98,7 +98,7 @@ class SyntheticBuilder(AbstractComponent):
 
     def save_synthetic_canonical(self, df):
         """Saves the pandas.DataFrame to the clean files folder"""
-        self.persist_canonical(self.CONNECTOR_SYNTHETIC, df)
+        self.persist_canonical(connector_name=self.CONNECTOR_SYNTHETIC, canonical=df)
 
     def report_connectors(self, connector_filter: [str, list]=None, stylise: bool=True):
         """ generates a report on the source contract

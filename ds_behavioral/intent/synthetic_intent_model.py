@@ -919,7 +919,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     row_dict[name] += self.get_category(selection=_analysis.selection, label=name,
                                                         weight_pattern=_analysis.weight_pattern,
                                                         quantity=1-_analysis.nulls_percent, seed=seed,
-                                                        size=sample_size, save_intent=save_intent, intent_level=-1,
+                                                        size=sample_size, save_intent=save_intent, intent_level=name,
                                                         replace_intent=replace_intent)
                 if str(_analysis.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.selection, label=name,
@@ -930,7 +930,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                          precision=_analysis.precision,
                                                          quantity=1 - _analysis.nulls_percent,
                                                          seed=seed, size=sample_size, save_intent=save_intent,
-                                                         intent_level=-1, replace_intent=replace_intent)
+                                                         intent_level=name, replace_intent=replace_intent)
                 if str(_analysis.dtype).startswith('date'):
                     row_dict[name] += self.get_datetime(start=_analysis.lower, until=_analysis.upper, label=name,
                                                         weight_pattern=_analysis.weight_pattern,
@@ -939,7 +939,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                         year_first=_analysis.year_first,
                                                         quantity=1 - _analysis.nulls_percent,
                                                         seed=seed, size=sample_size, save_intent=save_intent,
-                                                        intent_level=-1, replace_intent=replace_intent)
+                                                        intent_level=name, replace_intent=replace_intent)
                 unit = sample_size / sum(_analysis.weight_pattern)
                 if values.get('sub_category'):
                     section_map = _analysis.weight_map
