@@ -15,7 +15,7 @@ class SyntheticBuilder(AbstractComponent):
                  default_save=None):
         """ Encapsulation class for the discovery set of classes
 
-        :param property_manager: The contract property manager instance for this component
+        :param property_manager: The contract property manager instance for this components
         :param intent_model: the model codebase containing the parameterizable intent
         :param default_save: The default behaviour of persisting the contracts:
                     if False: The connector contracts are kept in memory (useful for restricted file systems)
@@ -29,7 +29,7 @@ class SyntheticBuilder(AbstractComponent):
                  template_persist_path: str=None, template_source_module: str=None,
                  template_persist_module: str=None, template_source_handler: str=None,
                  template_persist_handler: str=None, **kwargs):
-        """ Class Factory Method to instantiates the component application. The Factory Method handles the
+        """ Class Factory Method to instantiates the components application. The Factory Method handles the
         instantiation of the Properties Manager, the Intent Model and the persistence of the uploaded properties.
 
         by default the handler is local Pandas but also supports remote AWS S3 and Redis. It use these Factory
