@@ -50,13 +50,17 @@ class SyntheticBuilder(AbstractComponent):
          :param kwargs: to pass to the connector contract
          :return: the initialised class instance
          """
+        pm_file_type = pm_file_type if isinstance(pm_file_type, str) else 'pickle'
+        pm_module = pm_module if isinstance(pm_module, str) else 'ds_discovery.handlers.pandas_handlers'
+        pm_handler = pm_handler if isinstance(pm_handler, str) else 'PandasPersistHandler'
         _pm = SyntheticPropertyManager(task_name=task_name)
         _intent_model = SyntheticIntentModel(property_manager=_pm)
-        super()._init_properties(property_manager=_pm, uri_pm_path=uri_pm_path, **kwargs)
-        super()._add_templates(property_manager=_pm, source_path=template_source_path, save=default_save,
-                               persist_path=template_persist_path, source_module=template_source_module,
-                               persist_module=template_persist_module, source_handler=template_source_handler,
-                               persist_handler=template_persist_handler)
+        super()._init_properties(property_manager=_pm, uri_pm_path=uri_pm_path, pm_file_type=pm_file_type,
+                                 pm_module=pm_module, pm_handler=pm_handler, **kwargs)
+        super()._add_templates(property_manager=_pm, save=default_save,
+                               source_path=template_source_path, persist_path=template_persist_path,
+                               source_module=template_source_module, persist_module=template_persist_module,
+                               source_handler=template_source_handler, persist_handler=template_persist_handler)
         return cls(property_manager=_pm, intent_model=_intent_model, default_save=default_save)
 
     @classmethod
