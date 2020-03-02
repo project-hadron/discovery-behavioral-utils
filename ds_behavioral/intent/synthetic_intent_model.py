@@ -15,7 +15,7 @@ from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
 from aistac.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 
-from ds_behavioral.component.commons import Commons
+from ds_behavioral.components.commons import Commons
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'
