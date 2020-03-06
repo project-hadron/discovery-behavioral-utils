@@ -70,6 +70,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             for level in intent_level:
                 for method, params in self._pm.get_intent(level=level).items():
                     if method in self.__dir__():
+                        params.update(params.pop('kwargs', {}))
                         if isinstance(kwargs, dict):
                             params.update(kwargs)
                         label = params.pop('label', None)
@@ -79,7 +80,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                             if letter_counter == len(label_letter):
                                 letter_counter = 0
                                 label_number += 1
-                        result = eval(f"self.{method}(size={size}, save_intent=False, **{params})")
+                        result = eval(f"self.{method}(size=size, save_intent=False, **params)", globals(), locals())
                         if str(method).startswith('create_'):
                             df = pd.concat([df, result], axis=1)
                         else:

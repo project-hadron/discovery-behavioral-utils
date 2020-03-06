@@ -25,6 +25,8 @@ class AnalysisTest(unittest.TestCase):
     def tearDown(self):
         pass
 
+
+
     def test_associate_analysis_from_discovery(self):
         """Basic smoke test"""
         df = pd.DataFrame()
@@ -321,9 +323,11 @@ class AnalysisTest(unittest.TestCase):
                                                       'var': 0.18,
                                                       'skew': 1.22,
                                                       'kurtosis': -0.51}}}}
-        result = self.tools.associate_analysis(analysis, size=10000, save_intent=False)
+        sample_size = 10000
+        result = self.tools.associate_analysis(analysis, size=sample_size, save_intent=False)
+        self.assertCountEqual(analysis.keys(), result.keys())
         for key, value in result.items():
-            print(f"{key} - {len(value)}")
+            self.assertEqual(sample_size, len(value))
 
         
 
