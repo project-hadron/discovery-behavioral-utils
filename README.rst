@@ -1,6 +1,16 @@
 AI-STAC Behavioral Synthetic Generator
 ######################################
 
+
+.. class:: no-web no-pdf
+
+|pypi| |license| |wheel|
+
+
+.. contents::
+
+.. section-numbering::
+
 What is AI-STAC
 ===============
 
@@ -19,16 +29,6 @@ traceability, to better inform the broadest of interested parties and be able to
 code 'sludge' of redundant ideas. AI-STAC is a disruptive innovation, changing the way we approach the challenges of
 Machine Learning and Augmented Inelegance, introduces the ideas of 'Single Task Adaptive Components' around the
 core concept of 'Parameterised Intent'
-
-
-.. class:: no-web no-pdf
-
-|pypi| |rdt| |license| |wheel|
-
-
-.. contents::
-
-.. section-numbering::
 
 Main features
 =============
