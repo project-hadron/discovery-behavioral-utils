@@ -18,6 +18,7 @@ import re
 
 here = path.abspath(path.dirname(__file__))
 
+
 def read(*parts):
     filename = path.join(here, *parts)
     with open(filename, encoding='utf-8') as fp:
@@ -30,6 +31,8 @@ def find_version(*file_paths):
     if version_match:
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
+
+
 setup(
     name='discovery-behavioral-utils',
     version=find_version('ds_behavioral', '__init__.py'),
@@ -58,12 +61,11 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         'pandas>0.25',
-        'discovery-foundation',
+        'aistac-foundation',
         'discovery-connectors',
+        'discovery-transition-ds',
         'matplotlib',
         'numpy',
     ],
     test_suite='tests',
 )
-
-

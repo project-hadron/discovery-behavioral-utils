@@ -1,8 +1,25 @@
-Discovery Behavioral Tools
-#############################
+AI-STAC Behavioral Synthetic Generator
+######################################
 
-This project looks to help in the building of tools that require data that has behavioral
-characteristics.
+What is AI-STAC
+===============
+
+Augmented Intent - Single Task Adaptive Components (AI-STAC) is a disruptive innovator for data recovery, discovery,
+synthesis, feature cataloging and machine Learning that changes the approach to data science and it's transition to
+production.
+
+it's origins came from an incubator project that shadowed a team of Ph.D. data scientists in connection with the
+development and delivery of machine learning initiatives to define measurable benefit propositions for customer success.
+From this, a number of observable 'capabilities' were identified as unique and separate concerns. The challenges of the
+data scientist, and in turn the production teams, were to effectively leverage these separation of concerns and
+distribute and loosely couple the specialist capability needs to the appropriate skills set.
+
+In addition the need to remove the opaque nature of the machine learning end-to-end required better transparency and
+traceability, to better inform the broadest of interested parties and be able to adapt without leaving being the
+code 'sludge' of redundant ideas. AI-STAC is a disruptive innovation, changing the way we approach the challenges of
+Machine Learning and Augmented Inelegance, introduces the ideas of 'Single Task Adaptive Components' around the
+core concept of 'Parameterised Intent'
+
 
 .. class:: no-web no-pdf
 
@@ -20,13 +37,77 @@ Main features
 * Correlation and Association
 * Behavioral Analytics
 
+Overview
+========
+
+The Behavioral Synthetic Data Generator was developed as a solution to the current challenges of data accessibility
+and the early mobilization of machine learning discovery, feature cataloging and model build.
+
+AI-STAC Behavioral Synthetic Data Generator takes on, what is, a sceptically viewed and challenging problem area of
+the generation of data that is synthetic in nature, but is still representative of its intended real-life counterpart.
+In short, The AI-STAC package needed to develop rich data sets to demonstrate the capabilities across a number of
+different disciplines from simple volumetrics to more demanding and complex data needs
+
+Value Proposition
+-----------------
+Within the Machine learning discipline, and as a broader challenge, the accessibility of data and its relevance to
+early engagement and customer success, is an industry problem with many variants available on the market.
+Though competent in their delivery, their ability to flex and enrich across multiple examples of need and particularly
+the high demands of pattern and associative recognition, pertaining to machine learning, is limited and cynically
+considered within the machine learning community.
+
+The Behavioral Synthetic Data Generator improves representation of data appropriate to Use Case discovery,
+Machine Learning outcomes, and disclosure mitigation, removing personal DNA, while presenting representative data that
+continues to represetnt eh behavioralk characteristics of the original.
+
+The ability to engage with the customer before the availability of or access to organisational data sets is a vital
+part of an organisations challenge to prove value add early and build customer success. The Behavioural Synthetic Data
+Generator provides extended tooling for stress, volume and boundary testing and is also highly effective at
+presentation enrichment modelling to bring product, UI and ideation to life.
+
+With the need for Use Case early success signals, Hypothesis modelling and Business Intent Injection, as critical tools
+for the success and innovation of a department, business or organisation, AI-STAC Behavioral Synthetic Generator
+facilitates the mechanism to build higher order thinking. The ability to generate highly sophisticated business critical
+behavioural data, particularly in today's heavily restricted and controlled environments, allows for early validation
+of customer success, and more particularly, early failure to build towards more productive successes
+
+Techniques and Methods
+----------------------
+
+To achieve this, AI-STAC Behavioral Synthetic Generator highlighted three constructs;
+
+1.  Probability Waiting - Is an algorithm based on probability weighting patterns, dominance distributions and type
+characteristics, allowing fine grain and complex behavioral characteristics and patterns to be added, across multiple
+data types, to the distribution of data points within a data set.
+
+2.  Correlation and Association – Through advanced programming techniques and a deep knowledge of component modelling
+and code reuse, the project developed a finite set of data point generation tooling that implements method chaining
+and rules-based association against action techniques. This approach and its techniques provide the ability to capture
+complex hypothesis and business intent and generate specialized output against those outcomes.
+
+3.  Behavioral Analytics – In addition to the data point generators, the tooling provides data analytics and behavioral
+extraction, against existing data sets, that can be replayed to quickly create behavioral patterns within existing
+data sets, without compromising or disclosing sensitive, or protected information. Though considered for the
+regeneration of sample code or for experimental train/predict continuous data, this can be particularly valuable
+with today’s concerns of data protection and disclosure mitigation strategies.
+
 Installation
 ============
 
 package install
 ---------------
+The best way to install AI-STAC component packages is directly from the Python Package Index repository using pip.
+All AI-STAC components are based on a pure python foundation package ``aistac-foundation``, but this also takes
+advantage of other AI-STAC components  ``discovery-connectors`` providing extended connectivity, and the
+``discovery-transition-ds`` package providing, amongst other things, data anylitics. The pip install is:
 
-The best way to install this package is directly from the Python Package Index repository using pip
+.. code-block:: bash
+
+    $ pip install aistac-foundation
+    $ pip install discovery-connectors
+    $ pip install discovery-transition-ds
+
+The AI-STAC component package for the Behavioral Synthetic is ``discovery-behavioral-utils`` and pip installed with:
 
 .. code-block:: bash
 
@@ -38,170 +119,212 @@ if you want to upgrade your current version then using pip
 
     $ pip install --upgrade discovery-behavioral-utils
 
-env setup
----------
-Other than the dependant python packages indicated in the ``requirements.txt`` there are
-no special environment setup needs to use the package. The package should sit as an extension to
-your current data science and discovery packages.
+First Time Env Setup
+--------------------
+In order to ease the startup of tasks a number of environment variables are available to pre-assign where and how
+configuration and data can be collected. This can considerable improve the burden of setup and help in the migration
+of the outcome contracts between environments.
 
-Overview
-========
+In this section we will look at a couple of primary environment variables and demonstrate later how these are used
+in the Component. In the following example we are assuming a local file reference but this is not the limit of how one
+can use the environment variables to locate date from multiple different connection mediums. Examples of other
+connectors include AWS S3, Hive, Redis, MongoDB, Azure Blob Storage, or specific connectors can be created very
+quickly using the AS-STAC foundation abstracts.
 
-Techniques and Methods
-----------------------
-The Behavioral Syntenic Data Generator was developed as a solution to the current challenges of data accessibility
-and the early mobilization of machine learning discovery and model build. This product tool takes on, what is, a
-sceptically viewed and challenging problem area of the generation of data that is synthetic but is still representative
-of its intended real-life counterpart. In short, The project needed to develop rich data sets to demonstrate the
-capabilities of its machine learning offerings so users could see and test what the synthetic data could do.
+If you are on linux or MacOS:
 
-To achieve this, the project identified in three constructs;
+1. Open the current user's profile into a text editor.
 
-1.  Probability Waiting - Is an algorithm based on breadth and depth weighting patterns fulfilled through multivariate
-continuous distributions using monotonic splines and copulas. Working with Aryan Pedawi, a Ph.D research scientist
-specializing in Bayesian probability theory, this Probability Waiting algorithm is one of the key differentiators
-from other synthetic data models, allowing fine grain and complex behavioral characteristics to be added to the
-distribution of data points within a data set.
+.. code-block:: bash
 
-2.  Correlation and Association – Through advanced programming techniques and a deep knowledge of component modelling
-and code reuse, the project developed a finite set of data point generation tooling that implements method chaining
-and rules-based association against action techniques. This approach and its techniques provide the ability to capture
-machine learning and business intent and generate specialized output against those requirements.
+    $> vi ~/.bash_profile.
 
-3.  Behavioral Analytics – In addition to the data point generators, the tooling provides data analytics and behavioral
-extraction, against existing data sets, that can be replayed to quickly create behavioral patterns within existing
-data sets, without compromising or disclosing sensitive, or protected information.  This is particularly valuable
-with today’s concerns of data protection and disclosure mitigation strategies.
+2. Add the export command for each environment variable setting your preferred paths in this example I am setting
+them to a demo projects folder
 
-Value Proposition
------------------
-Within the Machine learning discipline, and as a broader challenge, the accessibility of data and its relevance to the
-success of early engagement and customer success is an industry problem with many variants available on the market.
-Though competent in their delivery, their ability to flex and enrich across multiple examples of need and particularly
-the high demands of pattern and associative recognition, pertaining to machine learning, is limited and cynically
-considered within the machine learning community. The Behavioral Synthetic Data Generator improves representation of
-data appropriate to ML modelling, test train data sets and the disclosure mitigation through targeted and customized
-modelling of data that removes the personal DNA and leaves one with representative data that retains its behavioural
-DNA allowing true representation of the problem scope.
+.. code-block:: bash
 
-The ability to engage with the customer before the availability of or access to organisational data sets is a vital
-part of an organisations ability to prove value add early and build customer success. The Behavioural Synthetic Data
-Generator is currently being used for stress, volume and boundary testing and presentation enrichment modelling within
-the Accelerated Machine learning initiative. In addition, it is being used to generate highly sophisticated machine
-learning focused behavioural data that allows for early validation of customer success while data access remains
-restrictive and inaccessible.
+    # where to find the properties contracts
+    export AISTAC_PM_PATH=~/projects/demo/contracts
+
+    # The default path for the source and the persisted data
+    export AISTAC_DEFAULT_PATH=~/projects/demo/data
+
+3. In addition to the default environment variables you can set specific component environment variables. This is
+particularly useful with the Synthetic component where output might vary from the default path structure.
+For Synthetic persist you replace the ``DEFAULT`` with ``SYNTHETIC``, and in this case specify the ``PERSIST`` path
+
+.. code-block:: bash
+
+    # specific to the synthetic component persist path
+    export AISTAC_SYNTHETIC_SOURCE_PATH=/tmp/data/sftp
+
+4. save your changes
+5. re-run your bash_profile and check the variables have been set
+
+.. code-block:: bash
+
+    $> source ~/.bash_profile.
+    $> env
+
+SyntheticBuilder Task - Setup
+=============================
+The SyntheticBuilder Component is a 'Capability' component and a 'Separation of Concern' dealing specifically with the
+generation of synthetic data.
+
+In the following example we are assuming a local file reference and are using the default AI-STAC Connector Contracts
+for Data Sourcing and Persisting, but this is not the limit of how one can use connect to data retrieval and storage.
+Examples of other connectors include AWS S3, Hive, Redis, MongoDB, Azure Blob Storage, or specific connectors can be
+created very quickly using the AS-STAC foundation abstracts.
+
+Instantiation
+-------------
+The ``SyntheticBuilder`` class is the encapsulating class for the Synthetic Capability, providing a wrapper for
+synthetic builder functionality. and imported as:
+
+.. code-block:: python
+
+    from ds_behavioral import SyntheticBuilder
+
+The easiest way to instantiate the ``SyntheticBuilder`` class is to use Factory Instantiation method ``.from_env(...)``
+that takes advantage of our environment variables set up in the previous section. in order to differentiate each
+instance of the SyntheticBuilder Component, we assign it a ``Task`` name that we can use going forward to retrieve
+or re-create our SyntheticBuilder instance with all its 'Intent'
+
+.. code-block:: python
+
+    builder = SyntheticBuilder.from_env(task_name='demo')
+
+Augmented Knowledge
+-------------------
+Once you have instantiated the SyntheticBuilder Task it is important to add a description of the task as a future remind,
+for others using this task and when using the MasterLedger component (not covered in this tutorial) it allows for a
+quick reference overview of all the tasks in the ledger.
+
+.. code-block:: python
+
+    builder.set_description("A Demo task as a tutorial in building synthetic data")
+
+Note: the description should be a short summary of the task. If we need to be more verbose, and as good practice,
+we can also add notes, that are timestamped and cataloged, to help augment knowledge about this
+task that is carried as part of the Property Contract.
+
+in the SyntheticBuilder Component notes are cataloged within five named sections:
+* source - notes about the source data that help in what it is, where it came from and any SME knowledge of interest
+* schema - data schemas to capture and report on the outcome data set
+* observations - observations of interest or enhancement of the understanding of the task
+* actions - actions needed, to be taken or have been taken within the task
+
+each ``catalog`` can have multiple ``labels`` whick in tern can have multiple text entries, each text keyed by
+timestamp. through the catalog set is fixed, ``labels`` can be any reference label
+
+the following example adds a description to the source catalogue
+
+.. code-block:: python
+
+    tr.add_notes(catalog='source', label='describe', text="The source of this demo is a synthetic data set"
+
+To retrieve the list of allowed ``catalog`` sections we use the property method:
+
+.. code-block:: python
+
+    builder.notes_catalog
 
 
-Using the Behavioral Synthetic Data Generator
-=============================================
+One-Time Connectors Settings
+----------------------------
+With each component task we need to set up its connectivity defining an outcome ``Connector Contract`` which control
+the loose coupling of where data is persisted to the code that uses it. Though we can define the Connect Contract in
+full, it is easier to take advantage of template connectors set up as part of the Factory initialisation method.
 
-Package Structure
------------------
+Though we can define as many Connector Contract as we like, by its nature, the SyntheticBuilder task has a single
+outcome connector contract that need to be set up as a 'one-off' task. Once this is set it is stored in the Property
+Contract and thus do not need to be set again.
 
-Within the Discovery Transitioning Utils are a set
-of\ ``simulator package`` that contains the DataBuilder,
-DataBuilderPropertyManager and the DataBuilderTools class
+Outcome Contract
+~~~~~~~~~~~~~~~~
+We need to specify where we are going to persist our data once we have synthesised it. Here we are going to take
+advantage of what our Factory Initialisation method set up for us and allow the SyntheticBuilder task to define our
+output based on constructed template Connector Contracts. With this the file will be placed in predefined persist path
 
-DataBuilder
-~~~~~~~~~~~
+.. code-block:: python
 
--  is a Data Builder management instance that allows the building of
-   datasets to be repeatable by saving a configuration of the build
-   definition
+    builder.set_outcome(uri_file='synthetic_demo.csv')
 
-DataBuilderPropertyManager
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+We are ready to go. The SyntheticBuilder task is ready to use.
 
--  manages the configuration property values and saves the build
-   templates to regenerate the synthetic data
+SyntheticBuilder Task - Intent
+==============================
 
-DataBuilderTools:
-~~~~~~~~~~~~~~~~~
+Instantiate the Task
+--------------------
 
--  is a set of static methods that generate the different data types
-   ``int``, ``float``, ``string``, ``category`` and ``date``. and define
-   the randomness and patterns of the values.
+The easiest way to instantiate the ``SyntheticBuilder`` class is to use Factory Instantiation method ``.from_env(...)``
+that takes advantage of our environment variables set up in the previous section. in order to differentiate each
+instance of the SyntheticBuilder Component, we assign it a ``Task`` name that we can use going forward to retrieve
+or re-create our SyntheticBuilder instance with all its 'Intent'
 
-Firstly we need to import the ``DataBuilder`` class and create a
-**named** instance to identify this instance from other instances we
-might create. Normally the name would be representative of the dataset
-you are trying to create such as ``customer``, ``accounts`` or
-``transactions`` as an example
+.. code-block:: python
 
-.. code:: python
+    builder = SyntheticBuilder.from_env(task_name='demo')
 
-    from ds_behavioral import DataBuilder
+Parameterised Intent
+--------------------
+Parameterised intent is a core concept and represents the intended action and defining functions of the component.
+Each method is known as a component intent and the parameters the task parameterisation of that intent. The intent
+and its parameters are saved and can be replayed using the ``run_intent_pipeline(size=1000)`` method
 
-.. code:: python
+The following sections are a brief description of the intent and its parameters. To retrieve the list of available
+intent methods in code run:
 
-    builder = DataBuilder.from_env('SimpleExample')
+.. code-block:: python
 
-Building a basic dataset
-------------------------
-
-with this example we will firstly look at the tools that are avaialbe
-and produce a ``Pandas DataFrame`` on the fly
-
-.. code:: python
-
-    builder.tool_dir
-
-.. parsed-literal::
-
-    ['associate_analysis',
-     'associate_custom',
-     'associate_dataset',
-     'correlate_categories',
-     'correlate_dates',
-     'correlate_numbers',
-     'get_category',
-     'get_custom',
-     'get_datetime',
-     'get_distribution',
-     'get_file_column',
-     'get_intervals',
-     'get_number',
-     'get_profiles',
-     'get_reference',
-     'get_string_pattern',
-     'unique_date_seq',
-     'unique_identifiers',
-     'unique_numbers',
-     'unique_str_tokens']
-
-Here we can see the methods are broken down into four categories:
-``get``, ``unique``, ``correlate``, ``associate``.
+    tr.intent_model.__dir__()
 
 We can also look at the contextual help for each of the methods calling
-the ``tools`` property and using the ``help`` build-in
+the ``intent_model`` property and using the ``help`` build-in
 
 .. code:: python
 
-    help(builder.tools.get_number)
+    help(builder.intent_model.get_number)
 
 .. parsed-literal::
 
-    Help on function get_number in module ds_behavioral.simulators.data_builder:
-    
-    get_number(to_value: , from_value: = None, weight_pattern: list = None, precision: int = None, size: int = None,
-               quantity: float = None, seed: int = None)
-        returns a number in the range from_value to to_value. if only to_value given from_value is zero
-        
-        **:param to_value:** highest integer value, if from_value provided must be one above this value
-        **:param from_value:** optional, (signed) integer to start from. Default is zero (0)
-        **:param weight_pattern:** a weighting pattern or probability that does not have to add to 1
-        **:param precision:** the precision of the returned number. if None then assumes int value else float
-        **:param size:** the size of the sample
-        **:param quantity:** a number between 0 and 1 representing data that isn't null
-        **:param seed:** a seed value for the random function: default to None
-        **:return:** a random number
+    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
+                   label: str=None, offset: int=None, precision: int=None, currency: str=None,
+                   bounded_weighting: bool=True, at_most: int=None, dominant_values: [float, list]=None,
+                   dominant_percent: float=None, dominance_weighting: list=None, size: int = None, quantity: float=None,
+                   seed: int=None, save_intent: bool=None, intent_level: [int, str]=None,
+                   replace_intent: bool=None) -> list:
+        """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
+
+        :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
+        :param to_value: optional, (signed) integer to end from.
+        :param weight_pattern: a weighting pattern or probability that does not have to add to 1
+        :param label: a unique name to use as a label for this column
+        :param precision: the precision of the returned number. if None then assumes int value else float
+        :param offset: an offset multiplier, if None then assume 1
+        :param currency: a currency symbol to prefix the value with. returns string with commas
+        :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
+        :param at_most: the most times a selection should be chosen
+        :param dominant_values: a value or list of values with dominant_percent. if used MUST provide a dominant_percent
+        :param dominant_percent: a value between 0 and 1 representing the dominant_percent of the dominant value(s)
+        :param dominance_weighting: a weighting of the dominant values
+        :param size: the size of the sample
+        :param quantity: a number between 0 and 1 representing data that isn't null
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) a level to place the intent
+        :param replace_intent: (optional) replace strategy for the same intent found at that level
+        :return: a random number
+        """
     
 From here we can now play with some of the ``get`` methods
 
 .. code:: python
 
     # get an integer between 0 and 9
-    builder.tools.get_number(10, size=5)
+    builder.intent_model.get_number(10, size=5)
 
 .. parsed-literal::
 
@@ -210,7 +333,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get a float between -1 and 1, notice by passing an float it assumes the output to be a float
-    builder.tools.get_number(from_value=-1.0, to_value=1.0, precision=3, size=5)
+    builder.intent_model.get_number(from_value=-1.0, to_value=1.0, precision=3, size=5)
 
 .. parsed-literal::
 
@@ -220,7 +343,7 @@ From here we can now play with some of the ``get`` methods
 
     # get a currency by setting the 'currency' parameter to a currency symbol.
     # Note this returns a list of strings
-    builder.tools.get_number(from_value=1000.0, to_value=2000.0, size=5, currency='$', precision=2)
+    builder.intent_model.get_number(from_value=1000.0, to_value=2000.0, size=5, currency='$', precision=2)
 
 .. parsed-literal::
 
@@ -229,7 +352,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get a timestamp between two dates
-    builder.tools.get_datetime(start='01/01/2017', until='31/12/2018')
+    builder.intent_model.get_datetime(start='01/01/2017', until='31/12/2018')
 
 .. parsed-literal::
 
@@ -238,7 +361,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get a formated date string between two numbers
-    builder.tools.get_datetime(start='01/01/2017', until='31/12/2018', size=4, date_format='%d-%m-%Y')
+    builder.intent_model.get_datetime(start='01/01/2017', until='31/12/2018', size=4, date_format='%d-%m-%Y')
 
 .. parsed-literal::
 
@@ -247,7 +370,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get categories from a selection
-    builder.tools.get_category(['Red', 'Blue', 'Green', 'Black', 'White'], size=4)
+    builder.intent_model.get_category(['Red', 'Blue', 'Green', 'Black', 'White'], size=4)
 
 .. parsed-literal::
 
@@ -256,7 +379,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get unique categories from a selection
-    builder.tools.get_category(['Red', 'Blue', 'Green', 'Black', 'White'], size=4, replace=False)
+    builder.intent_model.get_category(['Red', 'Blue', 'Green', 'Black', 'White'], size=4, replace=False)
 
 .. parsed-literal::
 
@@ -267,11 +390,11 @@ Building a DataFrame
 --------------------
 
 With these lets build a quick Synthetic DataFrame. For ease of code we
-will redefine the 'builder.tools' call
+will redefine the 'builder.intent_model' call
 
 .. code:: python
 
-    tools = builder.tools
+    tools = builder.intent_model
 
 .. code:: python
 

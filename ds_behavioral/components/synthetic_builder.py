@@ -20,7 +20,6 @@ class SyntheticBuilder(AbstractComponent):
         :param default_save: The default behaviour of persisting the contracts:
                     if False: The connector contracts are kept in memory (useful for restricted file systems)
         """
-
         super().__init__(property_manager=property_manager, intent_model=intent_model, default_save=default_save)
 
     @classmethod
@@ -93,14 +92,14 @@ class SyntheticBuilder(AbstractComponent):
         self.pm_persist(save)
         return
 
-    def set_outcome(self, uri_file: str, save: bool=None):
+    def set_outcome(self, uri_file: str, save: bool=None, **kwargs):
         """sets the persist contract CONNECTOR_SYNTHETIC using the TEMPLATE_PERSIST connector contract
 
         :param uri_file: the uri_file is appended to the template path
         :param save: (optional) if True, save to file. Default is True
         """
         self.add_connector_from_template(connector_name=self.CONNECTOR_SYNTHETIC, uri_file=uri_file,
-                                         template_name=self.TEMPLATE_PERSIST, save=save)
+                                         template_name=self.TEMPLATE_PERSIST, save=save, **kwargs)
 
     def save_synthetic_canonical(self, df):
         """Saves the pandas.DataFrame to the clean files folder"""
