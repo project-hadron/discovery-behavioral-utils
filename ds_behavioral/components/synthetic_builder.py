@@ -26,7 +26,6 @@ class SyntheticBuilder(AbstractComponent):
                          reset_templates=reset_templates, align_connectors=align_connectors)
 
     @classmethod
-    @classmethod
     def from_uri(cls, task_name: str, uri_pm_path: str, pm_file_type: str=None, pm_module: str=None,
                  pm_handler: str=None, pm_kwargs: dict=None, default_save=None, reset_templates: bool=None,
                  align_connectors: bool=None, default_save_intent: bool=None, default_intent_level: bool=None,

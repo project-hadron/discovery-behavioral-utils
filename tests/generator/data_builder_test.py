@@ -13,7 +13,7 @@ import numpy as np
 import unittest
 import os
 
-from ds_behavioral.component.synthetic_component import SyntheticBuilder
+from ds_behavioral import SyntheticBuilder
 
 class FileBuilderTest(unittest.TestCase):
 
@@ -37,11 +37,11 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_runs(self):
         """Basic smoke test"""
-        DataBuilderComponent.from_env(self.name)
+        SyntheticBuilder.from_env(self.name)
 
     def test_tools(self):
         """test we can get tools"""
-        fb = DataBuilderComponent.from_env(self.name)
+        fb = SyntheticBuilder.from_env(self.name)
         self.assertEqual(fb.tool_dir, DataBuilderTools.__dir__())
 
     def test_from(self):
