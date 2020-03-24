@@ -1128,10 +1128,11 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None, action: str=None,
-                          precision: int=None, fill_nulls: bool=None, quantity: float=None, seed: int=None,
-                          keep_zero: bool=None, min_value: [int, float]= None, max_value: [int, float]= None,
-                          save_intent: bool=None, intent_level: [int, str]=None, replace_intent: bool=None):
+    def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None,
+                          multiply_offset: bool=None, precision: int=None, fill_nulls: bool=None, quantity: float=None,
+                          seed: int=None, keep_zero: bool=None, min_value: [int, float]=None,
+                          max_value: [int, float]=None, save_intent: bool=None, intent_level: [int, str]=None,
+                          replace_intent: bool=None):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
@@ -1139,7 +1140,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param label: a unique name to use as a label for this column
         :param spread: (optional) the random spread or deviation from the value. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
-        :param action: (optional) what action on the offset. Options are: 'add'(default),'multiply'
+        :param multiply_offset: (optional) if true then the offset is multiplied else added
         :param precision: (optional) how many decimal places. default to 3
         :param fill_nulls: (optional) if True then fills nulls with the most common values
         :param quantity: (optional) a number between 0 and 1 preresenting the percentage quantity of the data
@@ -1158,7 +1159,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         offset = 0.0 if offset is None else offset
         spread = 0.0 if spread is None else spread
         precision = 3 if precision is None else precision
-        action = 'add' if not isinstance(action, str) else action
+        multiply_offset = 'add' if not isinstance(multiply_offset, str) else multiply_offset
         keep_zero = False if not isinstance(keep_zero, bool) else True
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
         quantity = self._quantity(quantity)
@@ -1183,7 +1184,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if fill_nulls and len(mode_choice) > 0 and (str(v) == 'nan' or not isinstance(v, (int, float))):
                     v = int(np.random.choice(mode_choice))
                 if isinstance(v, (int, float)):
-                    v = v * offset if action == 'multiply' else v + offset
+                    v = v * offset if multiply_offset == 'multiply' else v + offset
                     _result = round(np.random.normal(loc=v, scale=spread), precision)
                     if precision == 0:
                         _result = int(_result)
@@ -1246,7 +1247,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             corr_list.append(self.list_formatter(corr))
         if values is None or len(values) == 0:
             return list()
-        class_methods = self.__dir__
+        class_methods = self.__dir__()
 
         rtn_list = []
         for value_index in range(len(values)):

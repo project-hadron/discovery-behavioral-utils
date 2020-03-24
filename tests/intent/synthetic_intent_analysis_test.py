@@ -15,7 +15,7 @@ class ControlPropertyManager(AbstractPropertyManager):
         super().__init__(task_name=task_name, root_keys=root_keys, knowledge_keys=knowledge_keys)
 
 
-class AnalysisTest(unittest.TestCase):
+class SyntheticIntentAnalysisTest(unittest.TestCase):
 
     def setUp(self):
         self.pm = ControlPropertyManager('test_abstract_properties')
@@ -24,8 +24,6 @@ class AnalysisTest(unittest.TestCase):
 
     def tearDown(self):
         pass
-
-
 
     def test_associate_analysis_from_discovery(self):
         """Basic smoke test"""

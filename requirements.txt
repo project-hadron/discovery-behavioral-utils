@@ -5,7 +5,7 @@
 ###### Requirements without Version Specifiers ######
 setuptools
 pandas
-discovery-foundation
+aistac-foundation
 discovery-connectors
 matplotlib
 numpy
