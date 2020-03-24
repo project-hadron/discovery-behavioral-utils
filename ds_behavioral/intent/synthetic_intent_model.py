@@ -1159,7 +1159,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         offset = 0.0 if offset is None else offset
         spread = 0.0 if spread is None else spread
         precision = 3 if precision is None else precision
-        multiply_offset = 'add' if not isinstance(multiply_offset, str) else multiply_offset
+        action = 'multiply' if isinstance(multiply_offset, bool) and multiply_offset else 'add'
         keep_zero = False if not isinstance(keep_zero, bool) else True
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
         quantity = self._quantity(quantity)
@@ -1184,7 +1184,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if fill_nulls and len(mode_choice) > 0 and (str(v) == 'nan' or not isinstance(v, (int, float))):
                     v = int(np.random.choice(mode_choice))
                 if isinstance(v, (int, float)):
-                    v = v * offset if multiply_offset == 'multiply' else v + offset
+                    v = v * offset if action == 'multiply' else v + offset
                     _result = round(np.random.normal(loc=v, scale=spread), precision)
                     if precision == 0:
                         _result = int(_result)
