@@ -103,18 +103,24 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
             result = tools.correlate_numbers(numbers, offset=2, spread=5, max_value=1, label='corr_numbers', precision=0)
         self.assertTrue("The max value 1 is less than the min result value" in str(context.exception))
 
-
-
-
-
-
     def test_correlate_categories(self):
         tools = self.tools
         categories = list("ABCDE")
-        correlation = ['A', 'B']
-        action = {0: {'action': 'F'}, 1: {'action': 'G'}}
-        result = tools.correlate_categories(categories, correlations=correlation, actions=action, value_type='category', label='letters')
-        print(result)
+        correlation = ['A', 'D']
+        action = {0: 'F', 1: 'G'}
+        result = tools.correlate_categories(categories, correlations=correlation, actions=action, label='letters')
+        self.assertEqual(['F', 'B', 'C', 'G', 'E'], result)
+        correlation = ['A', 'D']
+        action = {0: {'method': 'get_category', 'selection': list("HIJ")}, 1: {'method': 'get_number', 'to_value': 10}}
+        result = tools.correlate_categories(categories, correlations=correlation, actions=action, label='letters')
+        self.assertIn(result[0], list("HIJ"))
+        self.assertTrue(0 <= result[3] < 10)
+        categories = tools.get_category(selection=list("ABCDE"), size=5000)
+        result = tools.correlate_categories(categories, correlations=correlation, actions=action, label='letters')
+        self.assertEqual(5000, len(result))
+
+    def test_correlate_categories_exceptions(self):
+        self.assertEqual(True, False)
 
 
 if __name__ == '__main__':

@@ -86,7 +86,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                             df[label] = result
         return df
 
-    def get_number(self, from_value: [int, float], to_value: [int, float]=None, weight_pattern: list=None,
+    def get_number(self, from_value: [int, float]=None, to_value: [int, float]=None, weight_pattern: list=None,
                    label: str=None, offset: int=None, precision: int=None, currency: str=None,
                    bounded_weighting: bool=True, at_most: int=None, dominant_values: [float, list]=None,
                    dominant_percent: float=None, dominance_weighting: list=None, size: int = None, quantity: float=None,
@@ -118,7 +118,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
         # intent code
-        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
+        if not isinstance(from_value, (int, float)) and not isinstance(to_value, (int, float)):
+            raise ValueError(f"either a 'to_value' or a 'from_value' and to_value' must be provided as a parameter")
+        if not isinstance(from_value, (float, int)):
+            from_value = 0
+        if not isinstance(to_value, (float, int)):
+            (from_value, to_value) = (0, from_value)
         at_most = 0 if not isinstance(at_most, int) else at_most
         if at_most > 0 and (at_most * (to_value-from_value)) < size:
             raise ValueError("When using 'at_most', the selectable values must be greater than the size. selectable "
@@ -763,7 +768,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise TypeError("The connector_contract must be a ConnectorContract instance")
         _seed = self._seed() if seed is None else seed
         randomize = False if not isinstance(randomize, bool) else randomize
-        headers = self.list_formatter(headers)
+        headers = self._pm.list_formatter(headers)
         df = HandlerFactory.instantiate(connector_contract).load_canonical()
         if isinstance(df, dict):
             df = pd.DataFrame(df)
@@ -777,7 +782,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if df.shape[1] == 1:
             return list(df.iloc[:size, 0])
         df = df.iloc[:size]
-        return self._filter_columns(df, headers=headers)
+        return Commons.filter_columns(df, headers=headers)
 
     def get_identifiers(self, from_value: int, to_value: int=None, label: str=None, size: int=None, prefix: str=None,
                         suffix: str=None, quantity: float=None, seed: int=None, save_intent: bool=None,
@@ -843,7 +848,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
-        pattern = self.list_formatter(pattern)
+        pattern = self._pm.list_formatter(pattern)
         if not isinstance(tags, dict):
             raise ValueError("The 'tags' parameter must be a dictionary")
         class_methods = self.__dir__
@@ -1014,7 +1019,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         _dataset = canonical
         _associations = associations
         if isinstance(_dataset, (str, int, float)):
-            _dataset = self.list_formatter(_dataset)
+            _dataset = self._pm.list_formatter(_dataset)
         if isinstance(_dataset, (list, pd.Series)):
             tmp = pd.DataFrame()
             tmp['_default'] = _dataset
@@ -1037,7 +1042,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 for header, lookup in associate_dict.items():
                     df_value = _dataset[header].iloc[index]
                     expect = lookup.get('expect')
-                    chk_value = self.list_formatter(lookup.get('value'))
+                    chk_value = self._pm.list_formatter(lookup.get('value'))
                     if expect.lower() in ['number', 'n']:
                         if len(chk_value) == 1:
                             [s] = [e] = chk_value
@@ -1129,10 +1134,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         return result
 
     def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None,
-                          weighting_patten: list=None, multiply_offset: bool=None, precision: int=None, fill_nulls: bool=None, quantity: float=None,
-                          seed: int=None, keep_zero: bool=None, min_value: [int, float]=None,
-                          max_value: [int, float]=None, save_intent: bool=None, intent_level: [int, str]=None,
-                          intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+                          weighting_patten: list=None, multiply_offset: bool=None, precision: int=None,
+                          fill_nulls: bool=None, quantity: float=None, seed: int=None, keep_zero: bool=None,
+                          min_value: [int, float]=None, max_value: [int, float]=None, save_intent: bool=None,
+                          intent_level: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                          remove_duplicates: bool=None):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
@@ -1206,9 +1212,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str, label: str=None,
-                             day_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                             intent_level: [int, str]=None, replace_intent: bool=None):
+    def correlate_categories(self, values: Any, correlations: list, actions: dict, label: str=None,
+                             fill_nulls: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
+                             intent_level: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                             remove_duplicates: bool=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
         Note. to use the current value in the passed values as a parameter value pass an empty dict {} as the keys
         value. If you want the action value to be the current value of the passed value then again pass an empty dict
@@ -1217,92 +1224,75 @@ class SyntheticIntentModel(AbstractIntentModel):
                 ['A', 'B', 'C'] # if values is 'A' then action is 0 and so on
             multiple choice correlation
                 [['A','B'], 'C'] # if values is 'A' OR 'B' then action is 0 and so on
-            actions dictionary where the action is a class method name and kwargs its parameters
-                {0: {'action': '', 'kwargs' : {}}, 1: {'action': '', 'kwargs' : {}}}
+            actions dictionary where the method is a class method followed by its parameters
+                {0: {'method': 'get_numbers', 'from_value': 0, to_value: 27}}
             you can also use the action to specify a specific value:
-                {0: {'action': ''}, 1: {'action': ''}}
+                {0: 'F', 1: {'method': 'get_numbers', 'from_value': 0, to_value: 27}}
 
         :param values: the category values to map against
         :param correlations: a list of categories (can also contain lists for multiple correlations.
         :param actions: the correlated set of categories that should map to the index
-        :param value_type: the type found in the values (options are 'category' ('c'), 'number', or 'datetime'('date'))
         :param label: a unique name to use as a label for this column
-        :param day_first: (optional) if type is date indictes if the day is first. Default to true
+        :param fill_nulls: (optional) if True then fills nulls with the most common values
         :param quantity: (optional) a number between 0 and 1 presenting the percentage quantity of the data
         :param seed: a seed value for the random function: default to None
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param intent_level: (optional) a level to place the intent
-        :param replace_intent: (optional) replace strategy for the same intent found at that level
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) the level name that groups intent by a reference name
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
+                                   intent_level=intent_level, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        if values is None or len(values) == 0:
+            return list()
+        fill_nulls = fill_nulls if isinstance(fill_nulls, bool) else False
         quantity = self._quantity(quantity)
-        _seed = self._seed() if seed is None else seed
-        if value_type.lower() not in ['c', 'n', 'd', 'category', 'number', 'datetime', 'date']:
-            raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
+        _seed = seed if isinstance(seed, int) else self._seed()
+        s_values = pd.Series(values.copy())
+        actions = deepcopy(actions)
+        correlations = deepcopy(correlations)
+        if fill_nulls:
+            s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
+        null_idx = s_values[s_values.isna()].index
+        s_values.to_string()
         corr_list = []
         for corr in correlations:
             corr_list.append(self._pm.list_formatter(corr))
-        if values is None or len(values) == 0:
-            return list()
         class_methods = self.__dir__()
-
-        rtn_list = []
-        for value_index in range(len(values)):
-            value = values[value_index]
-            _seed = self._next_seed(_seed, seed)
-            corr_index = None
-            for i in range(len(corr_list)):
-                if value_type.lower() in ['number', 'n']:
-                    if not isinstance(value, (float, int)):
-                        break
-                    if len(corr_list[i]) == 1:
-                        [s] = [e] = corr_list[i]
-                    else:
-                        [s, e] = corr_list[i]
-                    if s <= value <= e:
-                        corr_index = i
-                        break
-                elif value_type.lower() in ['date', 'datetime', 'd']:
-                    [s, e] = corr_list[i]
-                    value_date = pd.to_datetime(value, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
-                    s_date = pd.to_datetime(s, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
-                    e_date = pd.to_datetime(e, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
-                    if value_date is pd.NaT or s_date is pd.NaT or e_date is pd.NaT:
-                        break
-                    if s <= value <= e:
-                        corr_index = i
-                        break
-                else:
-                    if value in corr_list[i]:
-                        corr_index = i
-                        break
-            if corr_index is None or actions.get(corr_index) is None:
-                rtn_list.append(value)
+        for i in range(len(corr_list)):
+            corr_idx = s_values[s_values.isin(corr_list[i])].index
+            action = actions.get(i, None)
+            if action is None:
                 continue
-            method = actions.get(corr_index).get('action')
-            if method is None:
-                raise ValueError("There is no 'action' key at index [{}]".format(corr_index))
-            if method in class_methods:
-                kwargs = actions.get(corr_index).get('kwargs').copy()
-                for k, v in kwargs.items():
-                    if isinstance(v, dict):
-                        kwargs[k] = value
-                result = eval("self.{}(**{})".format(method, kwargs))
-                if isinstance(result, list):
-                    if len(result) > 0:
-                        rtn_list.append(result.pop())
-                    else:
-                        rtn_list.append(None)
+            if isinstance(action, dict):
+                method = action.pop('method', None)
+                if method is None:
+                    raise ValueError(f"The action key '{i}' dictionary has no 'method' key.")
+                if method in class_methods:
+                    params = actions.get(i, {})
+                    if not isinstance(params, dict):
+                        params = {}
+                    params.update({'size': corr_idx.size})
+                    data = eval(f"self.{method}(**params)", globals(), locals())
+                    result = pd.Series(data=data, index=corr_idx)
                 else:
-                    rtn_list.append(result)
+                    raise ValueError(f"The 'method' key {method} is not a recognised intent method")
             else:
-                if isinstance(method, dict):
-                    method = value
-                rtn_list.append(method)
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+                result = pd.Series(data=action * corr_idx.size, index=corr_idx)
+            s_values.update(result)
+        if null_idx.size > 0:
+            s_values.iloc[null_idx] = np.nan
+        return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
     def correlate_dates(self, values: Any, label: str=None, offset: [int, dict]=None, date_format: str=None,
                         lower_spread: [int, dict]=None, upper_spread: [int, dict]=None, ordered: bool=None,
@@ -1383,7 +1373,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if _min_date >= _max_date:
             raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
 
-        values = self.list_formatter(values)
+        values = self._pm.list_formatter(values)
         if values is None or len(values) == 0:
             return list()
         mode_choice = self._mode_choice(values) if fill_nulls else list()
@@ -1436,81 +1426,6 @@ class SyntheticIntentModel(AbstractIntentModel):
     """
         PRIVATE METHODS SECTION
     """
-    @staticmethod
-    def _filter_headers(canonical: pd.DataFrame, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
-                        exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None) -> list:
-        """ returns a list of headers based on the filter criteria
-
-        :param canonical: the Pandas.DataFrame to get the column headers from
-        :param headers: a list of headers to drop or filter on type
-        :param drop: to drop or not drop the headers
-        :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
-        :param exclude: to exclude or include the dtypes. Default is False
-        :param regex: a regiar expression to seach the headers
-        :param re_ignore_case: true if the regex should ignore case. Default is False
-        :return: a filtered list of headers
-
-        :raise: TypeError if any of the types are not as expected
-        """
-        if drop is None or not isinstance(drop, bool):
-            drop = False
-        if exclude is None or not isinstance(exclude, bool):
-            exclude = False
-        if re_ignore_case is None or not isinstance(re_ignore_case, bool):
-            re_ignore_case = False
-
-        if not isinstance(canonical, pd.DataFrame):
-            raise TypeError("The first function attribute must be a pandas 'DataFrame'")
-        _headers = SyntheticIntentModel.list_formatter(headers)
-        dtype = SyntheticIntentModel.list_formatter(dtype)
-        regex = SyntheticIntentModel.list_formatter(regex)
-        _obj_cols = canonical.columns
-        _rtn_cols = set()
-        unmodified = True
-
-        if _headers is not None:
-            _rtn_cols = set(_obj_cols).difference(_headers) if drop else set(_obj_cols).intersection(_headers)
-            unmodified = False
-
-        if regex is not None and regex:
-            re_ignore_case = re.I if re_ignore_case else 0
-            _regex_cols = list()
-            for exp in regex:
-                _regex_cols += [s for s in _obj_cols if re.search(exp, s, re_ignore_case)]
-            _rtn_cols = _rtn_cols.union(set(_regex_cols))
-            unmodified = False
-
-        if unmodified:
-            _rtn_cols = set(_obj_cols)
-
-        if dtype is not None and len(dtype) > 0:
-            _df_selected = canonical.loc[:, _rtn_cols]
-            _rtn_cols = (_df_selected.select_dtypes(exclude=dtype) if exclude
-                         else _df_selected.select_dtypes(include=dtype)).columns
-
-        return [c for c in _rtn_cols]
-
-    @staticmethod
-    def _filter_columns(canonical, headers=None, drop=False, dtype=None, exclude=False, regex=None, re_ignore_case=None,
-                        inplace=False) -> [dict, pd.DataFrame]:
-        """ Returns a subset of columns based on the filter criteria
-
-        :param canonical: the Pandas.DataFrame to get the column headers from
-        :param headers: a list of headers to drop or filter on type
-        :param drop: to drop or not drop the headers
-        :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
-        :param exclude: to exclude or include the dtypes
-        :param regex: a regiar expression to seach the headers
-        :param re_ignore_case: true if the regex should ignore case. Default is False
-        :param inplace: if the passed pandas.DataFrame should be used or a deep copy
-        :return:
-        """
-        if not inplace:
-            with threading.Lock():
-                canonical = deepcopy(canonical)
-        obj_cols = SyntheticIntentModel._filter_headers(canonical, headers=headers, drop=drop, dtype=dtype,
-                                                        exclude=exclude, regex=regex, re_ignore_case=re_ignore_case)
-        return canonical.loc[:, obj_cols]
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):
@@ -1595,7 +1510,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError("counts can't be greater than or equal to size")
         pattern = []
         for i in weights:
-            i = self.list_formatter(i)[:size]
+            i = self._pm.list_formatter(i)[:size]
             pattern.append(i)
         rtn_weights = []
         for p in pattern:
