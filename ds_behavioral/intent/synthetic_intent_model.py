@@ -1129,82 +1129,82 @@ class SyntheticIntentModel(AbstractIntentModel):
         return result
 
     def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None,
-                          multiply_offset: bool=None, precision: int=None, fill_nulls: bool=None, quantity: float=None,
+                          weighting_patten: list=None, multiply_offset: bool=None, precision: int=None, fill_nulls: bool=None, quantity: float=None,
                           seed: int=None, keep_zero: bool=None, min_value: [int, float]=None,
                           max_value: [int, float]=None, save_intent: bool=None, intent_level: [int, str]=None,
-                          replace_intent: bool=None):
+                          intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
         :param values: a single value or list of values to correlate
-        :param label: a unique name to use as a label for this column
         :param spread: (optional) the random spread or deviation from the value. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
+        :param label: a unique name to use as a label for this column
+        :param weighting_patten: a weighting pattern with the pattern mid point the mid point of the spread
         :param multiply_offset: (optional) if true then the offset is multiplied else added
         :param precision: (optional) how many decimal places. default to 3
         :param fill_nulls: (optional) if True then fills nulls with the most common values
-        :param quantity: (optional) a number between 0 and 1 preresenting the percentage quantity of the data
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
         :param seed: (optional) the random seed. defaults to current datetime
         :param keep_zero: (optional) if True then zeros passed remain zero, Default is False
         :param min_value: a minimum value not to go below
         :param max_value: a max value not to go above
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param intent_level: (optional) a level to place the intent
-        :param replace_intent: (optional) replace strategy for the same intent found at that level
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) the level name that groups intent by a reference name
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: an equal length list of correlated values
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
-        offset = 0.0 if offset is None else offset
-        spread = 0.0 if spread is None else spread
-        precision = 3 if precision is None else precision
-        action = 'multiply' if isinstance(multiply_offset, bool) and multiply_offset else 'add'
-        keep_zero = False if not isinstance(keep_zero, bool) else True
-        fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
-        quantity = self._quantity(quantity)
-        _seed = self._seed() if seed is None else seed
-
-        values = self.list_formatter(values)
-
+                                   intent_level=intent_level, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
         if values is None or len(values) == 0:
             return list()
-        mode_choice = self._mode_choice(values) if fill_nulls else list()
-        rtn_list = []
-        for index in range(len(values)):
-            if keep_zero and values[index] == 0:
-                rtn_list.append(0)
-                continue
-            next_index = False
-            counter = 0
-            while not next_index:
-                counter += 1
-                v = values[index]
-                _seed = self._next_seed(_seed, seed)
-                if fill_nulls and len(mode_choice) > 0 and (str(v) == 'nan' or not isinstance(v, (int, float))):
-                    v = int(np.random.choice(mode_choice))
-                if isinstance(v, (int, float)):
-                    v = v * offset if action == 'multiply' else v + offset
-                    _result = round(np.random.normal(loc=v, scale=spread), precision)
-                    if precision == 0:
-                        _result = int(_result)
-                else:
-                    _result = v
-                if isinstance(min_value, (int, float)) and _result < min_value:
-                    if counter < 30:
-                        continue
-                    # Set the result to be the minimum
-                    _result = min_value
-                    counter = 0
-                elif isinstance(max_value, (int, float)) and _result > max_value:
-                    if counter < 30:
-                        continue
-                    # Set the result to be the maximum
-                    _result = max_value
-                    counter = 0
-                rtn_list.append(_result)
-                next_index = True
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+        fill_nulls = fill_nulls if isinstance(fill_nulls, bool) else False
+        keep_zero = keep_zero if isinstance(keep_zero, bool) else False
+        precision = precision if isinstance(precision, int) else 3
+        action = 'multiply' if isinstance(multiply_offset, bool) and multiply_offset else 'add'
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
+        s_values = pd.to_numeric(pd.Series(values.copy()), errors='coerce')
+        if fill_nulls:
+            s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
+        null_idx = s_values[s_values.isna()].index
+        zero_idx = s_values.where(s_values == 0).dropna().index if keep_zero else []
+        if isinstance(offset, (int,float)) and offset != 0:
+            s_values = s_values.mul(offset) if action == 'multiply' else s_values.add(offset)
+        if isinstance(spread, (int,float)) and spread != 0:
+            sample = self.get_number(-abs(spread)/2, abs(spread)/2, weight_pattern=weighting_patten, size=s_values.size,
+                                     save_intent=False)
+            s_values = s_values.add(sample)
+        if isinstance(min_value, (int, float)):
+            if min_value < s_values.max():
+                min_idx = s_values.dropna().where(s_values < min_value).dropna().index
+                s_values.iloc[min_idx] = min_value
+            else:
+                raise ValueError(f"The min value {min_value} is greater than the max result value {s_values.max()}")
+        if isinstance(max_value, (int, float)):
+            if max_value > s_values.min():
+                max_idx = s_values.dropna().where(s_values > max_value).dropna().index
+                s_values.iloc[max_idx] = max_value
+            else:
+                raise ValueError(f"The max value {max_value} is less than the min result value {s_values.min()}")
+        # reset the zero values if any
+        s_values.iloc[zero_idx] = 0
+        s_values = s_values.round(precision)
+        if precision == 0 and not s_values.isnull().any():
+            s_values = s_values.astype(int)
+        if null_idx.size > 0:
+            s_values.iloc[null_idx] = np.nan
+        return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
     def correlate_categories(self, values: Any, correlations: list, actions: dict, value_type: str, label: str=None,
                              day_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
@@ -1244,7 +1244,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError("the category type must be one of C, N, D or Category, Number, Datetime/Date")
         corr_list = []
         for corr in correlations:
-            corr_list.append(self.list_formatter(corr))
+            corr_list.append(self._pm.list_formatter(corr))
         if values is None or len(values) == 0:
             return list()
         class_methods = self.__dir__()
@@ -1644,23 +1644,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         return selection
 
     @staticmethod
-    def _mode_choice(values: list):
-        """selects one or more of the most common occuring items in the list give. Acts like mode"""
-        choice_list = []
-        if values is None or len(values) == 0:
-            return choice_list
-        clean_list = [x for x in values if x is not None and
-                      str(x) != 'nan' and str(x) is not 'None' and len(str(x)) != 0]
-        if len(clean_list) == 0:
-            return choice_list
-        count_dict = Counter(clean_list)
-        max_value = max(count_dict.values())
-        for k, v in count_dict.items():
-            if v == max_value:
-                choice_list.append(k)
-        return choice_list
-
-    @staticmethod
     def _quantity(quantity: [float, int]) -> float:
         """normalises quantity to a percentate float between 0 and 1.0"""
         if not isinstance(quantity, (int, float)) or not 0 <= quantity <= 100:
@@ -1679,16 +1662,3 @@ class SyntheticIntentModel(AbstractIntentModel):
             seed = self._seed() if isinstance(default, int) else default
         np.random.seed(seed)
         return seed
-
-    @staticmethod
-    def list_formatter(value) -> [List[str], list, None]:
-        """ Useful utility method to convert any type of str, list, tuple or pd.Series into a list"""
-        if isinstance(value, (int, float, str, pd.Timestamp)):
-            return [value]
-        if isinstance(value, (list, tuple, set)):
-            return list(value)
-        if isinstance(value, pd.Series):
-            return value.tolist()
-        if isinstance(value, dict):
-            return list(value.items())
-        return None
