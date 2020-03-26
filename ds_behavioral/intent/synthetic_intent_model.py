@@ -2,11 +2,9 @@ import inspect
 import random
 import re
 import string
-import threading
 import warnings
-from collections import Counter
 from copy import deepcopy
-from typing import Any, List
+from typing import Any
 from matplotlib import dates as mdates
 from pandas.tseries.offsets import Week
 
@@ -336,6 +334,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = mdates.num2date(rtn_list)
             if isinstance(date_format, str):
                 rtn_list = pd.Series(rtn_list).dt.strftime(date_format).tolist()
+            else:
+                rtn_list = pd.Series(rtn_list).dt.tz_convert(None).to_list()
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_datetime_pattern(self, start: Any, until: Any, label: str=None, default: Any = None, ordered: bool=None,
@@ -1134,7 +1134,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return result
 
     def correlate_numbers(self, values: Any, label: str=None, spread: float=None, offset: float=None,
-                          weighting_patten: list=None, multiply_offset: bool=None, precision: int=None,
+                          weighting_pattern: list=None, multiply_offset: bool=None, precision: int=None,
                           fill_nulls: bool=None, quantity: float=None, seed: int=None, keep_zero: bool=None,
                           min_value: [int, float]=None, max_value: [int, float]=None, save_intent: bool=None,
                           intent_level: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -1146,7 +1146,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param spread: (optional) the random spread or deviation from the value. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
         :param label: a unique name to use as a label for this column
-        :param weighting_patten: a weighting pattern with the pattern mid point the mid point of the spread
+        :param weighting_pattern: a weighting pattern with the pattern mid point the mid point of the spread
         :param multiply_offset: (optional) if true then the offset is multiplied else added
         :param precision: (optional) how many decimal places. default to 3
         :param fill_nulls: (optional) if True then fills nulls with the most common values
@@ -1185,11 +1185,11 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
         null_idx = s_values[s_values.isna()].index
         zero_idx = s_values.where(s_values == 0).dropna().index if keep_zero else []
-        if isinstance(offset, (int,float)) and offset != 0:
+        if isinstance(offset, (int, float)) and offset != 0:
             s_values = s_values.mul(offset) if action == 'multiply' else s_values.add(offset)
-        if isinstance(spread, (int,float)) and spread != 0:
-            sample = self.get_number(-abs(spread)/2, abs(spread)/2, weight_pattern=weighting_patten, size=s_values.size,
-                                     save_intent=False)
+        if isinstance(spread, (int, float)) and spread != 0:
+            sample = self.get_number(-abs(spread) / 2, abs(spread) / 2, weight_pattern=weighting_pattern,
+                                     size=s_values.size, save_intent=False)
             s_values = s_values.add(sample)
         if isinstance(min_value, (int, float)):
             if min_value < s_values.max():
@@ -1294,32 +1294,20 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_dates(self, values: Any, label: str=None, offset: [int, dict]=None, date_format: str=None,
-                        lower_spread: [int, dict]=None, upper_spread: [int, dict]=None, ordered: bool=None,
-                        date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
-                        weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
-                        min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=None,
-                        year_first: bool=None, quantity: float = None, seed: int=None, save_intent: bool=None,
-                        intent_level: [int, str]=None, replace_intent: bool=None):
+    def correlate_dates(self, values: Any, label: str=None, offset: [int, dict]=None, spread: int=None,
+                        spread_units: str=None, spread_pattern: list=None, date_format: str=None, min_date: str=None,
+                        max_date: str=None, fill_nulls: bool=None, day_first: bool=None, year_first: bool=None,
+                        quantity: float = None, seed: int=None, save_intent: bool=None, intent_level: [int, str]=None,
+                        intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlates dates to an existing date or list of dates.
 
         :param values: the date or set of dates to correlate
         :param label: a unique name to use as a label for this column
-        :param offset:  (optional)and offset to the date. if int then assumed a 'years' offset
-                int or dictionary associated with pd.DateOffset(). eg {'months': 1, 'days': 5}
-        :param lower_spread: (optional) the lower boundary from the relative date. if int then assume 'days' spread
-                int or dictionary associated with pd.DateOffset(). eg {'days': 2}
-        :param upper_spread: (optional) the upper boundary from the relative date. if int then assume 'days' spread
-                int or dictionary associated with pd.DateOffset(). eg {'hours': 7}
-        :param ordered: (optional) if the return list should be date ordered
-        :param date_pattern: (optional) A pattern across the whole date range.
-                If set, is the primary pattern with each subsequent pattern overriding this result
-                If no other pattern is set, this will return a random date based on this pattern
-        :param year_pattern: (optional) adjusts the year selection to this pattern
-        :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
-        :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
-        :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
-        :param minute_pattern: (optional) adjusts the minutes selection to this pattern
+        :param offset: (optional) and offset to the date. if int then assumed a 'days' offset
+                int or dictionary associated with pd. eg {'days': 1}
+        :param spread: (optional) the random spread or deviation in days
+        :param spread_units: (optional) the units of the spread, Options: 'W', 'D', 'h', 'm', 's'. default 'D'
+        :param spread_pattern: (optional) a weighting pattern with the pattern mid point the mid point of the spread
         :param min_date: (optional)a minimum date not to go below
         :param max_date: (optional)a max date not to go above
         :param fill_nulls: (optional) if no date values should remain untouched or filled based on the list mode date
@@ -1328,100 +1316,92 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param date_format: (optional) the format of the output
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
         :param seed: (optional) a seed value for the random function: default to None
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param intent_level: (optional) a level to place the intent
-        :param replace_intent: (optional) replace strategy for the same intent found at that level
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param intent_level: (optional) the level name that groups intent by a reference name
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal size to that given
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   intent_level=intent_level, save_intent=save_intent, replace_intent=replace_intent)
-        quantity = self._quantity(quantity)
-        _seed = self._seed() if seed is None else seed
-        fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
-        if date_format is None:
-            date_format = '%d-%m-%YT%H:%M:%S'
-
-        offset = {} if offset is None or not isinstance(offset, (int, dict)) else offset
-        offset = {'years': offset} if isinstance(offset, int) else offset
-        lower_spread = {} if lower_spread is None or not isinstance(lower_spread, (int, dict)) else lower_spread
-        upper_spread = {} if upper_spread is None or not isinstance(upper_spread, (int, dict)) else upper_spread
-        lower_spread = {'days': lower_spread} if isinstance(lower_spread, int) else lower_spread
-        upper_spread = {'days': upper_spread} if isinstance(upper_spread, int) else upper_spread
+                                   intent_level=intent_level, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        if values is None or len(values) == 0:
+            return list()
 
         def _clean(control):
             _unit_type = ['years', 'months', 'weeks', 'days', 'leapdays', 'hours', 'minutes', 'seconds']
             _params = {}
             if isinstance(control, int):
-                return {'years': control}
+                control = {'days': control}
             if isinstance(control, dict):
                 for k, v in control.items():
-                    if k in _unit_type:
-                        _params[k] = v
-            return _params
+                    if k not in _unit_type:
+                        raise ValueError(f"The key '{k}' in 'offset', is not a recognised unit type for pd.DateOffset")
+            return control
 
-        _min_date = pd.to_datetime(min_date, errors='coerce', infer_datetime_format=True,
-                                   dayfirst=day_first, yearfirst=year_first)
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+        fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
+        offset = _clean(offset) if isinstance(offset, (dict, int)) else None
+        units_allowed = ['W', 'D', 'h', 'm', 's']
+        spread_units = spread_units if isinstance(spread_units, str) and spread_units in units_allowed else 'D'
+        spread = pd.Timedelta(value=spread, unit=spread_units) if isinstance(spread, int) else None
+        # set minimum date
+        _min_date = pd.to_datetime(min_date, errors='coerce', infer_datetime_format=True, utc=True)
         if _min_date is None or _min_date is pd.NaT:
-            _min_date = pd.Timestamp.min
-
-        _max_date = pd.to_datetime(max_date, errors='coerce', infer_datetime_format=True,
-                                   dayfirst=day_first, yearfirst=year_first)
+            _min_date = pd.to_datetime(pd.Timestamp.min, utc=True)
+        # set max date
+        _max_date = pd.to_datetime(max_date, errors='coerce', infer_datetime_format=True, utc=True)
         if _max_date is None or _max_date is pd.NaT:
-            _max_date = pd.Timestamp.max
-
+            _max_date = pd.to_datetime(pd.Timestamp.max, utc=True)
         if _min_date >= _max_date:
-            raise ValueError("the min_date {} must be less than max_date {}".format(min_date, max_date))
-
-        values = self._pm.list_formatter(values)
-        if values is None or len(values) == 0:
-            return list()
-        mode_choice = self._mode_choice(values) if fill_nulls else list()
-        rtn_list = []
-        for d in values:
-            _seed = self._next_seed(_seed, seed)
-            if fill_nulls and len(mode_choice) > 0 and not isinstance(d, str):
-                d = int(np.random.choice(mode_choice))
-            _control_date = pd.to_datetime(d, errors='coerce', infer_datetime_format=True,
-                                           dayfirst=day_first, yearfirst=year_first)
-            if isinstance(_control_date, pd.Timestamp):
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
-                    _offset_date = _control_date + pd.DateOffset(**_clean(offset))
-                if _max_date <= _offset_date <= _min_date:
-                    err_date = _offset_date.strftime(date_format)
-                    raise ValueError(
-                        "The offset_date {} is does not fall between the min and max dates".format(err_date))
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
-                    _upper_spread_date = _offset_date + pd.DateOffset(**_clean(upper_spread))
-                    _lower_spread_date = _offset_date - pd.DateOffset(**_clean(lower_spread))
-                _result = None
-                counter = 0
-                while not _result:
-                    counter += 1
-                    sample_list = self.get_datetime_pattern(start=_lower_spread_date, until=_upper_spread_date,
-                                                            ordered=ordered, date_pattern=date_pattern,
-                                                            year_pattern=year_pattern, month_pattern=month_pattern,
-                                                            weekday_pattern=weekday_pattern, hour_pattern=hour_pattern,
-                                                            minute_pattern=minute_pattern, seed=_seed,
-                                                            save_intent=False)
-                    _sample_date = sample_list[0]
-                    if _sample_date is None or _sample_date is pd.NaT:
-                        raise ValueError("Unable to generate a random datetime, {} returned".format(sample_list))
-                    if not _min_date <= _sample_date <= _max_date:
-                        if counter < 30:
-                            _result = None
-                            continue
-                        if _sample_date < _min_date:
-                            _sample_date = _min_date
-                        if _sample_date > _max_date:
-                            _sample_date = _max_date
-                    _result = _sample_date.strftime(date_format) if isinstance(date_format, str) else _sample_date
+            raise ValueError(f"the min_date {min_date} must be less than max_date {max_date}")
+        # convert values into datetime
+        s_values = pd.Series(pd.to_datetime(values.copy(), errors='coerce', infer_datetime_format=True,
+                                            dayfirst=day_first, yearfirst=year_first, utc=True))
+        if spread is not None:
+            if spread_units in ['W', 'D']:
+                value = spread.days
+                zip_units = 'D'
             else:
-                _result = d
-            rtn_list.append(_result)
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+                value = int(spread.to_timedelta64().astype(int)/1000000000)
+                zip_units = 's'
+            zip_spread = self.get_number(-abs(value) / 2, (abs(value+1) / 2), weight_pattern=spread_pattern,
+                                         precision=0, size=s_values.size, save_intent=False)
+            zipped_dt = list(zip(zip_spread, [zip_units]*s_values.size))
+            s_values = s_values + np.array([pd.Timedelta(x, y).to_timedelta64() for x, y in zipped_dt])
+        if fill_nulls:
+            s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
+        null_idx = s_values[s_values.isna()].index
+        if isinstance(offset, dict) and offset:
+            s_values = s_values.add(pd.DateOffset(**offset))
+        if _min_date > pd.to_datetime(pd.Timestamp.min, utc=True):
+            if _min_date > s_values.min():
+                min_idx = s_values.dropna().where(s_values < _min_date).dropna().index
+                s_values.iloc[min_idx] = _min_date
+            else:
+                raise ValueError(f"The min value {min_date} is greater than the max result value {s_values.max()}")
+        if _max_date < pd.to_datetime(pd.Timestamp.max, utc=True):
+            if _max_date < s_values.max():
+                max_idx = s_values.dropna().where(s_values > _max_date).dropna().index
+                s_values.iloc[max_idx] = _max_date
+            else:
+                raise ValueError(f"The max value {max_date} is less than the min result value {s_values.min()}")
+        if isinstance(date_format, str):
+            s_values = s_values.dt.strftime(date_format)
+        else:
+            s_values = s_values.dt.tz_convert(None)
+        if null_idx.size > 0:
+            s_values.iloc[null_idx].apply(lambda x: np.nan)
+        return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
     """
         PRIVATE METHODS SECTION
