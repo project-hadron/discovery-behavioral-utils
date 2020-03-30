@@ -29,7 +29,7 @@ class SyntheticIntentAnalysisTest(unittest.TestCase):
         """Basic smoke test"""
         df = pd.DataFrame()
         df['cat'] = self.tools.get_category(selection=list('ABC'), quantity=0.9, size=100)
-        df['values'] = self.tools.get_number(from_value=20, dominant_values=0, dominant_percent=0.6, size=100)
+        df['values'] = self.tools.get_number(range_value=20, dominant_values=0, dominant_percent=0.6, size=100)
         # discover
         associate = [{'cat': {'dtype': 'category'}, 'values': {'dtype': 'category','granularity': 5, 'precision': 3}}]
         analysis = Discovery.analyse_association(df, columns_list=associate)
