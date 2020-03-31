@@ -6,9 +6,11 @@
 setuptools
 pandas
 aistac-foundation
+discovery-transition-ds
 discovery-connectors
 matplotlib
 numpy
+
 # SQl and HTML libs
 #sqlalchemy
 #lxml

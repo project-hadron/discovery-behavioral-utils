@@ -64,6 +64,7 @@ setup(
         'aistac-foundation',
         'discovery-connectors',
         'discovery-transition-ds',
+        'matplotlib'
     ],
     test_suite='tests',
 )
