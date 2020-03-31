@@ -11,8 +11,7 @@ from pandas.tseries.offsets import Week
 from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
 from aistac.handlers.abstract_handlers import ConnectorContract, HandlerFactory
-from ds_discovery.transition.commons import Commons
-from ds_discovery.transition.discovery import DataAnalytics
+from ds_behavioral.components.commons import Commons, DataAnalytics
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'

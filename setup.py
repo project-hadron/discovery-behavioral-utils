@@ -63,7 +63,6 @@ setup(
         'pandas>1.0',
         'aistac-foundation',
         'discovery-connectors',
-        'discovery-transition-ds',
         'matplotlib'
     ],
     test_suite='tests',

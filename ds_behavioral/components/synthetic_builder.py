@@ -52,7 +52,7 @@ class SyntheticBuilder(AbstractComponent):
          :return: the initialised class instance
          """
         pm_file_type = pm_file_type if isinstance(pm_file_type, str) else 'pickle'
-        pm_module = pm_module if isinstance(pm_module, str) else 'ds_discovery.handlers.pandas_handlers'
+        pm_module = pm_module if isinstance(pm_module, str) else 'ds_connectors.handlers.pandas_handlers'
         pm_handler = pm_handler if isinstance(pm_handler, str) else 'PandasPersistHandler'
         _pm = SyntheticPropertyManager(task_name=task_name)
         _intent_model = SyntheticIntentModel(property_manager=_pm, default_save_intent=default_save_intent,

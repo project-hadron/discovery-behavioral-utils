@@ -6,7 +6,6 @@
 setuptools
 pandas
 aistac-foundation
-discovery-transition-ds
 discovery-connectors
 matplotlib
 numpy
