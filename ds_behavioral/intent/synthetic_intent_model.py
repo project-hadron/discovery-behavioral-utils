@@ -71,23 +71,20 @@ class SyntheticIntentModel(AbstractIntentModel):
             else:
                 column_names = sorted(self._pm.get_intent().keys())
             for column in column_names:
-                canonical = []
                 level_key = self._pm.join(self._pm.KEY.intent_key, column)
+                result = []
                 for order in sorted(self._pm.get(level_key, {})):
                     for method, params in self._pm.get(self._pm.join(level_key, order), {}).items():
                         if method in self.__dir__():
                             params.update(params.pop('kwargs', {}))
                             if isinstance(kwargs, dict):
                                 params.update(kwargs)
-                            result = None
                             if str(method).startswith('get_'):
                                 result = eval(f"self.{method}(size=size, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('correlate_'):
                                 params.pop('canonical_column', None)
-                if not canonical:
-                    canonical = [np.nan]*size
-                df[column] = canonical
+                df[column] = result if result else [np.nan]*size
         return df
 
     def get_number(self, range_value: [int, float]=None, to_value: [int, float]=None, weight_pattern: list=None,

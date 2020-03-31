@@ -1,6 +1,8 @@
 import unittest
 import os
 import shutil
+import pandas as pd
+import numpy as np
 from ds_behavioral import SyntheticBuilder
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.properties.property_manager import PropertyManager
@@ -39,6 +41,7 @@ class SyntheticPipelineTest(unittest.TestCase):
         result = tools.run_intent_pipeline(size=10)
         self.assertEqual((10, 1), result.shape)
         self.assertEqual(['numbers'], result.columns)
+        print(result['numbers'])
 
 
 
