@@ -1,6 +1,5 @@
 import pandas as pd
 from aistac.handlers.abstract_handlers import ConnectorContract
-from ds_discovery.transition.discovery import DataDiscovery, Visualisation
 
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.components.abstract_component import AbstractComponent

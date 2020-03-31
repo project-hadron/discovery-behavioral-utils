@@ -79,7 +79,12 @@ class SyntheticIntentModel(AbstractIntentModel):
                             params.update(params.pop('kwargs', {}))
                             if isinstance(kwargs, dict):
                                 params.update(kwargs)
-                            canonical = eval(f"self.{method}(size=size, save_intent=False, **params)", globals(), locals())
+                            result = None
+                            if str(method).startswith('get_'):
+                                result = eval(f"self.{method}(size=size, save_intent=False, **params)",
+                                              globals(), locals())
+                            elif str(method).startswith('correlate_'):
+                                params.pop('canonical_column', None)
                 if not canonical:
                     canonical = [np.nan]*size
                 df[column] = canonical
@@ -1272,7 +1277,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_numbers(self, canonical: Any, spread: float=None, offset: float=None, weighting_pattern: list=None,
+    def correlate_numbers(self, canonical: [pd.DataFrame, pd.Series, list, str], canonical_column: str=None,
+                          spread: float=None, offset: float=None, weighting_pattern: list=None,
                           multiply_offset: bool=None, precision: int=None, fill_nulls: bool=None, quantity: float=None,
                           seed: int=None, keep_zero: bool=None, min_value: [int, float]=None,
                           max_value: [int, float]=None, save_intent: bool=None, column_name: [int, str]=None,
@@ -1280,7 +1286,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
-        :param canonical: a single value or list of values to correlate
+        :param canonical: a DataFrame, Series or list of values to correlate
+        :param canonical_column: if the canonical is a DataFrame the column the correlated values are in.
         :param spread: (optional) the random spread or deviation from the value. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
         :param weighting_pattern: a weighting pattern with the pattern mid point the mid point of the spread
@@ -1309,7 +1316,16 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if canonical is None or len(canonical) == 0:
+        if isinstance(canonical, pd.DataFrame):
+            if isinstance(canonical_column, str) and canonical_column in canonical.columns:
+                s_values = pd.to_numeric(canonical[canonical_column].copy(), errors='coerce')
+            else:
+                raise ValueError(f"The canonical column '{canonical_column}' can't be found in the passed DataFrame")
+        elif not isinstance(canonical, pd.Series):
+            s_values = pd.to_numeric(pd.Series(self._pm.list_formatter(canonical.copy())), errors='coerce')
+        else:
+            s_values = pd.to_numeric(canonical.copy(), errors='coerce')
+        if s_values.empty:
             return list()
         fill_nulls = fill_nulls if isinstance(fill_nulls, bool) else False
         keep_zero = keep_zero if isinstance(keep_zero, bool) else False
@@ -1317,7 +1333,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         action = 'multiply' if isinstance(multiply_offset, bool) and multiply_offset else 'add'
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
-        s_values = pd.to_numeric(pd.Series(canonical.copy()), errors='coerce')
         if fill_nulls:
             s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
         null_idx = s_values[s_values.isna()].index
@@ -1349,9 +1364,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_categories(self, values: Any, correlations: list, actions: dict, fill_nulls: bool=None,
-                             quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                             intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+    def correlate_categories(self, canonical: [pd.DataFrame, pd.Series, list, str], correlations: list, actions: dict,
+                             canonical_column: str=None, fill_nulls: bool=None, quantity: float=None, seed: int=None, 
+                             save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None, 
+                             replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
         Note. to use the current value in the passed values as a parameter value pass an empty dict {} as the keys
         value. If you want the action value to be the current value of the passed value then again pass an empty dict
@@ -1365,7 +1381,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             you can also use the action to specify a specific value:
                 {0: 'F', 1: {'method': 'get_numbers', 'from_value': 0, to_value: 27}}
 
-        :param values: the category values to map against
+        :param canonical: a DataFrame, Series or list of values to correlate
+        :param canonical_column: if the canonical is a DataFrame the column the correlated values are in.
         :param correlations: a list of categories (can also contain lists for multiple correlations.
         :param actions: the correlated set of categories that should map to the index
         :param fill_nulls: (optional) if True then fills nulls with the most common values
@@ -1388,12 +1405,20 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if values is None or len(values) == 0:
+        if isinstance(canonical, pd.DataFrame):
+            if isinstance(canonical_column, str) and canonical_column in canonical.columns:
+                s_values = canonical[canonical_column].copy()
+            else:
+                raise ValueError(f"The canonical column '{canonical_column}' can't be found in the passed DataFrame")
+        elif not isinstance(canonical, pd.Series):
+            s_values = pd.Series(self._pm.list_formatter(canonical.copy()))
+        else:
+            s_values = canonical.copy()
+        if s_values.empty:
             return list()
         fill_nulls = fill_nulls if isinstance(fill_nulls, bool) else False
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
-        s_values = pd.Series(values.copy())
         actions = deepcopy(actions)
         correlations = deepcopy(correlations)
         if fill_nulls:
@@ -1429,14 +1454,16 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_dates(self, values: Any, offset: [int, dict]=None, spread: int=None, spread_units: str=None,
-                        spread_pattern: list=None, date_format: str=None, min_date: str=None, max_date: str=None,
-                        fill_nulls: bool=None, day_first: bool=None, year_first: bool=None, quantity: float=None,
-                        seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+    def correlate_dates(self, canonical: [pd.DataFrame, pd.Series, list, str], canonical_column: str=None,
+                        offset: [int, dict]=None, spread: int=None, spread_units: str=None, spread_pattern: list=None,
+                        date_format: str=None, min_date: str=None, max_date: str=None, fill_nulls: bool=None,
+                        day_first: bool=None, year_first: bool=None, quantity: float=None, seed: int=None,
+                        save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                         replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlates dates to an existing date or list of dates.
 
-        :param values: the date or set of dates to correlate
+        :param canonical: a DataFrame, Series or list of values to correlate
+        :param canonical_column: if the canonical is a DataFrame the column the correlated values are in.
         :param offset: (optional) and offset to the date. if int then assumed a 'days' offset
                 int or dictionary associated with pd. eg {'days': 1}
         :param spread: (optional) the random spread or deviation in days
@@ -1467,7 +1494,16 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if values is None or len(values) == 0:
+        if isinstance(canonical, pd.DataFrame):
+            if isinstance(canonical_column, str) and canonical_column in canonical.columns:
+                values = canonical[canonical_column]
+            else:
+                raise ValueError(f"The canonical column '{canonical_column}' can't be found in the passed DataFrame")
+        elif not isinstance(canonical, pd.Series):
+            values = pd.Series(self._pm.list_formatter(canonical))
+        else:
+            values = canonical
+        if values.empty:
             return list()
 
         def _clean(control):

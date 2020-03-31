@@ -31,9 +31,14 @@ class SyntheticPipelineTest(unittest.TestCase):
     def test_run_pipeline(self):
         tools = self.builder.intent_model
         tools.get_number(1000, size=100, column_name='numbers')
-        print(self.builder.pm.get_intent())
+        result = self.builder.pm.report_intent()
+        self.assertEqual(['numbers'], result.get('level'))
+        self.assertEqual(['0'], result.get('order'))
+        self.assertEqual(['get_number'], result.get('intent'))
+        self.assertEqual([['range_value=1000', 'column_name=numbers']], result.get('parameters'))
         result = tools.run_intent_pipeline(size=10)
-        print(result)
+        self.assertEqual((10, 1), result.shape)
+        self.assertEqual(['numbers'], result.columns)
 
 
 
