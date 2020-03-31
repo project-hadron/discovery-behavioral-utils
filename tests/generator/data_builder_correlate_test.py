@@ -3,12 +3,11 @@ matplotlib.use("TkAgg")
 
 import pandas as pd
 import numpy as np
-import seaborn as sns
 import unittest
 import os
 import warnings
 
-from ds_behavioral.generator.data_builder import DataBuilderComponent
+from tests.archive.generator import DataBuilderComponent
 from ds_behavioral import DataBuilderTools
 
 

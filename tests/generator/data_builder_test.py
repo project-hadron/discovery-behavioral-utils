@@ -2,7 +2,7 @@ import shutil
 from collections import Counter
 
 import matplotlib
-from ds_behavioral.generator.data_builder_tools import DataBuilderTools
+from tests.archive.generator import DataBuilderTools
 from aistac.handlers.abstract_handlers import ConnectorContract
 from aistac.properties.property_manager import PropertyManager
 

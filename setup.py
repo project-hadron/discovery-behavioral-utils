@@ -60,12 +60,10 @@ setup(
     },
     python_requires='>=3.6',
     install_requires=[
-        'pandas>0.25',
+        'pandas>1.0',
         'aistac-foundation',
         'discovery-connectors',
         'discovery-transition-ds',
-        'matplotlib',
-        'numpy',
     ],
     test_suite='tests',
 )

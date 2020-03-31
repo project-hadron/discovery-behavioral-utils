@@ -32,27 +32,36 @@ class SyntheticPipelineTest(unittest.TestCase):
 
     def test_run_intent_pipeline(self):
         tools = self.builder.intent_model
-        tools.get_number(1000, column_name='numbers')
+        tools.get_number(1, 2, column_name='numbers')
         result = self.builder.pm.report_intent()
         self.assertEqual(['numbers'], result.get('level'))
         self.assertEqual(['0'], result.get('order'))
         self.assertEqual(['get_number'], result.get('intent'))
-        self.assertEqual([['range_value=1000', 'column_name=numbers']], result.get('parameters'))
-        tools.get_category(selection=['M', 'F'], column_name='gender')
+        self.assertEqual([['range_value=1', 'to_value=2', 'column_name=numbers']], result.get('parameters'))
+        tools.get_category(selection=['M'], column_name='gender')
         result = tools.run_intent_pipeline(size=10, columns=['numbers', 'gender', 'jim'])
         self.assertEqual((10, 3), result.shape)
         self.assertEqual((10, 2), result.dropna(axis='columns').shape)
         self.assertCountEqual(['numbers', 'gender'], result.dropna(axis='columns').columns)
+        self.assertEqual('M', result['gender'].value_counts().index[0])
+        self.assertEqual(10, result['gender'].value_counts().values[0])
+        self.assertEqual(1, result['numbers'].value_counts().index[0])
+        self.assertEqual(10, result['numbers'].value_counts().values[0])
 
     def test_run_synthetic_pipeline(self):
         sb = self.builder
         tools = self.builder.intent_model
-        tools.get_number(1000, size=100, column_name='numbers')
-        tools.get_category(selection=['M', 'F'], column_name='gender')
+        tools.get_number(1, 2, size=100, column_name='numbers')
+        tools.get_category(selection=['M'], column_name='gender')
         sb.set_outcome()
         sb.run_synthetic_pipeline(size=10)
         result = sb.load_synthetic_canonical()
-        print(result)
+        self.assertEqual((10, 2), result.shape)
+        self.assertCountEqual(['numbers', 'gender'], result.columns)
+        self.assertEqual('M', result['gender'].value_counts().index[0])
+        self.assertEqual(100, result['gender'].value_counts().values[0])
+        self.assertEqual(1, result['numbers'].value_counts().index[0])
+        self.assertEqual(100, result['numbers'].value_counts().values[0])
 
 
 

@@ -12,7 +12,7 @@ from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
 from aistac.handlers.abstract_handlers import ConnectorContract, HandlerFactory
 from ds_discovery.transition.commons import Commons
-from ds_discovery.transition.discovery import DataAnalytics, DataDiscovery, Visualisation
+from ds_discovery.transition.discovery import DataAnalytics
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'
@@ -40,16 +40,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                          intent_param_exclude=intent_param_exclude, default_intent_level=default_intent_level,
                          default_intent_order=default_intent_order, default_replace_intent=default_replace_intent,
                          intent_type_additions=intent_type_additions)
-
-    @property
-    def discovery_pad(self):
-        """ A class method to use the Components discovery methods as a scratch pad"""
-        return DataDiscovery()
-
-    @property
-    def visual_pad(self):
-        """ A class method to use the Components visualisation methods as a scratch pad"""
-        return Visualisation()
 
     def run_intent_pipeline(self, size: int, columns: [str, list]=None, **kwargs) -> pd.DataFrame:
         """Collectively runs all parameterised intent taken from the property manager against the code base as
