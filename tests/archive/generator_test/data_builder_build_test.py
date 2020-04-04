@@ -10,8 +10,8 @@ class MyTestCase(unittest.TestCase):
 
     def setUp(self):
         self.name='test_build'
-        if not os.path.exists('../simulators/data'):
-            os.mkdir('../simulators/data')
+        if not os.path.exists('../../simulators/data'):
+            os.mkdir('../../simulators/data')
 
     def tearDown(self):
         _tmp = DataBuilderComponent(self.name).fbpm
@@ -68,7 +68,7 @@ class MyTestCase(unittest.TestCase):
                                  'MR Cycle 1', 'MR Cycle 2', 'HR Cycle 1', 'HR Cycle 2'], weight_pattern=[0.3, 0.1, 0.2, 0.2],
                       quantity=0.2)
         fb.fbpm.save()
-        fb.build_columns(rows=1000, filename='../simulators/data/comms.csv')
+        fb.build_columns(rows=1000, filename='../../simulators/data/comms.csv')
 
     def test_Comms(self):
         fb = DataBuilderComponent('Comms')
@@ -103,7 +103,7 @@ class MyTestCase(unittest.TestCase):
         fb.add_column('time_start', 'get_datetime', start='8:00:0000', until='23:00:000', date_format='%H:%M:%S')
         fb.add_column('time_end', 'get_datetime', start='8:00:0000', until='23:00:000', date_format='%H:%M:%S')
         fb.fbpm.save()
-        fb.build_columns(rows=1000, filename='../simulators/data/comms.csv')
+        fb.build_columns(rows=1000, filename='../../simulators/data/comms.csv')
 
     def test_transaction(self):
         fb = DataBuilderComponent('Account')
@@ -123,7 +123,7 @@ class MyTestCase(unittest.TestCase):
         fb.add_column('txn_comments', 'get_category', selection=[np.nan])
         fb.add_column('txn_reference', 'get_category', selection=[np.nan])
         fb.fbpm.save()
-        fb.build_columns(rows=1000, filename='../simulators/data/transaction.csv')
+        fb.build_columns(rows=1000, filename='../../simulators/data/transaction.csv')
 
 
     def test_account(self):
@@ -159,7 +159,7 @@ class MyTestCase(unittest.TestCase):
         fb.add_column('payment_amount', 'get_distribution', method='beta', offset=np.random.randint(30, 300),
                       precision=2, a=5, b=2)
         fb.fbpm.save()
-        fb.build_columns(rows=1000, filename='../simulators/data/account.csv')
+        fb.build_columns(rows=1000, filename='../../simulators/data/account.csv')
 
     def test_customer_build(self):
         fb = DataBuilderComponent('Customer')
@@ -233,7 +233,7 @@ class MyTestCase(unittest.TestCase):
             fb.add_column(label, 'get_distribution', method='beta', offset=np.random.randint(offset[0], offset[1]),
                           precision=2, a=5, b=2)
         fb.fbpm.save()
-        fb.build_columns(rows=101, filename='../simulators/data/customer.csv')
+        fb.build_columns(rows=101, filename='../../simulators/data/customer.csv')
 
 if __name__ == '__main__':
     unittest.main()

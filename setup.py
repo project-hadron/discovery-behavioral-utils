@@ -50,7 +50,7 @@ setup(
         'Topic :: Scientific/Engineering :: Visualization',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    keywords='Synthetic data simulator generator',
+    keywords='Synthetic data simulator generator_test',
     packages=find_packages(exclude=['tests', 'guides', 'data', 'jupyter']),
     license='BSD',
     include_package_data=True,

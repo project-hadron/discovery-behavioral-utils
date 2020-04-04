@@ -35,7 +35,7 @@ class SyntheticIntentAnalysisTest(unittest.TestCase):
         analysis = Discovery.analyse_association(df, columns_list=associate)
         # build
         sample_size=173
-        result = self.tools.associate_analysis(analysis, size=sample_size)
+        result = self.tools.model_analysis(analysis, size=sample_size)
         self.assertCountEqual(['cat', 'values'], result.keys())
         for key in result.keys():
             self.assertEqual(sample_size, len(result.get(key)))
@@ -322,7 +322,7 @@ class SyntheticIntentAnalysisTest(unittest.TestCase):
                                                       'skew': 1.22,
                                                       'kurtosis': -0.51}}}}
         sample_size = 10000
-        result = self.tools.associate_analysis(analysis, size=sample_size, save_intent=False)
+        result = self.tools.model_analysis(analysis, size=sample_size, save_intent=False)
         self.assertCountEqual(analysis.keys(), result.keys())
         for key, value in result.items():
             self.assertEqual(sample_size, len(value))

@@ -99,7 +99,7 @@ package install
 The best way to install AI-STAC component packages is directly from the Python Package Index repository using pip.
 All AI-STAC components are based on a pure python foundation package ``aistac-foundation``, but this also takes
 advantage of other AI-STAC components  ``discovery-connectors`` providing extended connectivity, and the
-``discovery-transition-ds`` package providing, amongst other things, data anylitics. The pip install is:
+``discovery-transition-ds`` package providing, amongst other things, data analytics. The pip install is:
 
 .. code-block:: bash
 
@@ -324,7 +324,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get an integer between 0 and 9
-    builder.intent_model.get_number(10, size=5)
+    builder.intent_model.get_number(range_value=10, size=5)
 
 .. parsed-literal::
 
@@ -333,7 +333,7 @@ From here we can now play with some of the ``get`` methods
 .. code:: python
 
     # get a float between -1 and 1, notice by passing an float it assumes the output to be a float
-    builder.intent_model.get_number(from_value=-1.0, to_value=1.0, precision=3, size=5)
+    builder.intent_model.get_number(range_value=-1.0, to_value=1.0, precision=3, size=5)
 
 .. parsed-literal::
 
@@ -343,7 +343,7 @@ From here we can now play with some of the ``get`` methods
 
     # get a currency by setting the 'currency' parameter to a currency symbol.
     # Note this returns a list of strings
-    builder.intent_model.get_number(from_value=1000.0, to_value=2000.0, size=5, currency='$', precision=2)
+    builder.intent_model.get_number(range_value=1000.0, to_value=2000.0, size=5, currency='$', precision=2)
 
 .. parsed-literal::
 
@@ -401,7 +401,7 @@ will redefine the 'builder.intent_model' call
     # the dataframe has a unique id, a float value between 0.0 and 1.0and a date formtted as a text string
     df = pd.DataFrame()
     df['id'] = tools.unique_numbers(start=10, until=100, size=10)
-    df['values'] = tools.get_number(to_value=1.0, size=10)
+    df['values'] = tools.get_number(range_value=1.0, size=10)
     df['date'] = tools.get_datetime(start='12/05/2018', until='30/11/2018', date_format='%d-%m-%Y %H:%M:%S', size=10)
 
 

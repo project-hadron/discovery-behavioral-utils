@@ -41,7 +41,7 @@ class AnalysisTest(unittest.TestCase):
         associate = [{'cat': {'dtype': 'category'}},{'values': {'granularity': 5, 'precision': 3, 'lower': 0.001}}]
         analysis = discover.analyse_association(df, columns_list=associate)
         sample_size=1973
-        result = tools.associate_analysis(analysis, size=sample_size)
+        result = tools.model_analysis(analysis, size=sample_size)
         self.assertCountEqual(['cat', 'values'], result.keys())
         for key in result.keys():
             self.assertEqual(sample_size, len(result.get(key)))

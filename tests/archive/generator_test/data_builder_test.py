@@ -22,7 +22,7 @@ class FileBuilderTest(unittest.TestCase):
         os.environ['AISTAC_PM_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
         self.name = 'TestBuilder'
         try:
-            shutil.copytree('../simulators/data', os.path.join(os.environ['PWD'], 'work'))
+            shutil.copytree('../../simulators/data', os.path.join(os.environ['PWD'], 'work'))
         except:
             pass
 
@@ -47,11 +47,11 @@ class FileBuilderTest(unittest.TestCase):
     def test_from(self):
         tools = DataBuilderTools
         values = list('ABCDEFG')
-        result = tools.get_from(values=values, size=100)
+        result = tools.get_from(canonical=values, size=100)
         self.assertEqual(100, len(result))
         for v in values:
             self.assertIn(v, result)
-        result = tools.get_from(values=values, sample_size=3, size=100)
+        result = tools.get_from(canonical=values, sample_size=3, size=100)
         self.assertEqual(100, len(result))
         for v in list('ABC'):
             self.assertIn(v, result)
@@ -67,7 +67,7 @@ class FileBuilderTest(unittest.TestCase):
         connector_contract = ConnectorContract(uri="test_df.csv",
                                                module_name='aistac.handlers.python_handlers',
                                                handler='PythonSourceHandler')
-        result = tools.get_file_column('cat', connector_contract, size=3, seed=31)
+        result = tools.get_column('cat', connector_contract, size=3, seed=31)
         self.assertEqual((3,1), result.shape)
 
     def test_category(self):

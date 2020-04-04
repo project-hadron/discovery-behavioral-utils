@@ -30,7 +30,23 @@ class SyntheticPipelineTest(unittest.TestCase):
     def builder(self) -> SyntheticBuilder:
         return SyntheticBuilder.from_env('tester')
 
-    def test_run_intent_pipeline(self):
+    def test_run_synthetic_pipeline(self):
+        sb = self.builder
+        size = 100
+        tools = self.builder.intent_model
+        tools.get_number(1, 2, size=size, column_name='numbers')
+        tools.get_category(selection=['M'], column_name='gender')
+        sb.set_outcome()
+        sb.run_synthetic_pipeline(size=size)
+        result = sb.load_synthetic_canonical()
+        self.assertEqual((size, 2), result.shape)
+        self.assertCountEqual(['numbers', 'gender'], result.columns)
+        self.assertEqual('M', result['gender'].value_counts().index[0])
+        self.assertEqual(size, result['gender'].value_counts().values[0])
+        self.assertEqual(1, result['numbers'].value_counts().index[0])
+        self.assertEqual(size, result['numbers'].value_counts().values[0])
+
+    def test_run_intent_pipeline_get(self):
         tools = self.builder.intent_model
         tools.get_number(1, 2, column_name='numbers')
         result = self.builder.pm.report_intent()
@@ -40,28 +56,27 @@ class SyntheticPipelineTest(unittest.TestCase):
         self.assertEqual([['range_value=1', 'to_value=2', 'column_name=numbers']], result.get('parameters'))
         tools.get_category(selection=['M'], column_name='gender')
         result = tools.run_intent_pipeline(size=10, columns=['numbers', 'gender', 'jim'])
-        self.assertEqual((10, 3), result.shape)
-        self.assertEqual((10, 2), result.dropna(axis='columns').shape)
-        self.assertCountEqual(['numbers', 'gender'], result.dropna(axis='columns').columns)
+        self.assertEqual((10, 2), result.shape)
+        self.assertCountEqual(['numbers', 'gender'], result.columns)
         self.assertEqual('M', result['gender'].value_counts().index[0])
         self.assertEqual(10, result['gender'].value_counts().values[0])
         self.assertEqual(1, result['numbers'].value_counts().index[0])
         self.assertEqual(10, result['numbers'].value_counts().values[0])
 
-    def test_run_synthetic_pipeline(self):
-        sb = self.builder
+    def test_run_intent_pipeline_correlate(self):
         tools = self.builder.intent_model
-        tools.get_number(1, 2, size=100, column_name='numbers')
-        tools.get_category(selection=['M'], column_name='gender')
-        sb.set_outcome()
-        sb.run_synthetic_pipeline(size=10)
-        result = sb.load_synthetic_canonical()
-        self.assertEqual((10, 2), result.shape)
-        self.assertCountEqual(['numbers', 'gender'], result.columns)
-        self.assertEqual('M', result['gender'].value_counts().index[0])
-        self.assertEqual(100, result['gender'].value_counts().values[0])
-        self.assertEqual(1, result['numbers'].value_counts().index[0])
-        self.assertEqual(100, result['numbers'].value_counts().values[0])
+        df = pd.DataFrame()
+        df['numbers'] = tools.get_number(1, 2, column_name='numbers', intent_order=0)
+        df['corr_num'] = tools.correlate_numbers(df, offset=1, header='numbers', column_name='numbers', intent_order=1)
+        df['corr_plus'] = tools.correlate_numbers(df, offset=1, header='numbers', column_name='corr_plus')
+        result = tools.run_intent_pipeline(size=10)
+        self.assertCountEqual(['numbers', 'corr_plus'], result.columns)
+        self.assertEqual(1, result['numbers'].value_counts().size)
+        self.assertEqual(2, result['numbers'].value_counts().index[0])
+        self.assertEqual(1, result['corr_plus'].value_counts().size)
+        self.assertEqual(3, result['corr_plus'].value_counts().index[0])
+
+
 
 
 

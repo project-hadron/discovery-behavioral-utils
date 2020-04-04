@@ -53,7 +53,7 @@ class AssociateTest(unittest.TestCase):
                         {'expect': 'c', 'value': 'F'}]
         actions = {0: {'action': 'Male'},
                    1: {'action': 'Female'}}
-        result = tools. associate_dataset(dataset, associations=associations, actions=actions, default_header='_default')
+        result = tools. associate_canonical(dataset, associations=associations, actions=actions, default_header='_default')
         control = ['Male', 'Female', 'Male', 'Male', 'U', 'Female']
         self.assertEqual(control, result)
 
@@ -70,7 +70,7 @@ class AssociateTest(unittest.TestCase):
                    1: {'action': 'correlate_numbers', 'kwargs': {'values': {'_header': 'age'}, 'offset' : 100}},
                    2: {'action': {'_header': 'age'}}}
 
-        result = tools.associate_dataset(dataset, associations=associations, actions=actions, default_value='Unknown')
+        result = tools.associate_canonical(dataset, associations=associations, actions=actions, default_value='Unknown')
         control = [120, 122, 118, 'Dad', 'Unknown', 57, 122]
         self.assertEqual(control, result)
 
@@ -90,7 +90,7 @@ class AssociateTest(unittest.TestCase):
                    3: {'action': 'correlate_numbers', 'kwargs': {'values': {'_header': 'age'}, 'fill_nulls': True}},
                    }
 
-        result = tools.associate_dataset(titanic, associations=associations, actions=actions, default_value=99)
+        result = tools.associate_canonical(titanic, associations=associations, actions=actions, default_value=99)
         control = [22.0, 38.0, 26.0, 35.0, 35.0, None, 54.0, 2.0, 27.0, 14.0]
         self.assertEqual(control, result[:10])
 
@@ -116,8 +116,8 @@ class AssociateTest(unittest.TestCase):
                    1: {'action': 'correlate_dates',
                        'kwargs': {'dates': {'_header': 'joined'}, 'offset': {'days': 9}, 'lower_spread': 4}}}
 
-        df_staff['registered'] = tools.associate_dataset(df_staff, associations=associations, actions=actions,
-                                                         default_value=None)
+        df_staff['registered'] = tools.associate_canonical(df_staff, associations=associations, actions=actions,
+                                                           default_value=None)
         # TODO finish this
 
 

@@ -37,49 +37,53 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_get_number(self):
         tools = self.tools
-        sample_size = 100
+        sample_size = 10000
         # from to int
         result = tools.get_number(10, 1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 10)
-        self.assertLess(max(result), 1000)
+        self.assertLessEqual(max(result), 1000)
         result = tools.get_number(10, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 0)
-        self.assertLess(max(result), 10)
+        self.assertLessEqual(max(result), 10)
         # from to float
         result = tools.get_number(0.1, 0.9, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 0.1)
-        self.assertLess(max(result), 0.9)
+        self.assertLessEqual(max(result), 0.9)
         result = tools.get_number(1.0, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 0)
-        self.assertLess(max(result), 1.0)
+        self.assertLessEqual(max(result), 1.0)
         # from
         result = tools.get_number(10, 1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 10)
-        self.assertLess(max(result), 1000)
+        self.assertLessEqual(max(result), 1000)
         # set both
         result = tools.get_number(range_value=10, to_value=1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 10)
-        self.assertLess(max(result), 1000)
+        self.assertLessEqual(max(result), 1000)
         # set to_value
         result = tools.get_number(to_value=1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 0)
-        self.assertLess(max(result), 1000)
+        self.assertLessEqual(max(result), 1000)
 
     def test_get_number_at_most(self):
         tools = self.tools
-        sample_size = 100
-        result = tools.get_number(10.0, 1000.0, precision=2, at_most=1, size=sample_size)
+        sample_size = 30
+        result = tools.get_number(10.0, 11.0, precision=1, at_most=4, size=sample_size)
+        result = pd.Series(result)
+        self.assertEqual(4, result.value_counts().max())
+        sample_size = 100000
+        result = tools.get_number(10.0, 1000000.0, precision=1, at_most=1, size=sample_size)
         result = pd.Series(result)
         self.assertEqual(sample_size, pd.Series(result).nunique())
         self.assertGreaterEqual(pd.Series(result).min(), 10)
-        self.assertLessEqual(pd.Series(result).max(), 1000)
+        self.assertLessEqual(pd.Series(result).max(), 1000000)
 
     def test_get_number_dominant(self):
         tools = self.tools
@@ -90,11 +94,24 @@ class SyntheticIntentGetTest(unittest.TestCase):
         count = result.where(result == 0).dropna()
         self.assertTrue(0.91 <= round(len(count)/sample_size, 2) <= 0.93)
 
+    def test_get_number_weighting(self):
+        tools = self.tools
+        sample_size = 100000
+        result = tools.get_number(10, 20, weight_pattern=[0,1], size=sample_size)
+        result = pd.Series(result)
+        self.assertGreaterEqual(result.min(), 15)
+        self.assertLess(result.max(), 20)
+        result = tools.get_number(10.0, 20.0, weight_pattern=[0,1], size=sample_size)
+        result = pd.Series(result)
+        self.assertGreaterEqual(result.min(), 15)
+        self.assertLess(result.max(), 20)
+
     def test_get_datetime_at_most(self):
         tools = self.tools
-        sample_size = 3
+        sample_size = 10000
         result = tools.get_datetime('2018/01/01', '2019/01/01', at_most=1, size=sample_size)
-        print(result)
+        result = pd.Series(result)
+        self.assertEqual(sample_size, pd.Series(result).nunique())
 
 
 
