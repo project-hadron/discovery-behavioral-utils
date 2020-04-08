@@ -2,84 +2,9 @@ import re
 import threading
 from copy import deepcopy
 import pandas as pd
-from aistac.components.aistac_commons import AistacCommons
+from aistac.components.aistac_commons import AistacCommons, AnalyticsCommons
 
 __author__ = 'Darryl Oatridge'
-
-
-class DataAnalytics(object):
-    label: str
-    associate: str
-    dtype: str
-    selection: list
-    granularity: [int, float, list]
-    lower: [int, float]
-    upper: [int, float]
-    top: int
-    precision: int
-    year_first: bool
-    day_first: bool
-    data_format: str
-    weighting_precision: int
-    exclude_dominant: bool
-    weight_pattern: list
-    weight_map: pd.Series
-    weight_mean: list
-    weight_std: list
-    sample_distribution: list
-    sample_map: pd.Series
-    dominant_values: list
-    dominance_weighting: list
-    dominant_percent: float
-    dominance_map: pd.Series
-    nulls_percent: float
-    sample: int
-    outlier_percent: float
-    mean: [int, float]
-    var: float
-    skew: float
-    kurtosis: float
-
-    def __init__(self, analysis: dict, label: str = None):
-        self._analysis = analysis
-        self.label = label if isinstance(label, str) else 'unnamed'
-        self.dtype = analysis.get('intent', {}).get('dtype', 'object')
-        self.selection = analysis.get('intent', {}).get('selection', list())
-        self.granularity = analysis.get('intent', {}).get('granularity', 1)
-        self.lower = analysis.get('intent', {}).get('lower', 0.0)
-        self.upper = analysis.get('intent', {}).get('upper', 1.0)
-        self.top = analysis.get('intent', {}).get('top', None)
-        self.precision = analysis.get('intent', {}).get('precision', 3)
-        self.year_first = analysis.get('intent', {}).get('year_first', False)
-        self.day_first = analysis.get('intent', {}).get('day_first', False)
-        self.data_format = analysis.get('intent', {}).get('data_format', None)
-        self.weighting_precision = analysis.get('intent', {}).get('weighting_precision', None)
-
-        self.weight_pattern = analysis.get('patterns', {}).get('weight_pattern', list())
-        self.weight_map = pd.Series(data=self.weight_pattern, index=self.selection, copy=True, dtype=float)
-        self.weight_mean = analysis.get('patterns', {}).get('weight_mean', list())
-        self.weight_std = analysis.get('patterns', {}).get('weight_std', list())
-        self.sample_distribution = analysis.get('patterns', {}).get('sample_distribution', list())
-        self.sample_map = pd.Series(data=self.sample_distribution, index=self.selection, copy=True, dtype=float)
-        self.dominant_values = analysis.get('patterns', {}).get('dominant_values', list())
-        self.dominance_weighting = analysis.get('patterns', {}).get('dominance_weighting', list())
-        self.dominance_map = pd.Series(data=self.dominance_weighting, index=self.dominant_values, copy=True,
-                                       dtype=float)
-        self.dominant_percent = analysis.get('patterns', {}).get('dominant_percent', 0)
-
-        self.nulls_percent = analysis.get('stats', {}).get('nulls_percent', 0)
-        self.sample = analysis.get('stats', {}).get('sample', 0)
-        self.outlier_percent = analysis.get('stats', {}).get('outlier_percent', 0)
-        self.mean = analysis.get('stats', {}).get('mean', 0)
-        self.var = analysis.get('stats', {}).get('var', 0)
-        self.skew = analysis.get('stats', {}).get('skew', 0)
-        self.kurtosis = analysis.get('stats', {}).get('kurtosis', 0)
-
-    def __str__(self):
-        return self._analysis.__str__()
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {str(self._analysis)}"
 
 
 class Commons(AistacCommons):
@@ -222,3 +147,19 @@ class Commons(AistacCommons):
             field_length = df[column].apply(str).str.len()
             return df.loc[field_length.argmax(), column], df.loc[field_length.argmin(), column]
         return df[column].apply(str).str.len().max(), df[column].apply(str).str.len().min()
+
+
+class DataAnalytics(AnalyticsCommons):
+
+    @property
+    def weight_map(self):
+        return pd.Series(data=self.patterns.weight_pattern, index=self.intent.selection, copy=True, dtype=float)
+
+    @property
+    def sample_map(self):
+        return pd.Series(data=self.stats.sample_distribution, index=self.intent.selection, copy=True, dtype=float)
+
+    @property
+    def dominance_map(self):
+        return pd.Series(data=self.intent.dominance_weighting, index=self.intent.dominant_values,
+                         copy=True, dtype=float)

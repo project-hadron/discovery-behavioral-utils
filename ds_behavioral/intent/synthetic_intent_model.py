@@ -1023,35 +1023,35 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if row_dict.get(name) is None:
                     row_dict[name] = list()
                 _analysis = DataAnalytics(label=name, analysis=values.get('analysis', {}))
-                if str(_analysis.dtype).startswith('cat'):
-                    row_dict[name] += self.get_category(selection=_analysis.selection,
-                                                        weight_pattern=_analysis.weight_pattern,
-                                                        quantity=1-_analysis.nulls_percent, seed=seed,
+                if str(_analysis.intent.dtype).startswith('cat'):
+                    row_dict[name] += self.get_category(selection=_analysis.intent.selection,
+                                                        weight_pattern=_analysis.patterns.weight_pattern,
+                                                        quantity=1-_analysis.stats.nulls_percent, seed=seed,
                                                         size=sample_size, save_intent=save_intent, column_name=name,
                                                         replace_intent=replace_intent,
                                                         remove_duplicates=remove_duplicates)
-                if str(_analysis.dtype).startswith('num'):
-                    row_dict[name] += self.get_intervals(intervals=_analysis.selection,
-                                                         weight_pattern=_analysis.weight_pattern,
-                                                         dominant_values=_analysis.dominant_values,
-                                                         dominant_percent=_analysis.dominant_percent,
-                                                         dominance_weighting=_analysis.dominance_weighting,
-                                                         precision=_analysis.precision,
-                                                         quantity=1 - _analysis.nulls_percent,
+                if str(_analysis.intent.dtype).startswith('num'):
+                    row_dict[name] += self.get_intervals(intervals=_analysis.intent.selection,
+                                                         weight_pattern=_analysis.patterns.weight_pattern,
+                                                         dominant_values=_analysis.patterns.dominant_values,
+                                                         dominant_percent=_analysis.patterns.dominant_percent,
+                                                         dominance_weighting=_analysis.patterns.dominance_weighting,
+                                                         precision=_analysis.intent.precision,
+                                                         quantity=1 - _analysis.stats.nulls_percent,
                                                          seed=seed, size=sample_size, save_intent=save_intent,
                                                          column_name=name, replace_intent=replace_intent,
                                                          remove_duplicates=remove_duplicates)
-                if str(_analysis.dtype).startswith('date'):
-                    row_dict[name] += self.get_datetime(start=_analysis.lower, until=_analysis.upper,
-                                                        weight_pattern=_analysis.weight_pattern,
-                                                        date_format=_analysis.data_format,
-                                                        day_first=_analysis.day_first,
-                                                        year_first=_analysis.year_first,
-                                                        quantity=1 - _analysis.nulls_percent,
+                if str(_analysis.intent.dtype).startswith('date'):
+                    row_dict[name] += self.get_datetime(start=_analysis.intent.lower, until=_analysis.intent.upper,
+                                                        weight_pattern=_analysis.patterns.weight_pattern,
+                                                        date_format=_analysis.intent.data_format,
+                                                        day_first=_analysis.intent.day_first,
+                                                        year_first=_analysis.intent.year_first,
+                                                        quantity=1 - _analysis.stats.nulls_percent,
                                                         seed=seed, size=sample_size, save_intent=save_intent,
                                                         column_name=name, replace_intent=replace_intent,
                                                         remove_duplicates=remove_duplicates)
-                unit = sample_size / sum(_analysis.weight_pattern)
+                unit = sample_size / sum(_analysis.patterns.weight_pattern)
                 if values.get('sub_category'):
                     section_map = _analysis.weight_map
                     for i in section_map.index:
