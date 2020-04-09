@@ -625,7 +625,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             precision = 0 if all(isinstance(v[0], int) and isinstance(v[1], int) for v in intervals) else 3
         _seed = self._seed() if seed is None else seed
         if not all(isinstance(value, tuple) for value in intervals):
-            raise ValueError("The intervals list but be a list of tuples")
+            raise ValueError("The intervals list must be a list of tuples")
         interval_list = self.get_category(selection=intervals, weight_pattern=weight_pattern, size=size, seed=_seed,
                                           save_intent=False)
         interval_counts = pd.Series(interval_list).value_counts()
@@ -1447,8 +1447,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         class_methods = self.__dir__()
         for i in range(len(corr_list)):
             corr_idx = s_values[s_values.isin(corr_list[i])].index
-            action = actions.get(i, None)
-            if action is None:
+            action = actions.get(i, -1)
+            if action is -1:
                 continue
             if isinstance(action, dict):
                 method = action.pop('method', None)
@@ -1464,7 +1464,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 else:
                     raise ValueError(f"The 'method' key {method} is not a recognised intent method")
             else:
-                result = pd.Series(data=action * corr_idx.size, index=corr_idx)
+                result = pd.Series(data=(action * corr_idx.size), index=corr_idx)
             s_values.update(result)
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan

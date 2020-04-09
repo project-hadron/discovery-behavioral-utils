@@ -121,6 +121,13 @@ class SyntheticBuilder(AbstractComponent):
         """Saves the pandas.DataFrame to the clean files folder"""
         self.persist_canonical(connector_name=self.CONNECTOR_OUTCOME, canonical=canonical)
 
+    def add_column_description(self, column_name: str, description: str, save: bool=None):
+        """ adds a description note that is included in with the 'report_column_catalog'"""
+        if isinstance(description, str) and description:
+            self.pm.set_intent_description(level=column_name, text=description)
+            self.pm_persist(save)
+        return
+
     def run_synthetic_pipeline(self, size: int, columns: [str, list]=None):
         """Runs the transition pipeline from source to persist"""
         result = self.intent_model.run_intent_pipeline(size=size, columns=columns)
@@ -182,3 +189,24 @@ class SyntheticBuilder(AbstractComponent):
             Commons.report(df, index_header='section', bold='label')
         df.set_index(keys='section', inplace=True)
         return df
+
+    def report_column_catalog(self, column_name: [str, list]=None, stylise: bool=True):
+        """ generates a report on the source contract
+
+        :param column_name: (optional) filters on specific column names.
+        :param stylise: (optional) returns a stylised DataFrame with formatting
+        :return: pd.DataFrame
+        """
+        stylise = True if not isinstance(stylise, bool) else stylise
+        style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
+                 {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
+        df = pd.DataFrame.from_dict(data=self.pm.report_intent(levels=column_name, as_description=True,
+                                                               level_label='column_name'), orient='columns')
+        if stylise:
+            df_style = df.style.set_table_styles(style).set_properties(**{'text-align': 'left'})
+            _ = df_style.set_properties(subset=['column_name'], **{'font-weight': 'bold'})
+            return df_style
+        else:
+            df.set_index(keys='column_name', inplace=True)
+        return df
+
