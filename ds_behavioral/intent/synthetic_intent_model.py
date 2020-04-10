@@ -237,8 +237,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                         chk_count += 1
                         total_len = 0
                         for _group in range(at_most):
-                            check_list[_group] = [i for i in list(range(low, high)) if i not in
-                                                  Commons.list_formatter(dominant_values)]
+                            check_list[_group] += np.random.randint(low, high, counter[index]).tolist()
+                            check_list[_group] = [i for i in check_list[_group] if i not in
+                                                  Commons.list_formatter(dominant_values)] + [high]
                             total_len += len(check_list[_group])
                     if chk_count > 25:
                         raise RecursionError(f"The selectable value pool is too small to get "

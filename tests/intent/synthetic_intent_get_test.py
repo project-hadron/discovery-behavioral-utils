@@ -92,6 +92,12 @@ class SyntheticIntentGetTest(unittest.TestCase):
         self.assertEqual(sample_size,len(result))
         result = tools.get_number(1000000.0, 9999999999.0, precision=1, size=sample_size)
         self.assertEqual(sample_size, len(result))
+        # at_most
+        result = tools.get_number(1000000, 9999999999, at_most=1, precision=1, size=sample_size)
+        self.assertEqual(sample_size, len(result))
+        result = tools.get_number(1000000.0, 9999999999.0, at_most=1, precision=1, size=sample_size)
+        self.assertEqual(sample_size, len(result))
+
 
     def test_get_number_dominant(self):
         tools = self.tools
