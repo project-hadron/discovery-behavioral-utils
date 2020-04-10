@@ -1054,6 +1054,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         _seed = self._seed() if seed is None else seed
+        size = 1 if size is None else size
         df = MappedSample.us_zipcode_primary(cleaned=True)
         df_high = df.where(df['EstimatedPopulation'] > 20000).dropna()
         df_low = df.where(df['EstimatedPopulation'] <= 20000).dropna()
