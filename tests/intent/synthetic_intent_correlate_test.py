@@ -42,9 +42,9 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         df['A'] = [1,2,3]
         df['B'] = list('XYZ')
         df['C'] = [4.2,7.1,4.1]
-        result = tools.correlate_from_columns(df, headers=list('BCAB'))
+        result = tools.correlate_from_columns(df, header=list('BCAB'))
         self.assertEqual(['X4.21X', 'Y7.12Y', 'Z4.13Z'], result)
-        result = tools.correlate_from_columns(df, headers=list('ABC'), sep='-')
+        result = tools.correlate_from_columns(df, header=list('ABC'), sep='-')
         self.assertEqual(['1-X-4.2', '2-Y-7.1', '3-Z-4.1'], result)
 
     def test_correlate_forename_to_gender(self):

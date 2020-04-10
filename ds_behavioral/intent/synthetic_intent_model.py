@@ -840,13 +840,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed, save_intent=False)
 
-    def get_profile_middle_name(self, size: int, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+    def get_profile_middle_name(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                                 intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """local method to generate a middle initial """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        size = 1 if size is None else size
         middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW") + ['  '] * 4, size=int(size * 0.95),
                                    seed=seed, save_intent=False)
         choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
@@ -854,13 +855,14 @@ class SyntheticIntentModel(AbstractIntentModel):
                                           seed=seed, save_intent=False)
         return middle
 
-    def get_profile_surname(self, size: int, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+    def get_profile_surname(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                             intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """local method to generate a middle initial """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        size = 1 if size is None else size
         return self.get_category(selection=ProfileSample.surnames(), size=size, seed=seed, save_intent=False)
 
     def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
@@ -1338,13 +1340,13 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_from_columns(self, canonical: pd.DataFrame, headers: list, sep: str=None, seed: int=None,
+    def correlate_from_columns(self, canonical: pd.DataFrame, header: list, sep: str=None, seed: int=None,
                                save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                                replace_intent: bool=None, remove_duplicates: bool=None):
         """local method to generate a forename with dominance
 
         :param canonical: a DataFrame that contains a column to correlate
-        :param headers: an ordered list of columns to join
+        :param header: an ordered list of columns to join
         :param sep: (optional) a separator value between each of the value
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent: (optional) if the intent contract should be saved to the property manager
@@ -1365,8 +1367,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         sep = sep if isinstance(sep, str) else ''
-        headers = Commons.list_formatter(headers)
-        return canonical[headers].applymap(str).agg(sep.join, axis=1).to_list()
+        header = Commons.list_formatter(header)
+        return canonical[header].applymap(str).agg(sep.join, axis=1).to_list()
 
     def correlate_forename_to_gender(self, canonical: pd.DataFrame, header: str, categories: list, seed: int=None,
                                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
