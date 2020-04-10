@@ -83,14 +83,19 @@ class MappedSample(AbstractSample):
         return df.iloc[:size]
 
     @staticmethod
-    def us_zipcode_primary(size: int=None) -> pd.DataFrame:
+    def us_zipcode_primary(size: int=None, cleaned: bool=False) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
+        :param cleaned: (optional) if all decommissioned and nan values should be removed
         :return: the mapping DataFrame
         """
         _path = Path(AbstractSample._full_path('map_us_zipcode_primary.csv'))
         df = pd.read_csv(_path, encoding='latin1')
+        if cleaned:
+            df = df.dropna().where(~df['Decommisioned']).dropna()
+        pop_total = df['EstimatedPopulation'].sum()
+        df['WeightedPopulation'] = df['EstimatedPopulation'].apply(lambda x: np.round((x/pop_total) * 100000, 2))
         return df.iloc[:size]
 
     @staticmethod
