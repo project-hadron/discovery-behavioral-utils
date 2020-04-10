@@ -63,6 +63,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 _get = []
                 _correlate = []
                 _associate = []
+                _remove = []
                 for column in self._pm.get_intent().keys():
                     for order in self._pm.get(self._pm.join(self._pm.KEY.intent_key, column), {}):
                         for method in self._pm.get(self._pm.join(self._pm.KEY.intent_key, column, order), {}).keys():
@@ -74,7 +75,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 _correlate.append(column)
                             elif str(method).startswith('associate_'):
                                 _associate.append(column)
-                column_names = Commons.unique_list(_model + _get + _correlate + _associate)
+                            elif str(method).startswith('remove_'):
+                                _remove.append(column)
+                column_names = Commons.unique_list(_model + _get + _correlate + _associate + _remove)
             for column in column_names:
                 level_key = self._pm.join(self._pm.KEY.intent_key, column)
                 for order in sorted(self._pm.get(level_key, {})):
@@ -102,6 +105,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                                               globals(), locals())
                                 result = pd.DataFrame(result)
                                 df = pd.concat([df, result], axis=1, sort=False, copy=False)
+                                continue
+                            elif str(method).startswith('remove_'):
+                                df = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
+                                          globals(), locals())
                                 continue
                             if len(result) != size:
                                 raise IndexError(f"The index size of '{column}' is '{len(result)}', should be {size}")
@@ -996,6 +1003,32 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
+    def remove_columns(self, canonical: pd.DataFrame, headers: list, save_intent: bool=None,
+                       column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                       remove_duplicates: bool=None):
+        """local method to generate a forename with dominance
+
+        :param canonical: a DataFrame that contains a column to correlate
+        :param headers: the headers of the columns to remove
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a list of equal length to the one passed
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        return canonical.drop(headers, axis=1)
+
     def model_analysis(self, analytics_model: dict, size: int=None, seed: int=None, save_intent: bool=None,
                        column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                        remove_duplicates: bool=None) -> dict:
@@ -1261,13 +1294,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_columns(self, canonical: pd.DataFrame, headers: list, seed: int=None, save_intent: bool=None,
-                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                          remove_duplicates: bool=None):
+    def correlate_from_columns(self, canonical: pd.DataFrame, headers: list, sep: str=None, seed: int=None,
+                               save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                               replace_intent: bool=None, remove_duplicates: bool=None):
         """local method to generate a forename with dominance
 
         :param canonical: a DataFrame that contains a column to correlate
         :param headers: an ordered list of columns to join
+        :param sep: (optional) a separator value between each of the value
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent: (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1286,8 +1320,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        # for column in headers:
-        #     canonical[coll]
+        sep = sep if isinstance(sep, str) else ''
+        headers = Commons.list_formatter(headers)
+        return canonical[headers].applymap(str).agg(sep.join, axis=1).to_list()
 
     def correlate_forename_to_gender(self, canonical: pd.DataFrame, header: str, categories: list, seed: int=None,
                                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
