@@ -1068,6 +1068,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn = df_rtn.append(df_low.iloc[idx])
         df_rtn = Commons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State'])
         df_rtn['Zipcode'] = df['Zipcode'].round(0).astype(int)
+        df_rtn['City'] = df_rtn['City'].str.title()
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
         return df_rtn.sample(frac=1).reset_index(drop=True).to_dict(orient='list')
