@@ -85,6 +85,14 @@ class SyntheticIntentGetTest(unittest.TestCase):
         self.assertGreaterEqual(pd.Series(result).min(), 10)
         self.assertLessEqual(pd.Series(result).max(), 1000000)
 
+    def test_get_number_large(self):
+        tools = self.tools
+        sample_size = 1000
+        result = tools.get_number(1000000, 9999999999, precision=1, size=sample_size)
+        self.assertEqual(sample_size,len(result))
+        result = tools.get_number(1000000.0, 9999999999.0, precision=1, size=sample_size)
+        self.assertEqual(sample_size, len(result))
+
     def test_get_number_dominant(self):
         tools = self.tools
         sample_size = 5000
@@ -113,6 +121,13 @@ class SyntheticIntentGetTest(unittest.TestCase):
         result = pd.Series(result)
         self.assertEqual(sample_size, pd.Series(result).nunique())
 
+    def test_get_datetime(self):
+        tools = self.tools
+        sample_size = 10000
+        result = tools.get_datetime('2019/01/01', '2019/01/02', date_format="%Y-%m-%d", size=sample_size)
+        self.assertEqual(1, pd.Series(result).nunique())
+        result = tools.get_datetime(0, 1, date_format="%Y-%m-%d", ignore_time=True, size=sample_size)
+        self.assertEqual(pd.Timestamp.now().strftime("%Y-%m-%d"), pd.Series(result).value_counts().index[0])
 
 
 
