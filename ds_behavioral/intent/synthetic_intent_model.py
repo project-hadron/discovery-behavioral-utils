@@ -1029,10 +1029,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         return canonical.drop(headers, axis=1)
 
-    def model_us_zip(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+    def model_us_zip(self, rename_columns: dict, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                      intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
 
+        :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -1052,6 +1053,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        _seed = self._seed() if seed is None else seed
         df = MappedSample.us_zipcode_primary(cleaned=True)
         df_high = df.where(df['EstimatedPopulation'] > 20000).dropna()
         df_low = df.where(df['EstimatedPopulation'] <= 20000).dropna()
@@ -1059,12 +1061,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         low_size = int(0.001 * size)
         high_size = size - low_size
         idx = self.get_number(df_high.shape[0], weight_pattern=[10, 7, 6, 5, 4, 3, 2, 0.9] + [0.6]*50 + [0.3]*50,
-                              size=high_size, save_intent=False)
+                              seed=seed, size=high_size, save_intent=False)
         df_rtn = df_high.iloc[idx]
-        idx = self.get_number(df_low.shape[0], size=low_size, save_intent=False)
+        idx = self.get_number(df_low.shape[0], size=low_size, seed=seed, save_intent=False)
         df_rtn = df_rtn.append(df_low.iloc[idx])
         df_rtn = Commons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State'])
         df_rtn['Zipcode'] = df['Zipcode'].round(0).astype(int)
+        if isinstance(rename_columns, dict):
+            df_rtn = df_rtn.rename(columns=rename_columns)
         return df_rtn.sample(frac=1).reset_index(drop=True).to_dict(orient='list')
 
     def model_analysis(self, analytics_model: dict, size: int=None, seed: int=None, save_intent: bool=None,
