@@ -1025,7 +1025,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         return canonical.drop(headers, axis=1)
 
-    def model_us_zip(self, rename_columns: dict, size: int=None, seed: int=None, save_intent: bool=None,
+    def model_us_zip(self, rename_columns: dict=None, size: int=None, seed: int=None, save_intent: bool=None,
                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                      remove_duplicates: bool=None):
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
@@ -1397,6 +1397,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
         """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
         # validation
         if not isinstance(categories, list) or not len(categories) == 2:
             raise ValueError(f"The categories must list the Male and Female label to correlate, e.g. ['M', 'F']")
@@ -1404,10 +1408,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError(f"The canonical must be a pandas DataFrame")
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         s_values = canonical[header].copy()
         _seed = seed if isinstance(seed, int) else self._seed()
