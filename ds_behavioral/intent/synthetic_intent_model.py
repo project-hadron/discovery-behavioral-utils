@@ -91,13 +91,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 result = eval(f"self.{method}(size=size, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('correlate_'):
-                                corr_column = params.get('header', None)
-                                if corr_column is None:
-                                    raise NameError(f"The column name '{column}' can't be found for correlation. "
-                                                    f"check the referenced column is generated before correlation")
-                                result = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
-                                              globals(), locals())
-                            elif str(method).startswith('associate_'):
                                 result = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('model_'):
@@ -840,8 +833,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed, save_intent=False)
 
-    def get_profile_middle_name(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                                intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+    def get_profile_middle_name(self, size: int=None, seed: int=None, save_intent: bool=None,
+                                column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                                remove_duplicates: bool=None):
         """local method to generate a middle initial """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
@@ -1031,8 +1025,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         return canonical.drop(headers, axis=1)
 
-    def model_us_zip(self, rename_columns: dict, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+    def model_us_zip(self, rename_columns: dict, size: int=None, seed: int=None, save_intent: bool=None,
+                     column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                     remove_duplicates: bool=None):
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
 
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
@@ -1151,6 +1146,17 @@ class SyntheticIntentModel(AbstractIntentModel):
             row_dict[key] = row_dict[key][:size]
         return row_dict
 
+    # def associate_actions(self, canonical: Any, associations: list, actions: dict, default_value: Any=None,
+    #                       quantity: float=None, seed: int=None,
+    #                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+    #                       replace_intent: bool=None, remove_duplicates: bool=None):
+    #     """"""
+    #     # intent persist options
+    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+    #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
+    #     # intent code
+    #
     def associate_canonical(self, canonical: Any, associations: list, actions: dict, default_value: Any=None,
                             default_header: str=None, day_first: bool=None, quantity: float=None, seed: int=None,
                             save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1228,7 +1234,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _associations = tmp
         if not isinstance(_dataset, pd.DataFrame):
             raise TypeError("The dataset given is not or could not be convereted to a pandas DataFrame")
-        class_methods = self.__dir__
+        class_methods = self.__dir__()
 
         rtn_list = []
         for index in range(_dataset.shape[0]):
@@ -1728,6 +1734,45 @@ class SyntheticIntentModel(AbstractIntentModel):
                                       replace_intent=replace_intent, remove_duplicates=remove_duplicates,
                                       save_intent=save_intent)
         return
+
+    @staticmethod
+    def condition2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: bool=None, date_format: str=None,
+                    offset: int=None):
+        """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
+
+        :param column: the column name to apply the condition to
+        :param condition: the condition string (special conditions are 'date.now' for current date
+        :param operator: (optional) an operator to place before the condition if not included in the condition
+        :param logic: (optional) the logic to provide, options are 'and', 'or', 'not', 'xor'
+        :param date_format: (optional) a format of the date if only a specific part of the date and time is required
+        :param offset: (optional) a time delta in days (+/-) from the current date and time (minutes not supported)
+        :return: dictionary of the parameters
+
+        logic:
+            and: the intersect of the left and the right (common to both)
+            or: the union of the left and the right (everything in both)
+            diff: the left minus the intersect of the right (only things in the left excluding common to both)
+
+
+        """
+        return Commons.param2dict(**locals())
+
+    @staticmethod
+    def action2dict(action: Any, **kwargs):
+        """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
+
+        :param action: the action to take
+        :param kwargs: name value pairs accosiated with the actions
+        :return: dictionary of the parameters
+
+        logic:
+            and: the intersect of the left and the right (common to both)
+            or: the union of the left and the right (everything in both)
+            diff: the left minus the intersect of the right (only things in the left excluding common to both)
+
+
+        """
+        return Commons.param2dict(**locals())
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):
