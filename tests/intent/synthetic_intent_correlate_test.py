@@ -44,8 +44,8 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         df['C'] = [4.2,7.1,4.1]
         result = tools.correlate_join(df, header='B', action="values", sep='_')
         self.assertEqual(['X_values', 'Y_values', 'Z_values'], result)
-        result = tools.correlate_join(df, header='A', action=tools.action2dict(method='get_number', range_value=9))
-        print(result)
+        result = tools.correlate_join(df, header='A', action=tools.action2dict(method='correlate_numbers', header='C'))
+        self.assertEqual(['14.2', '27.1', '34.1'], result)
 
     def test_correlate_forename_to_gender(self):
         tools = self.tools

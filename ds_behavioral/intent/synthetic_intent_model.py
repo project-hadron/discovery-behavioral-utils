@@ -1397,7 +1397,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             if method is None:
                 raise ValueError(f"The 'method' key was not in the action dictionary.")
             if method in self.__dir__():
-                action.update({'size': s_values.size})
+                if str(method).startswith('get_') or str(method).startswith('model_'):
+                    action.update({'size': s_values.size})
+                if str(method).startswith('correlate_') or str(method).startswith('associate_'):
+                    action.update({'canonical': canonical})
                 action.update({'save_intent': False})
                 data = eval(f"self.{method}(**action)", globals(), locals())
                 result = pd.Series(data=data)
