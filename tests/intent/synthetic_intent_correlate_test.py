@@ -36,16 +36,16 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
                                        reset_templates=False).intent_model
         self.assertTrue(SyntheticIntentModel, type(im))
 
-    def test_correlate_columns(self):
+    def test_correlate_action(self):
         tools = self.tools
         df = pd.DataFrame()
         df['A'] = [1,2,3]
         df['B'] = list('XYZ')
         df['C'] = [4.2,7.1,4.1]
-        result = tools.correlate_from_columns(df, header=list('BCAB'))
-        self.assertEqual(['X4.21X', 'Y7.12Y', 'Z4.13Z'], result)
-        result = tools.correlate_from_columns(df, header=list('ABC'), sep='-')
-        self.assertEqual(['1-X-4.2', '2-Y-7.1', '3-Z-4.1'], result)
+        result = tools.correlate_action(df, header='B', action="values", sep='_')
+        self.assertEqual(['X_values', 'Y_values', 'Z_values'], result)
+        result = tools.correlate_action(df, header='A', action=tools.action2dict(method='get_number', range_value=9))
+        print(result)
 
     def test_correlate_forename_to_gender(self):
         tools = self.tools

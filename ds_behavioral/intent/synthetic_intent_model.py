@@ -1157,6 +1157,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
     #     # intent code
     #
+
     def associate_canonical(self, canonical: Any, associations: list, actions: dict, default_value: Any=None,
                             default_header: str=None, day_first: bool=None, quantity: float=None, seed: int=None,
                             save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1346,15 +1347,15 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_from_columns(self, canonical: pd.DataFrame, header: list, sep: str=None, seed: int=None,
-                               save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                               replace_intent: bool=None, remove_duplicates: bool=None):
-        """local method to generate a forename with dominance
+    def correlate_action(self, canonical: pd.DataFrame, header: str, action: [str, dict], sep: str=None,
+                         save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                         replace_intent: bool=None, remove_duplicates: bool=None):
+        """ correlate a column and combine it with the result of the action
 
         :param canonical: a DataFrame that contains a column to correlate
         :param header: an ordered list of columns to join
-        :param sep: (optional) a separator value between each of the value
-        :param seed: (optional) a seed value for the random function: default to None
+        :param action: (optional) a string or a single action whose outcome will be joined to the header value
+        :param sep: (optional) a separator between the values
         :param save_intent: (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1366,15 +1367,47 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
+
+        An action is a dictionary that can be a single element or an intent and takes the form:
+                {'action': '_cat'}
+        to append _cat the the end of each entry, or
+                 {'action': 'get_category', 'selection': ['A', 'B', 'C'], 'weight_pattern': [4, 2, 1]}
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # validation
+        if not isinstance(action, (dict, str)):
+            raise ValueError(f"The action must be a dictionary of a single action or a string value")
+        if not isinstance(canonical, pd.DataFrame):
+            raise ValueError(f"The canonical must be a pandas DataFrame")
+        if not isinstance(header, str) or header not in canonical.columns:
+            raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         # Code block for intent
         sep = sep if isinstance(sep, str) else ''
-        header = Commons.list_formatter(header)
-        return canonical[header].applymap(str).agg(sep.join, axis=1).to_list()
+        s_values = canonical[header].copy()
+        if s_values.empty:
+            return list()
+        action = deepcopy(action)
+        null_idx = s_values[s_values.isna()].index
+        s_values.to_string()
+        if isinstance(action, dict):
+            method = action.pop('method', None)
+            if method is None:
+                raise ValueError(f"The 'method' key was not in the action dictionary.")
+            if method in self.__dir__():
+                action.update({'size': s_values.size})
+                data = eval(f"self.{method}(**action)", globals(), locals())
+                result = pd.Series(data=data)
+            else:
+                raise ValueError(f"The 'method' key {method} is not a recognised intent method")
+        else:
+            result = pd.Series(data=([action] * s_values.size))
+        s_values = s_values.combine(result, func=(lambda a, b: f"{a}{sep}{b}"))
+        if null_idx.size > 0:
+            s_values.iloc[null_idx] = np.nan
+        return s_values.to_list()
 
     def correlate_forename_to_gender(self, canonical: pd.DataFrame, header: str, categories: list, seed: int=None,
                                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1736,12 +1769,13 @@ class SyntheticIntentModel(AbstractIntentModel):
         return
 
     @staticmethod
-    def condition2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: bool=None, date_format: str=None,
-                    offset: int=None):
+    def condition2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: bool=None,
+                       date_format: str=None, offset: int=None):
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
         :param column: the column name to apply the condition to
         :param condition: the condition string (special conditions are 'date.now' for current date
+        :param expect: (optional) the data type to expect. If None then the data type is assumed from the dtype
         :param operator: (optional) an operator to place before the condition if not included in the condition
         :param logic: (optional) the logic to provide, options are 'and', 'or', 'not', 'xor'
         :param date_format: (optional) a format of the date if only a specific part of the date and time is required
@@ -1758,11 +1792,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         return Commons.param2dict(**locals())
 
     @staticmethod
-    def action2dict(action: Any, **kwargs):
+    def action2dict(method: Any, **kwargs):
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
-        :param action: the action to take
-        :param kwargs: name value pairs accosiated with the actions
+        :param method: the method to execute
+        :param kwargs: name value pairs associated with the method
         :return: dictionary of the parameters
 
         logic:
@@ -1772,7 +1806,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
 
         """
-        return Commons.param2dict(**locals())
+        return Commons.param2dict(method=method, **kwargs)
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):
