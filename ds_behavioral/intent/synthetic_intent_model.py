@@ -1347,10 +1347,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_action(self, canonical: pd.DataFrame, header: str, action: [str, dict], sep: str=None,
-                         save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                         replace_intent: bool=None, remove_duplicates: bool=None):
-        """ correlate a column and combine it with the result of the action
+    def correlate_join(self, canonical: pd.DataFrame, header: str, action: [str, dict], sep: str=None,
+                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                       replace_intent: bool=None, remove_duplicates: bool=None):
+        """ correlate a column and join it with the result of the action
 
         :param canonical: a DataFrame that contains a column to correlate
         :param header: an ordered list of columns to join
@@ -1398,6 +1398,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 raise ValueError(f"The 'method' key was not in the action dictionary.")
             if method in self.__dir__():
                 action.update({'size': s_values.size})
+                action.update({'save_intent': False})
                 data = eval(f"self.{method}(**action)", globals(), locals())
                 result = pd.Series(data=data)
             else:
