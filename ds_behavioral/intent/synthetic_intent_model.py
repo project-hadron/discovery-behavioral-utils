@@ -1408,8 +1408,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if str(method).startswith('correlate_') or str(method).startswith('associate_'):
                     action.update({'canonical': canonical})
                 action.update({'save_intent': False})
-                local_arg = {'self': self, 'action': action}
-                data = eval(f"self.{method}(**action)", globals(), local_arg)
+                data = eval(f"self.{method}(**action)", globals(), locals())
                 result = pd.Series(data=data)
             else:
                 raise ValueError(f"The 'method' key {method} is not a recognised intent method")
