@@ -36,7 +36,7 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
                                        reset_templates=False).intent_model
         self.assertTrue(SyntheticIntentModel, type(im))
 
-    def test_correlate_action(self):
+    def test_correlate_join(self):
         tools = self.tools
         df = pd.DataFrame()
         df['A'] = [1,2,3]
