@@ -833,10 +833,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed, save_intent=False)
 
-    def get_profile_middle_name(self, size: int=None, seed: int=None, save_intent: bool=None,
-                                column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                                remove_duplicates: bool=None):
-        """local method to generate a middle initial """
+    def get_profile_middle_initials(self, size: int=None, seed: int=None, save_intent: bool=None,
+                                    column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                                    remove_duplicates: bool=None):
+        """generates random middle initials"""
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
@@ -851,7 +851,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def get_profile_surname(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                             intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
-        """local method to generate a middle initial """
+        """ returns a surnames """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
@@ -1002,7 +1002,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     def remove_columns(self, canonical: pd.DataFrame, headers: list, save_intent: bool=None,
                        column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                        remove_duplicates: bool=None):
-        """local method to generate a forename with dominance
+        """ removes columns from the passed canonical as a tidy up
 
         :param canonical: a DataFrame that contains a column to correlate
         :param headers: the headers of the columns to remove
@@ -1152,7 +1152,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #                       replace_intent: bool=None, remove_duplicates: bool=None):
     #     """"""
     #     # intent persist options
-    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name,params=locals()),
     #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
     #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
     #     # intent code
