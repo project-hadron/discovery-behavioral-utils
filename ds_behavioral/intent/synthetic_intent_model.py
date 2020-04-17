@@ -72,10 +72,16 @@ class SyntheticIntentModel(AbstractIntentModel):
                             elif str(method).startswith('get_'):
                                 _get.append(column)
                             elif str(method).startswith('correlate_'):
+                                if column in _get:
+                                    _get.remove(column)
                                 _correlate.append(column)
                             elif str(method).startswith('associate_'):
+                                if column in _get:
+                                    _get.remove(column)
                                 _associate.append(column)
                             elif str(method).startswith('remove_'):
+                                if column in _get:
+                                    _get.remove(column)
                                 _remove.append(column)
                 column_names = Commons.unique_list(_model + _get + _correlate + _associate + _remove)
             for column in column_names:
