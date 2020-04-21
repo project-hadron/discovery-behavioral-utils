@@ -76,8 +76,13 @@ class SyntheticPipelineTest(unittest.TestCase):
         self.assertEqual(1, result['corr_plus'].value_counts().size)
         self.assertEqual(3, result['corr_plus'].value_counts().index[0])
 
-
-
+    def test_run_intent_pipeline_associate(self):
+        tools = self.builder.intent_model
+        df = pd.DataFrame()
+        df['numbers'] = tools.get_number(1, 2, column_name='numbers')
+        df['corr_num'] = tools.associate_canonical(df, associations=[], actions={}, default_header='numbers', column_name='corr_num')
+        result = tools.run_intent_pipeline(size=10)
+        print(result)
 
 
 

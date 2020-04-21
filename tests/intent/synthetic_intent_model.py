@@ -31,7 +31,6 @@ class SyntheticIntentModelTest(unittest.TestCase):
 
     def test_us_zip(self):
         result = self.tools.model_us_zip(size=20)
-        result = pd.DataFrame(result)
         print(result)
 
     def test_raise(self):

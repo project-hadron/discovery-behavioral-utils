@@ -96,7 +96,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                             if str(method).startswith('get_'):
                                 result = eval(f"self.{method}(size=size, save_intent=False, **params)",
                                               globals(), locals())
-                            elif str(method).startswith('correlate_'):
+                            elif str(method).startswith('correlate_') or str(method).startswith('associate'):
                                 result = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('model_'):
@@ -791,7 +791,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                  sample_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=None, quantity: float=None,
                  seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                  replace_intent: bool=None, remove_duplicates: bool=None) -> list:
-        """ returns a random list of values where the selection of those values is taken from the values passed.
+        """ returns a random list of values where the selection of those values is taken a connector dataset.
 
         :param connector_name: a connector_name for a connector to a data source
         :param column_header: the name of the column header to correlate
@@ -832,7 +832,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if column_header not in canonical.columns:
             raise ValueError(f"The column '{column_header}' not found in the data from connector '{connector_name}'")
         _values = canonical[column_header].iloc[:sample_size]
-        if isinstance(selection_size, bool) and shuffled:
+        if isinstance(selection_size, float) and shuffled:
             _values = _values.sample(frac=1).reset_index(drop=True)
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
@@ -1033,7 +1033,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def model_us_zip(self, rename_columns: dict=None, size: int=None, seed: int=None, save_intent: bool=None,
                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                     remove_duplicates: bool=None):
+                     remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
 
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
@@ -1049,7 +1049,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         True - replaces the current intent method with the new
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a dictionary
+        :return: a DataFrame
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1074,11 +1074,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn['City'] = df_rtn['City'].str.title()
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
-        return df_rtn.sample(frac=1).reset_index(drop=True).to_dict(orient='list')
+        return df_rtn.sample(frac=1).reset_index(drop=True)
 
     def model_analysis(self, analytics_model: dict, size: int=None, seed: int=None, save_intent: bool=None,
                        column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                       remove_duplicates: bool=None) -> dict:
+                       remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
@@ -1097,7 +1097,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         True - replaces the current intent method with the new
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a dictionary
+        :return: a DataFrame
         """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
@@ -1150,7 +1150,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         get_level(analytics_model, sample_size=size)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
-        return row_dict
+        return pd.DataFrame.from_dict(data=row_dict)
 
     # def associate_actions(self, canonical: Any, associations: list, actions: dict, default_value: Any=None,
     #                       quantity: float=None, seed: int=None,

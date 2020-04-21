@@ -42,6 +42,10 @@ class SyntheticIntentTest(unittest.TestCase):
         associations = [{'value': {'expect': 'number', 'value': [2, 7]}}]
         actions = {0: {'action': 9}}
         result = tools.associate_canonical(df, associations=associations, actions=actions)
+        self.assertEqual([None, 9, 9, None, 9, None], result)
+        associations = []
+        actions = {}
+        result = tools.associate_canonical(df, associations=associations, actions=actions, default_header='letters')
         print(result)
 
     def test_raise(self):
