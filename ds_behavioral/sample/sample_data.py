@@ -93,7 +93,7 @@ class MappedSample(AbstractSample):
         _path = Path(AbstractSample._full_path('map_us_zipcode_primary.csv'))
         df = pd.read_csv(_path, encoding='latin1')
         if cleaned:
-            df = df.dropna().where(~df['Decommisioned']).dropna()
+            df = df.dropna(subset='State')
         pop_total = df['EstimatedPopulation'].sum()
         df['WeightedPopulation'] = df['EstimatedPopulation'].apply(lambda x: np.round((x/pop_total) * 100000, 2))
         return df.iloc[:size]
