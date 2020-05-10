@@ -12,7 +12,7 @@ class ControlPropertyManager(AbstractPropertyManager):
         # set additional keys
         root_keys = []
         knowledge_keys = []
-        super().__init__(task_name=task_name, root_keys=root_keys, knowledge_keys=knowledge_keys)
+        super().__init__(task_name=task_name, root_keys=root_keys, knowledge_keys=knowledge_keys, username='default')
 
 
 class SyntheticIntentAnalysisTest(unittest.TestCase):
