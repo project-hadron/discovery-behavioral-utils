@@ -91,6 +91,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         if method in self.__dir__():
                             result = []
                             params.update(params.pop('kwargs', {}))
+                            _ = params.pop('intent_creator', 'Unknown')
                             if isinstance(kwargs, dict):
                                 params.update(kwargs)
                             if str(method).startswith('get_'):
