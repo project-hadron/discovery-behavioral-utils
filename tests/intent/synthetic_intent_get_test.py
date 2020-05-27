@@ -109,6 +109,12 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_get_number_weighting(self):
         tools = self.tools
+        sample_size = 10
+        result = tools.get_number(0, 10, ordered=True, size=sample_size)
+        result = pd.Series(result)
+
+    def test_get_number_weighting(self):
+        tools = self.tools
         sample_size = 100000
         result = tools.get_number(10, 20, weight_pattern=[0,1], size=sample_size)
         result = pd.Series(result)

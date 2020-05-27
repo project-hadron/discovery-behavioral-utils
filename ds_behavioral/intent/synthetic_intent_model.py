@@ -116,10 +116,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         return df
 
     def get_number(self, range_value: [int, float]=None, to_value: [int, float]=None, weight_pattern: list=None,
-                   offset: int=None, precision: int=None, currency: str=None, bounded_weighting: bool=None,
-                   at_most: int=None, dominant_values: [float, list]=None, dominant_percent: float=None,
-                   dominance_weighting: list=None, size: int=None, quantity: float=None, seed: int=None,
-                   save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                   offset: int=None, precision: int=None, ordered: str=None, currency: str=None,
+                   bounded_weighting: bool=None, at_most: int=None, dominant_values: [float, list]=None,
+                   dominant_percent: float=None, dominance_weighting: list=None, size: int=None, quantity: float=None,
+                   seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                    replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
@@ -127,6 +127,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param to_value: optional, (signed) integer to end from.
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
+        :param ordered: order the data ascending 'asc' or descending 'dec', values accepted 'asc' or 'des'
         :param offset: an offset multiplier, if None then assume 1
         :param currency: a currency symbol to prefix the value with. returns string with commas
         :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
@@ -303,7 +304,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = [value*offset for value in rtn_list]
         # add in the dominant values
         rtn_list += dominant_list
-        np.random.shuffle(rtn_list)
+        if isinstance(ordered, str) and ordered.lower() in ['asc', 'des']:
+            rtn_list.sort(reverse=True if ordered.lower() == 'asc' else False)
+        else:
+            np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_category(self, selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
@@ -347,10 +351,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
-    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, at_most: int=None, date_format: str=None,
-                     as_num: bool=None, ignore_time: bool=None, size: int=None, quantity: float=None, seed: int=None,
-                     day_first: bool=None, year_first: bool=None, save_intent: bool=None, column_name: [int, str]=None,
-                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, at_most: int=None, ordered: str=None,
+                     date_format: str=None, as_num: bool=None, ignore_time: bool=None, size: int=None,
+                     quantity: float=None, seed: int=None, day_first: bool=None, year_first: bool=None,
+                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                     replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """ returns a random date between two date and/or times. weighted patterns can be applied to the overall date
         range.
         if a signed 'int' type is passed to the start and/or until dates, the inferred date will be the current date
@@ -363,6 +368,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param quantity: the quantity of values that are not null. Number between 0 and 1
         :param weight_pattern: (optional) A pattern across the whole date range.
         :param at_most: the most times a selection should be chosen
+        :param ordered: order the data ascending 'asc' or descending 'dec', values accepted 'asc' or 'des'
         :param ignore_time: ignore time elements and only select from Year, Month, Day elements. Default is False
         :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
         :param as_num: returns a list of Matplotlib date values as a float. Default is False
@@ -411,7 +417,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             _dt_until = int(_dt_until)
             precision = 0
         rtn_list = self.get_number(range_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
-                                   at_most=at_most, precision=precision, size=size, seed=seed, save_intent=False)
+                                   at_most=at_most, ordered=ordered, precision=precision, size=size, seed=seed,
+                                   save_intent=False)
         if not as_num:
             rtn_list = mdates.num2date(rtn_list)
             if isinstance(date_format, str):
