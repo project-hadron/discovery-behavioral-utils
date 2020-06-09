@@ -19,7 +19,7 @@ class FileBuilderTest(unittest.TestCase):
 
     def setUp(self):
         # set environment variables
-        os.environ['AISTAC_PM_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
+        os.environ['HADRON_PM_PATH'] = os.path.join(os.environ['PWD'], 'work', 'config')
         self.name = 'TestBuilder'
         try:
             shutil.copytree('../../simulators/data', os.path.join(os.environ['PWD'], 'work'))

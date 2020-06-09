@@ -1,5 +1,5 @@
-AI-STAC Behavioral Synthetic Generator
-######################################
+Project Hadron Behavioral Synthetic Generator
+#############################################
 
 
 .. class:: no-web no-pdf
@@ -11,24 +11,22 @@ AI-STAC Behavioral Synthetic Generator
 
 .. section-numbering::
 
-What is AI-STAC
-===============
+What is Project Hadron
+======================
 
-Augmented Intent - Single Task Adaptive Components (AI-STAC) is a disruptive innovator for data recovery, discovery,
-synthesis, feature cataloging and machine Learning that changes the approach to data science and it's transition to
-production.
-
-it's origins came from an incubator project that shadowed a team of Ph.D. data scientists in connection with the
-development and delivery of machine learning initiatives to define measurable benefit propositions for customer success.
-From this, a number of observable 'capabilities' were identified as unique and separate concerns. The challenges of the
-data scientist, and in turn the production teams, were to effectively leverage these separation of concerns and
-distribute and loosely couple the specialist capability needs to the appropriate skills set.
+Project Hadron is based on 'Augmented Intent - Single Task Adaptive Components' (AI-STAC) is a unique approach to
+data recovery, discovery, synthesis and modeling that innovates the approach to data science and it's transition to
+production. it's origins came from an incubator project that shadowed a team of Ph.D. data scientists in connection
+with the development and delivery of machine learning initiatives to define measurable benefit propositions for
+customer success. From this, a number of observable 'capabilities' were identified as unique and separate concerns.
+The challenges of the data scientist, and in turn the production teams, were to effectively leveraging that separation
+of concern and distribute and loosely couple the specialist capability needs to the appropriate skills set.
 
 In addition the need to remove the opaque nature of the machine learning end-to-end required better transparency and
-traceability, to better inform the broadest of interested parties and be able to adapt without leaving being the
-code 'sludge' of redundant ideas. AI-STAC is a disruptive innovation, changing the way we approach the challenges of
-Machine Learning and Augmented Inelegance, introduces the ideas of 'Single Task Adaptive Components' around the
-core concept of 'Parameterised Intent'
+traceability, to better inform to the broadest of interested parties and be able to adapt without leaving being the
+code 'sludge' of redundant ideas. Project Hadron is a disruptive innovation, changing the way we approach the
+challenges of Machine Learning and Augmented Inelegance, introduces the ideas of 'Single Task Adaptive Component'
+around the core concept of 'Parameterised Intent'
 
 Main features
 =============
@@ -43,10 +41,10 @@ Overview
 The Behavioral Synthetic Data Generator was developed as a solution to the current challenges of data accessibility
 and the early mobilization of machine learning discovery, feature cataloging and model build.
 
-AI-STAC Behavioral Synthetic Data Generator takes on, what is, a sceptically viewed and challenging problem area of
-the generation of data that is synthetic in nature, but is still representative of its intended real-life counterpart.
-In short, The AI-STAC package needed to develop rich data sets to demonstrate the capabilities across a number of
-different disciplines from simple volumetrics to more demanding and complex data needs
+Project Hadron Behavioral Synthetic Data Generator takes on, what is, a sceptically viewed and challenging problem
+area of the generation of data that is synthetic in nature, but is still representative of its intended real-life
+counterpart. In short, The AI-STAC package needed to develop rich data sets to demonstrate the capabilities across a
+number of different disciplines from simple volumetrics to more demanding and complex data needs
 
 Value Proposition
 -----------------
@@ -145,10 +143,10 @@ them to a demo projects folder
 .. code-block:: bash
 
     # where to find the properties contracts
-    export AISTAC_PM_PATH=~/projects/demo/contracts
+    export HADRON_PM_PATH=~/projects/demo/contracts
 
     # The default path for the source and the persisted data
-    export AISTAC_DEFAULT_PATH=~/projects/demo/data
+    export HADRON_DEFAULT_PATH=~/projects/demo/data
 
 3. In addition to the default environment variables you can set specific component environment variables. This is
 particularly useful with the Synthetic component where output might vary from the default path structure.
@@ -157,7 +155,7 @@ For Synthetic persist you replace the ``DEFAULT`` with ``SYNTHETIC``, and in thi
 .. code-block:: bash
 
     # specific to the synthetic component persist path
-    export AISTAC_SYNTHETIC_SOURCE_PATH=/tmp/data/sftp
+    export HADRON_SYNTHETIC_SOURCE_PATH=/tmp/data/sftp
 
 4. save your changes
 5. re-run your bash_profile and check the variables have been set
@@ -413,11 +411,12 @@ produce. Here we only get about 50% of the telephone numbers
 
 .. code:: python
 
-    # using the get string pattern we can create part random and part static data elements. see the inline docs for help on customising choices
+    # using the get string pattern we can create part random and part static data elements.
+    # see the inline docs for help on customising choices
     df['mobile'] = tools.get_string_pattern("(07ddd) ddd ddd", choice_only=False, size=10, quantity=0.5)
     df
 
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_26_0.png
+.. image:: https://raw.githubusercontent.com/project-hadron/discovery-behavioral-utils/master/docs/img/output_26_0.png
 
 Weighted Patterns
 -----------------
@@ -451,7 +450,7 @@ is selected
     sns.set(style="whitegrid")
     g = sns.barplot(selection, dist)
 
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_25_0.png
+.. image:: https://raw.githubusercontent.com/project-hadron/discovery-behavioral-utils/master/docs/img/output_25_0.png
 
 
 It can also be used to create more complex distribution. In this example
@@ -469,7 +468,7 @@ age.
     _ = sns.set(style="whitegrid")
     _ = sns.kdeplot(age, shade=True)
 
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_27_0.png
+.. image:: https://raw.githubusercontent.com/project-hadron/discovery-behavioral-utils/master/docs/img/output_27_0.png
 
 Random Seed
 ~~~~~~~~~~~
@@ -492,7 +491,7 @@ patterns we can predict.
     plt.tight_layout()
     plt.show()
 
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_33_0.png
+.. image:: https://raw.githubusercontent.com/project-hadron/discovery-behavioral-utils/master/docs/img/output_33_0.png
 
 
 Dates
@@ -544,7 +543,7 @@ Or by a combination of any of them.
 
     visual.show_cat_time_index(df_rota, 'dates', 'rota')
 
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_39_0.png
+.. image:: https://raw.githubusercontent.com/project-hadron/discovery-behavioral-utils/master/docs/img/output_39_0.png
 
 
 Quite often dates need to have specific pattern to represent real
@@ -568,7 +567,7 @@ working week.
 
     visual.show_cat_time_index(df_seating, 'dates', 'position')
 
-.. image:: https://raw.githubusercontent.com/Gigas64/discovery-behavioral-utils/master/docs/img/output_36_0.png
+.. image:: https://raw.githubusercontent.com/project-hadron/discovery-behavioral-utils/master/docs/img/output_36_0.png
 
 What Next
 ~~~~~~~~~
@@ -595,18 +594,18 @@ Python 3 is the default for Homebrew installations starting with version 0.9.4.
 
 GitHub Project
 --------------
-Discovery-Behavioral-Utils: `<https://github.com/Gigas64/discovery-behavioral-utils>`_.
+Discovery-Behavioral-Utils: `<https://github.com/project-hadron/discovery-behavioral-utils>`_.
 
 Change log
 ----------
 
-See `CHANGELOG <https://github.com/doatridge-cs/discovery-behavioral-utils/blob/master/CHANGELOG.rst>`_.
+See `CHANGELOG <https://github.com/project-hadron/discovery-behavioral-utils/blob/master/CHANGELOG.rst>`_.
 
 
 Licence
 -------
 
-BSD-3-Clause: `LICENSE <https://github.com/doatridge-cs/discovery-behavioral-utils/blob/master/LICENSE.txt>`_.
+BSD-3-Clause: `LICENSE <https://github.com/project-hadron/discovery-behavioral-utils/blob/master/LICENSE.txt>`_.
 
 
 Authors
@@ -629,7 +628,7 @@ Authors
     :alt: Documentation Status
 
 .. |license| image:: https://img.shields.io/pypi/l/Django.svg
-    :target: https://github.com/Gigas64/discovery-behavioral-utils/blob/master/LICENSE.txt
+    :target: https://github.com/project-hadron/discovery-behavioral-utils/blob/master/LICENSE.txt
     :alt: PyPI - License
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/Django.svg

@@ -10,11 +10,11 @@ from aistac.properties.property_manager import PropertyManager
 class SyntheticIntentGetTest(unittest.TestCase):
 
     def setUp(self):
-        os.environ['AISTAC_PM_PATH'] = os.path.join('work', 'config')
-        os.environ['AISTAC_DEFAULT_PATH'] = os.path.join('work', 'data')
+        os.environ['HADRON_PM_PATH'] = os.path.join('work', 'config')
+        os.environ['HADRON_DEFAULT_PATH'] = os.path.join('work', 'data')
         try:
-            os.makedirs(os.environ['AISTAC_PM_PATH'])
-            os.makedirs(os.environ['AISTAC_DEFAULT_PATH'])
+            os.makedirs(os.environ['HADRON_PM_PATH'])
+            os.makedirs(os.environ['HADRON_DEFAULT_PATH'])
         except:
             pass
         PropertyManager._remove_all()
@@ -110,8 +110,9 @@ class SyntheticIntentGetTest(unittest.TestCase):
     def test_get_number_weighting(self):
         tools = self.tools
         sample_size = 10
-        result = tools.get_number(0, 10, ordered=True, size=sample_size)
+        result = tools.get_number(0, 10, ordered='asc', size=sample_size)
         result = pd.Series(result)
+        print(result)
 
     def test_get_number_weighting(self):
         tools = self.tools
