@@ -1,5 +1,5 @@
 import pandas as pd
-from ds_behavioral import DataBuilderTools
+from ds_behavioral import SyntheticBuilder
 
 __author__ = "Darryl Oatridge"
 
@@ -16,10 +16,10 @@ class Models(object):
 
         :param profile: a pandas series of categories (index) counters for a single profile
         :param items: a pandas dataframe of item counts (index) of columns (categories
-        :param recommend: the number of recomended items to select from
+        :param recommend: the number of recommended items to select from
         :param top: limits the cut-off of the top categories to select from
         :param exclude_items: item index to not include
-        :return: a list of recomendations
+        :return: a list of recommendations
         """
         recommend = 10 if recommend is None else recommend
         top = 10 if top is None or top < 1 else top
@@ -28,8 +28,9 @@ class Models(object):
         if profile is None or profile.size == 0:
             return []
         categories = profile.sort_values(ascending=False).iloc[:top]
-        choices = DataBuilderTools.get_category(selection=categories.index.to_list(),
-                                                weight_pattern=categories.values.tolist(), size=recommend)
+        choices = SyntheticBuilder.scratch_pad().get_category(selection=categories.index.to_list(),
+                                                              weight_pattern=categories.values.tolist(),
+                                                              size=recommend)
         choices_count = pd.Series(choices).value_counts()
         selection_dict = {}
         for index in choices_count.index:

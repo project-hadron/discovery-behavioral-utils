@@ -1132,9 +1132,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     row_dict[name] += self.get_category(selection=_analysis.intent.selection,
                                                         weight_pattern=_analysis.patterns.weight_pattern,
                                                         quantity=1-_analysis.stats.nulls_percent, seed=seed,
-                                                        size=sample_size, save_intent=save_intent, column_name=name,
-                                                        replace_intent=replace_intent,
-                                                        remove_duplicates=remove_duplicates)
+                                                        size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.intent.selection,
                                                          weight_pattern=_analysis.patterns.weight_pattern,
@@ -1143,9 +1141,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                          dominance_weighting=_analysis.patterns.dominance_weighting,
                                                          precision=_analysis.intent.precision,
                                                          quantity=1 - _analysis.stats.nulls_percent,
-                                                         seed=seed, size=sample_size, save_intent=save_intent,
-                                                         column_name=name, replace_intent=replace_intent,
-                                                         remove_duplicates=remove_duplicates)
+                                                         seed=seed, size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('date'):
                     row_dict[name] += self.get_datetime(start=_analysis.intent.lower, until=_analysis.intent.upper,
                                                         weight_pattern=_analysis.patterns.weight_pattern,
@@ -1153,9 +1149,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                         day_first=_analysis.intent.day_first,
                                                         year_first=_analysis.intent.year_first,
                                                         quantity=1 - _analysis.stats.nulls_percent,
-                                                        seed=seed, size=sample_size, save_intent=save_intent,
-                                                        column_name=name, replace_intent=replace_intent,
-                                                        remove_duplicates=remove_duplicates)
+                                                        seed=seed, size=sample_size, save_intent=False)
                 unit = sample_size / sum(_analysis.patterns.weight_pattern)
                 if values.get('sub_category'):
                     section_map = _analysis.weight_map
