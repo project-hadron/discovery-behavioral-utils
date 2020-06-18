@@ -1051,6 +1051,50 @@ class SyntheticIntentModel(AbstractIntentModel):
         return Commons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                       regex=regex, re_ignore_case=re_ignore_case)
 
+    def model_noise(self, num_columns: int, inc_targets: bool=None, size: int=None, seed: int=None,
+                    save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                    replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+        """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
+
+        :param num_columns: the number of columns of noise
+        :param inc_targets: (optional) if a predictor target should be included. default is false
+        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
+        :param seed: seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a DataFrame
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        _seed = self._seed() if seed is None else seed
+        size = 1 if size is None else size
+        num_columns = num_columns if isinstance(num_columns, int) else 1
+        inc_targets = inc_targets if isinstance(inc_targets, int) else False
+        gen = Commons.label_gen()
+        df_rtn = pd.DataFrame()
+        for _ in range(num_columns):
+            _seed = self._next_seed(_seed, seed)
+            a = np.random.choice(range(1, 6))
+            b = np.random.choice(range(1, 6))
+            df_rtn[next(gen)] = self.get_distribution(method='beta', a=a, b=b, precision=3, size=size, seed=_seed,
+                                                      save_intent=False)
+        if inc_targets:
+            result = df_rtn.mean(axis=1)
+            df_rtn['target1'] = result.apply(lambda x: 1 if x > 0.5 else 0)
+            df_rtn['target2'] = df_rtn.iloc[:, :5].mean(axis=1).round(2)
+        return df_rtn
+
     def model_us_zip(self, rename_columns: dict=None, size: int=None, seed: int=None, save_intent: bool=None,
                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                      remove_duplicates: bool=None) -> pd.DataFrame:
@@ -1311,7 +1355,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                             raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: {}".format(
                                 v.get('_header'), action_idx, k))
                         kwargs[k] = canonical[v.get('_header')].iloc[index]
-                result = eval("self.{}(**{})".format(method, kwargs).replace('nan', 'None'))
+                result = eval(f"self.{method}(save_intent=False, **{kwargs})".replace('nan', 'None'))
                 if isinstance(result, list):
                     if len(result) > 0:
                         rtn_list.append(result.pop())
@@ -1642,7 +1686,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 else:
                     raise ValueError(f"The 'method' key {method} is not a recognised intent method")
             else:
-                result = pd.Series(data=(action * corr_idx.size), index=corr_idx)
+                result = pd.Series(data=([action] * corr_idx.size), index=corr_idx)
             s_values.update(result)
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan

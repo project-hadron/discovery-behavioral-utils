@@ -37,16 +37,18 @@ class SyntheticIntentTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        df['value'] = [1,4,2,1,4,1]
+        df['value'] = [1,4,2,1,6,1]
         df['date'] = ['2019/01/04', '2019/01/06', '2019/01/02', '2019/01/04', '2019/01/06', '2019/01/03']
         associations = [{'value': {'expect': 'number', 'value': [2, 7]}}]
         actions = {0: {'action': 9}}
         result = tools.associate_canonical(df, associations=associations, actions=actions)
         self.assertEqual([None, 9, 9, None, 9, None], result)
-        associations = []
-        actions = {}
+        associations = [{'value': {'expect': 'number', 'value': [1]}, 'letters': {'expect': 'category', 'value': ['A']}},
+                        {'value': {'expect': 'number', 'value': [2, 4]}}]
+        actions = {0: {'action': 9},
+                   1: {'action': 5}}
         result = tools.associate_canonical(df, associations=associations, actions=actions, default_header='letters')
-        print(result)
+        self.assertEqual([9, 5, 5, 'B', 'B', 'C'], result)
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:

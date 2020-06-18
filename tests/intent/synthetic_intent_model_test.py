@@ -33,6 +33,10 @@ class SyntheticIntentModelTest(unittest.TestCase):
         result = self.tools.model_us_zip(size=20)
         print(result)
 
+    def test_model_noise(self):
+        result = self.tools.model_noise(num_columns=2, inc_targets=True, size=20)
+        print(result)
+
     def test_raise(self):
         with self.assertRaises(KeyError) as context:
             env = os.environ['NoEnvValueTest']
