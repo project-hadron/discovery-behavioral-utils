@@ -237,7 +237,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 # check our range is not also the dominants
                 if high - low <= 1:
                     rtn_list += [low] * counter[index]
-                if at_most == 1:
+                elif at_most == 1:
                     rtn_list = list(np.random.choice(range(low, high), size=counter[index], replace=False))
                 elif at_most > 1:
                     section_size = int(counter[index]/at_most) if size % at_most == 0 else int(counter[index]/at_most)+1
@@ -260,7 +260,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 high = value_bins[index].right
                 if low >= high:
                     rtn_list += [low] * counter[index]
-                if at_most == 1:
+                elif at_most == 1:
                     multiplier = np.random.randint(100, 500)
                     num_choice = np.linspace(low, high, num=counter[index] * multiplier, endpoint=False)
                     rtn_list = list(np.random.choice(num_choice, size=counter[index], replace=False))
