@@ -238,11 +238,17 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if high - low <= 1:
                     rtn_list += [low] * counter[index]
                 elif at_most == 1:
-                    rtn_list = list(np.random.choice(range(low, high), size=counter[index], replace=False))
+                    multiplier = np.random.randint(1000, 50000)
+                    num = (high - low) if (high - low - counter[index]) < 100000 else counter[index] + multiplier
+                    num_choice = np.linspace(low, high, num=num, endpoint=False)
+                    rtn_list = list(np.random.choice(num_choice, size=counter[index], replace=False))
                 elif at_most > 1:
                     section_size = int(counter[index]/at_most) if size % at_most == 0 else int(counter[index]/at_most)+1
                     for _ in range(at_most):
-                        rtn_list += list(np.random.choice(range(low, high), size=section_size, replace=False))
+                        multiplier = np.random.randint(1000, 50000)
+                        num = (high - low) if (high - low - counter[index]) < 100000 else counter[index] + multiplier
+                        num_choice = np.linspace(low, high, num=num, endpoint=False)
+                        rtn_list += list(np.random.choice(num_choice, size=section_size, replace=False))
                     rtn_list = rtn_list[:counter[index]]
                     np.random.shuffle(rtn_list)
                 else:
@@ -261,15 +267,15 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if low >= high:
                     rtn_list += [low] * counter[index]
                 elif at_most == 1:
-                    multiplier = np.random.randint(100, 500)
-                    num_choice = np.linspace(low, high, num=counter[index] * multiplier, endpoint=False)
+                    multiplier = np.random.randint(1000, 50000)
+                    num_choice = np.linspace(low, high, num=counter[index] + multiplier, endpoint=False)
                     rtn_list = list(np.random.choice(num_choice, size=counter[index], replace=False))
                 elif at_most > 1:
                     section_size = int(counter[index] / at_most) if size % at_most == 0 else int(
                         counter[index] / at_most) + 1
                     for _ in range(at_most):
-                        multiplier = np.random.randint(100, 500)
-                        num_choice = np.linspace(low, high, num=counter[index]*multiplier, endpoint=False)
+                        multiplier = np.random.randint(1000, 50000)
+                        num_choice = np.linspace(low, high, num=counter[index] + multiplier, endpoint=False)
                         rtn_list += list(np.random.choice(num_choice, size=section_size,  replace=False))
                     rtn_list = rtn_list[:counter[index]]
                     np.random.shuffle(rtn_list)
