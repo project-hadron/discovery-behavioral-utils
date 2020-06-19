@@ -74,16 +74,16 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_get_number_at_most(self):
         tools = self.tools
-        sample_size = 30
-        result = tools.get_number(10.0, 11.0, precision=1, at_most=4, size=sample_size)
-        result = pd.Series(result)
-        self.assertEqual(4, result.value_counts().max())
         sample_size = 100000
-        result = tools.get_number(10.0, 1000000.0, precision=1, at_most=1, size=sample_size)
-        result = pd.Series(result)
+        result = tools.get_number(100000, 200000, precision=0, at_most=1, size=sample_size)
         self.assertEqual(sample_size, pd.Series(result).nunique())
-        self.assertGreaterEqual(pd.Series(result).min(), 10)
-        self.assertLessEqual(pd.Series(result).max(), 1000000)
+        result = tools.get_number(100000.0, 200000.0, precision=2, at_most=1, size=sample_size)
+        self.assertEqual(sample_size, pd.Series(result).nunique())
+        tools = self.tools
+        sample_size = 19
+        result = tools.get_number(10, 20, precision=0, at_most=2, size=sample_size)
+        self.assertEqual(2, pd.Series(result).value_counts().max())
+        self.assertEqual(sample_size, len(result))
 
     def test_get_number_large(self):
         tools = self.tools

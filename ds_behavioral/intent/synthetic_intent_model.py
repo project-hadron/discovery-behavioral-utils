@@ -237,23 +237,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                 # check our range is not also the dominants
                 if high - low <= 1:
                     rtn_list += [low] * counter[index]
-                elif at_most > 0:
-                    check_list = [[] for index in range(at_most)]
-                    total_len = 0
-                    chk_count = 0
-                    while total_len < counter[index]:
-                        chk_count += 1
-                        total_len = 0
-                        for _group in range(at_most):
-                            check_list[_group] += np.random.randint(low, high, counter[index]).tolist()
-                            check_list[_group] = [i for i in check_list[_group] if i not in
-                                                  Commons.list_formatter(dominant_values)] + [high]
-                            total_len += len(check_list[_group])
-                    if chk_count > 25:
-                        raise RecursionError(f"The selectable value pool is too small to get "
-                                             f"at most '{at_most}' of size {size}")
-
-                    rtn_list += list(itertools.chain.from_iterable(check_list))[:counter[index]]
+                if at_most == 1:
+                    rtn_list = list(np.random.choice(range(low, high), size=counter[index], replace=False))
+                elif at_most > 1:
+                    section_size = int(counter[index]/at_most) if size % at_most == 0 else int(counter[index]/at_most)+1
+                    for _ in range(at_most):
+                        rtn_list += list(np.random.choice(range(low, high), size=section_size, replace=False))
+                    rtn_list = rtn_list[:counter[index]]
                     np.random.shuffle(rtn_list)
                 else:
                     _remaining = counter[index]
@@ -270,25 +260,18 @@ class SyntheticIntentModel(AbstractIntentModel):
                 high = value_bins[index].right
                 if low >= high:
                     rtn_list += [low] * counter[index]
-                elif at_most > 0:
-                    check_list = [[] for index in range(at_most)]
-                    total_len = 0
-                    chk_count = 0
-                    while total_len < counter[index]:
-                        chk_count += 1
-                        total_len = 0
-                        for _group in range(at_most):
-                            check_list[_group] += np.round(
-                                (np.random.random(size=int(counter[index] / at_most)+1)*(high-low)+low),
-                                precision).tolist()
-                            check_list[_group] = list(set(check_list[_group]))
-                            check_list[_group] = [i for i in check_list[_group] if i not in
-                                                  Commons.list_formatter(dominant_values) + [high]]
-                            total_len += len(check_list[_group])
-                        if chk_count > 25:
-                            raise RecursionError(f"The selectable value pool is too small to get "
-                                                 f"at most '{at_most}' of size {size}")
-                    rtn_list += list(itertools.chain.from_iterable(check_list))[:counter[index]]
+                if at_most == 1:
+                    multiplier = np.random.randint(100, 500)
+                    num_choice = np.linspace(low, high, num=counter[index] * multiplier, endpoint=False)
+                    rtn_list = list(np.random.choice(num_choice, size=counter[index], replace=False))
+                elif at_most > 1:
+                    section_size = int(counter[index] / at_most) if size % at_most == 0 else int(
+                        counter[index] / at_most) + 1
+                    for _ in range(at_most):
+                        multiplier = np.random.randint(100, 500)
+                        num_choice = np.linspace(low, high, num=counter[index]*multiplier, endpoint=False)
+                        rtn_list += list(np.random.choice(num_choice, size=section_size,  replace=False))
+                    rtn_list = rtn_list[:counter[index]]
                     np.random.shuffle(rtn_list)
                 else:
                     _remaining = counter[index]
@@ -1651,7 +1634,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError(f"The canonical must be a pandas DataFrame")
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
-        s_values = canonical[header].copy()
+        s_values = canonical[header].copy().astype(str)
         if s_values.empty:
             return list()
         fill_nulls = fill_nulls if isinstance(fill_nulls, bool) else False

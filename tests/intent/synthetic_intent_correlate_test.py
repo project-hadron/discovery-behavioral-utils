@@ -144,13 +144,14 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action)
         self.assertEqual(5000, len(result))
 
-    def test_correlate_categories(self):
+    def test_correlate_categories_multi(self):
         tools = self.tools
         df = pd.DataFrame(columns=['cat'], data=list("ABCDEFGH"))
+        df['cat'] = df['cat'].astype('category')
         correlation = [list("ABC"), list("DEFGH")]
         action = {0: False, 1: True}
         result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action)
-        print(result)
+        self.assertEqual([False, False, False, True, True, True, True, True], result)
 
     def test_correlate_date(self):
         tools = self.tools
