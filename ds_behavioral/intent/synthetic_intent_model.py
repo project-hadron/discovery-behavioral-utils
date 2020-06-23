@@ -955,7 +955,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 method = action.get('action')
                 if method in class_methods:
                     kwargs = action.get('kwargs')
-                    result = eval("self.{}(**{})".format(method, kwargs))[0]
+                    result = eval(f"self.{method}('save_intent=False, **{kwargs})")[0]
                 else:
                     result = method
                 choice = re.sub(tag, str(result), str(choice))
@@ -1669,7 +1669,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     params = actions.get(i, {})
                     if not isinstance(params, dict):
                         params = {}
-                    params.update({'size': corr_idx.size})
+                    params.update({'size': corr_idx.size, 'save_intent': False})
                     data = eval(f"self.{method}(**params)", globals(), locals())
                     result = pd.Series(data=data, index=corr_idx)
                 else:
