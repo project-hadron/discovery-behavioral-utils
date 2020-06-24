@@ -1199,55 +1199,23 @@ class SyntheticIntentModel(AbstractIntentModel):
             row_dict[key] = row_dict[key][:size]
         return pd.DataFrame.from_dict(data=row_dict)
 
-    # def associate_actions(self, canonical: Any, associations: list, actions: dict, default_value: Any=None,
-    #                       quantity: float=None, seed: int=None,
-    #                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-    #                       replace_intent: bool=None, remove_duplicates: bool=None):
-    #     """"""
-    #     # intent persist options
-    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name,params=locals()),
-    #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-    #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
-    #     # intent code
-    #
-
-    def associate_canonical(self, canonical: Any, associations: list, actions: dict, default_value: Any=None,
-                            default_header: str=None, day_first: bool=None, quantity: float=None, seed: int=None,
+    def correlate_selection(self, canonical: Any, selection: list, action: [str, int, float, dict],
+                            default_action: [str, int, float, dict]=None, quantity: float=None, seed: int=None,
                             save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                             replace_intent: bool=None, remove_duplicates: bool=None):
-        """ Associates a set of criteria of an input values to a set of actions
-            The association dictionary takes the form of a set of dictionaries in a list with each item in the list
-            representing an index key for the action dictionary. Each dictionary are an associated relationship.
-            In this example for the first index the associated values should be in header1  and within a date range
-            and header2 has a value of 'M'
-                association = [{'header1': {'expect': 'date',
-                                            'value': ['12/01/1984', '14/01/2014']},
-                                'header2': {'expect': 'category',
-                                            'value': ['M']}},
-                                {...}]
+        """ returns a value set based on the selection list and the action enacted on that selection. If
+        the selection criteria is not fulfilled then the default_action is taken if specified, else null value.
 
-            if the dataset is not a DataFrame then the header should be omitted. in this example the association is
-            a range comparison between 2 and 7 inclusive.
-                association= [{'expect': 'number', 'value': [2, 7]},
-                              {...}]
+        If a DataFrame is not passed, the values column is referenced by the header '_default'
 
-            The actions dictionary takes the form of an index referenced dictionary of actions, where the key value
-            of the dictionary corresponds to the index of the association list. In other words, if a match is found
-            in the association, that list index is used as reference to the action.
-                {0: {'action': '', 'kwargs' : {}},
-                 1: {...}}
-            you can also use the action to specify a specific value:
-                {0: {'action': ''},
-                 1: {'action': ''}}
-
-        :param canonical: the data set to map against, this can be a str, int, float, list, Series or DataFrame
-        :param associations: a list of categories (can also contain lists for multiple references.
-        :param actions: the correlated set of categories that should map to the index
-        :param default_header: (optional) if no association, the default column header to take the value from.
-                    if None then the default_value is taken.
-                    Note for non-DataFrame datasets the default header is '_default'
-        :param default_value: (optional) if no default header then this value is taken if no association
-        :param day_first: (optional) if expected type is date, indicates if the day is first. Default to true
+        :param canonical: a str, int, float, list, pd.Series or pd.DataFrame
+        :param selection: a list of selections where conditions are filtered on, executed in list order
+                An example of a selection with the minimum requirements is: (see 'select2dict(...)')
+                [{'column': 'genre', 'condition': "=='Comedy'"}]
+        :param action: a value or dict to act upon if the select is successful. see below for more examples
+                An example of an action as a dict: (see 'action2dict(...)')
+                {'method': 'get_category', 'selection': ['M', 'F', 'U']}
+        :param default_action: (optional) a default action to take if the selection is not fulfilled
         :param quantity: (optional) a number between 0 and 1 presenting the percentage quantity of the data
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -1260,109 +1228,83 @@ class SyntheticIntentModel(AbstractIntentModel):
                         True - replaces the current intent method with the new
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a list of equal length to the one passed
+        :return: value set based on the selection list and the action
+
+        Selections are a list of dictionaries of conditions and optional additional parameters to filter.
+        To help build conditions there is a static helper method called 'selection2dict(...)' that has parameter
+        options available to build a condition.
+        An example of a condition with the minimum requirements is
+                [{'column': 'genre', 'condition': "=='Comedy'"}]
+
+        an example of using the helper method
+                selection = [inst.select2dict(column='gender', condition="=='M'"),
+                             inst.select2dict(column='age', condition=">65", logic='XOR')]
+
+        Using the 'select2dict' method ensure the correct keys are used and the dictionary is properly formed. It also
+        helps with building the logic that is executed in order
+
+        Actions are the resulting outcome of the selection (or the default). An action can be just a value or a dict
+        that executes a intent method such as get_number(). To help build actions there is a helper function called
+        action2dict(...) that takes a method as a mandatory attribute.
+
+        With actions there are special keyword 'method' values:
+            @header: use a column as the value reference, expects the 'header' key
+            @constant: use a value constant, expects the key 'value'
+            @eval: evaluate a code string, expects the key 'code_str' and any locals() required
+
+        An example of a simple action to return a selection from a list:
+                {'method': 'get_category', selection=['M', 'F', 'U']
+
+        an example of using the helper method, in this example we use the keyword @header to get a value from another
+        column at the same index position:
+                inst.action2dict(method="@header", header='value')
+
+        We can even execute some sort of evaluation at run time:
+                inst.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
+
+        an example of an action from a dictionary
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        quantity = self._quantity(quantity)
-        _seed = self._seed() if seed is None else seed
-
         if not isinstance(canonical, (str, int, float, list, pd.Series, pd.DataFrame)):
             raise TypeError("The parameter values is not an accepted type")
-        if not isinstance(associations, (list, dict)):
-            raise TypeError("The parameter reference must be a list or dict")
-        _dataset = canonical
-        _associations = associations
-        if isinstance(_dataset, (str, int, float)):
-            _dataset = self._pm.list_formatter(_dataset)
-        if isinstance(_dataset, (list, pd.Series)):
-            tmp = pd.DataFrame()
-            tmp['_default'] = _dataset
-            _dataset = tmp
-            tmp = []
-            for item in _associations:
-                tmp.append({'_default': item})
-            _associations = tmp
-        if not isinstance(_dataset, pd.DataFrame):
-            raise TypeError("The dataset given is not or could not be convereted to a pandas DataFrame")
-        class_methods = self.__dir__()
+        if isinstance(canonical, (str, int, float)):
+            canonical = self._pm.list_formatter(canonical)
+        elif isinstance(canonical, (list, pd.Series)):
+            canonical = pd.DataFrame(data=canonical, columns=['_default'])
+        if not isinstance(canonical, pd.DataFrame):
+            raise TypeError("The dataset given is not or could not be converted to a pandas DataFrame")
+        if len(canonical) == 0:
+            return []
+        if not isinstance(selection, list) or len(selection) == 0:
+            return [None] * canonical.shape[0]
+        if not isinstance(action, (str, int, float, dict)) or (isinstance(action, dict) and len(action) == 0):
+            return [None] * canonical.shape[0]
+        if not all(isinstance(x, dict) for x in selection):
+            raise ValueError("The 'selection' parameter must be a 'list' of 'dict' types")
+        for _where in selection:
+            if 'column' not in _where or 'condition' not in _where:
+                raise ValueError("all 'dict' in the 'selection' list must have a 'column' and 'condition' key "
+                                 "as a minimum")
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
+        # prep the values to be a DataFrame if it isn't already
+        action = deepcopy(action)
+        selection = deepcopy(selection)
+        # run the logic
+        select_idx = None
+        for _where in selection:
+            select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
+        if not isinstance(default_action, (str, int, float, dict)):
+            default_action = None
+        rtn_values = self._apply_action(canonical, action=default_action)
+        rtn_values.update(self._apply_action(canonical, action=action, select_idx=select_idx))
+        return self._set_quantity(rtn_values.tolist(), quantity=quantity, seed=_seed)
 
-        rtn_list = []
-        for index in range(_dataset.shape[0]):
-            action_idx = None
-            for idx in range(len(_associations)):
-                associate_dict = _associations[idx]
-                is_match = [0] * len(associate_dict.keys())
-                match_idx = 0
-                for header, lookup in associate_dict.items():
-                    df_value = _dataset[header].iloc[index]
-                    expect = lookup.get('expect')
-                    chk_value = self._pm.list_formatter(lookup.get('value'))
-                    if expect.lower() in ['number', 'n']:
-                        if len(chk_value) == 1:
-                            [s] = [e] = chk_value
-                        else:
-                            [s, e] = chk_value
-                        if s <= df_value <= e:
-                            is_match[match_idx] = True
-                    elif expect.lower() in ['date', 'datetime', 'd']:
-                        [s, e] = chk_value
-                        value_date = pd.to_datetime(df_value, errors='coerce', infer_datetime_format=True,
-                                                    dayfirst=day_first)
-                        s_date = pd.to_datetime(s, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
-                        e_date = pd.to_datetime(e, errors='coerce', infer_datetime_format=True, dayfirst=day_first)
-                        if value_date is pd.NaT or s_date is pd.NaT or e_date is pd.NaT:
-                            break
-                        if s_date <= value_date <= e_date:
-                            is_match[match_idx] = True
-                    elif expect.lower() in ['category', 'c']:
-                        if df_value in chk_value:
-                            is_match[match_idx] = True
-                    else:
-                        break
-                    match_idx += 1
-                if all(x for x in is_match):
-                    action_idx = idx
-                    break
-            if action_idx is None or actions.get(action_idx) is None:
-                if default_header is not None and default_header in _dataset.columns:
-                    rtn_list.append(_dataset[default_header].iloc[index])
-                else:
-                    rtn_list.append(default_value)
-                continue
-            method = actions.get(action_idx).get('action')
-            if method is None:
-                raise ValueError("There is no 'action' key at index [{}]".format(action_idx))
-            if method in class_methods:
-                kwargs = actions.get(action_idx).get('kwargs').copy()
-                for k, v in kwargs.items():
-                    if isinstance(v, dict) and '_header' in v.keys():
-                        if v.get('_header') not in canonical.columns:
-                            raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: {}".format(
-                                v.get('_header'), action_idx, k))
-                        kwargs[k] = canonical[v.get('_header')].iloc[index]
-                result = eval(f"self.{method}(save_intent=False, **{kwargs})".replace('nan', 'None'))
-                if isinstance(result, list):
-                    if len(result) > 0:
-                        rtn_list.append(result.pop())
-                    else:
-                        rtn_list.append(None)
-                else:
-                    rtn_list.append(result)
-            else:
-                if isinstance(method, dict):
-                    if method.get('_header') not in canonical.columns:
-                        raise ValueError("Dataset header '{}' does not exist: see action: {} -> key: action".format(
-                            method.get('_header'), action_idx))
-                    rtn_list.append(canonical[method.get('_header')].iloc[index])
-                else:
-                    rtn_list.append(method)
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
-
-    def associate_custom(self, canonical: pd.DataFrame, code_str: str, use_exec: bool=None, save_intent: bool=None,
+    def correlate_custom(self, canonical: pd.DataFrame, code_str: str, use_exec: bool=None, save_intent: bool=None,
                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                          remove_duplicates: bool=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
@@ -1826,7 +1768,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return
 
     @staticmethod
-    def condition2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: bool=None,
+    def selection2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,
                        date_format: str=None, offset: int=None):
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
@@ -1864,6 +1806,88 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         """
         return Commons.param2dict(method=method, **kwargs)
+
+    def _apply_action(self, canonical: pd.DataFrame, action: Any, select_idx: pd.Int64Index=None) -> pd.Series:
+        """ applies an action returning an indexed Series
+        Special method values
+            @header: use a column as the value reference, expects the 'header' key
+            @constant: use a value constant, expects the key 'value'
+            @eval: evaluate a code string, expects the key 'code_str' and any locals() required
+
+        :param canonical: a reference canonical
+        :param action: the action dictionary
+        :param select_idx: (optional) the index selection of the return Series. if None then canonical index taken
+        :return: pandas Series with passed index
+        """
+        if not isinstance(select_idx, pd.Int64Index):
+            select_idx = canonical.index
+        if isinstance(action, dict):
+            method = action.pop('method', None)
+            if method is None:
+                raise ValueError(f"The action dictionary has no 'method' key.")
+            if method in self.__dir__():
+                action.update({'size': select_idx.size, 'save_intent': False})
+                data = eval(f"self.{method}(**action)", globals(), locals())
+                return pd.Series(data=data, index=select_idx)
+            elif str(method).startswith('@header'):
+                header = action.pop('header', None)
+                if header is None:
+                    raise ValueError(f"The action '@header' requires a 'header' key.")
+                if header not in canonical.columns:
+                    raise ValueError(f"When executing the action 'use_column', the header {header} was not found")
+                return canonical[header].iloc[select_idx]
+            elif str(method).startswith('@eval'):
+                code_str = action.pop('code_str', None)
+                if code_str is None:
+                    raise ValueError(f"The action '@eval' requires a 'code_str' key.")
+                e_value = eval(code_str, globals(), action)
+                return pd.Series(data=([e_value] * select_idx.size), index=select_idx)
+            elif str(method).startswith('@constant'):
+                constant = action.pop('value', None)
+                if constant is None:
+                    raise ValueError(f"The action '@constant' requires a 'value' key.")
+                return pd.Series(data=([constant] * select_idx.size), index=select_idx)
+            else:
+                raise ValueError(f"The 'method' key {method} is not a recognised intent method")
+        return pd.Series(data=([action] * select_idx.size), index=select_idx)
+
+    @staticmethod
+    def _condition_index(canonical: pd.DataFrame, condition: dict, select_idx: pd.Int64Index) -> pd.Int64Index:
+        """ private method to select index from the selection conditions
+
+        :param canonical: a pandas DataFrame to select from
+        :param condition: the dict conditions
+        :param select_idx: the current selection index of the canonical
+        :return: returns the current select_idx of the condition
+        """
+        _column = condition.get('column')
+        _condition = condition.get('condition')
+        _operator = condition.get('operator', '')
+        _expect = condition.get('expect', None)
+        _logic = condition.get('logic', 'and')
+        if _condition == 'date.now':
+            _date_format = condition.get('date_format', "%Y-%m-%dT%H:%M:%S")
+            _offset = condition.get('offset', 0)
+            _condition = f"'{(pd.Timestamp.now() + pd.Timedelta(days=_offset)).strftime(_date_format)}'"
+        s_values = canonical[_column]
+        if _expect:
+            s_values = s_values.astype(_expect)
+        idx = eval(f"s_values.where(s_values{_operator}{_condition}).dropna().index", globals(), locals())
+        if select_idx is None:
+            select_idx = idx
+        else:
+            if str(_logic).lower() == 'and':
+                select_idx = select_idx.intersection(idx)
+            elif str(_logic).lower() == 'or':
+                select_idx = select_idx.union(idx)
+            elif str(_logic).lower() == 'not':
+                select_idx = select_idx.difference(idx)
+            elif str(_logic).lower() == 'xor':
+                select_idx = select_idx.union(idx).difference(select_idx.intersection(idx))
+            else:
+                raise ValueError(f"The logic '{_logic}' for column '{_column}' is not recognised logic. "
+                                 f"Use 'AND', 'OR', 'NOT', 'XOR'")
+        return select_idx
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):
