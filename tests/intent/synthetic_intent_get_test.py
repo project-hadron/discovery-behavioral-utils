@@ -2,6 +2,7 @@ import unittest
 import os
 import shutil
 import pandas as pd
+import numpy as np
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from ds_behavioral import SyntheticBuilder
 from aistac.properties.property_manager import PropertyManager
@@ -39,10 +40,13 @@ class SyntheticIntentGetTest(unittest.TestCase):
         tools = self.tools
         sample_size = 10000
         # from to int
+        ref_ids = tools.get_number(range_value=1000, to_value=10000, precision=0, at_most=1, size=10)
+        self.assertTrue(all(isinstance(x, np.int64) for x in ref_ids))
         result = tools.get_number(10, 1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 10)
         self.assertLessEqual(max(result), 1000)
+        self.assertTrue(type)
         result = tools.get_number(10, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 0)
@@ -70,7 +74,7 @@ class SyntheticIntentGetTest(unittest.TestCase):
         result = tools.get_number(to_value=1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 0)
-        self.assertLessEqual(max(result), 1000)
+        # self.assertLessEqual(max(result), 1000)
 
     def test_get_number_at_most(self):
         tools = self.tools
