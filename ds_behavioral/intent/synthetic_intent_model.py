@@ -1231,7 +1231,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :return: value set based on the selection list and the action
 
         Selections are a list of dictionaries of conditions and optional additional parameters to filter.
-        To help build conditions there is a static helper method called 'selection2dict(...)' that has parameter
+        To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
         options available to build a condition.
         An example of a condition with the minimum requirements is
                 [{'column': 'genre', 'condition': "=='Comedy'"}]
@@ -1270,7 +1270,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         if not isinstance(canonical, (str, int, float, list, pd.Series, pd.DataFrame)):
-            raise TypeError("The parameter values is not an accepted type")
+            raise TypeError("The canonical is not an accepted type")
         if isinstance(canonical, (str, int, float)):
             canonical = self._pm.list_formatter(canonical)
         elif isinstance(canonical, (list, pd.Series)):
@@ -1278,11 +1278,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         if not isinstance(canonical, pd.DataFrame):
             raise TypeError("The dataset given is not or could not be converted to a pandas DataFrame")
         if len(canonical) == 0:
-            return []
-        if not isinstance(selection, list) or len(selection) == 0:
-            return [None] * canonical.shape[0]
+            raise TypeError("The canonical given is empty")
+        if not isinstance(selection, list) or not all(isinstance(x, dict) for x in selection):
+            raise ValueError("The 'selection' parameter must be a 'list' of 'dict' types")
         if not isinstance(action, (str, int, float, dict)) or (isinstance(action, dict) and len(action) == 0):
-            return [None] * canonical.shape[0]
+            raise TypeError("The 'action' parameter is not of an acepted format or is empty")
         if not all(isinstance(x, dict) for x in selection):
             raise ValueError("The 'selection' parameter must be a 'list' of 'dict' types")
         for _where in selection:
@@ -1768,8 +1768,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         return
 
     @staticmethod
-    def selection2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,
-                       date_format: str=None, offset: int=None):
+    def select2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,
+                    date_format: str=None, offset: int=None):
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
         :param column: the column name to apply the condition to
