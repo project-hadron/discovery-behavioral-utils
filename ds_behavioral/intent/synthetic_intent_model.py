@@ -1,5 +1,4 @@
 import inspect
-import itertools
 import random
 import re
 import string
@@ -1826,9 +1825,15 @@ class SyntheticIntentModel(AbstractIntentModel):
             if method is None:
                 raise ValueError(f"The action dictionary has no 'method' key.")
             if method in self.__dir__():
-                action.update({'size': select_idx.size, 'save_intent': False})
-                data = eval(f"self.{method}(**action)", globals(), locals())
-                return pd.Series(data=data, index=select_idx)
+                if str(method).startswith('get_'):
+                    action.update({'size': select_idx.size, 'save_intent': False})
+                    result = eval(f"self.{method}(size=size, save_intent=False, **action)", globals(), locals())
+                elif str(method).startswith('correlate_'):
+                    result = eval(f"self.{method}(canonical=canonical, save_intent=False, **action)", globals(),
+                                  locals())
+                else:
+                    raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
+                return pd.Series(data=result, index=select_idx)
             elif str(method).startswith('@header'):
                 header = action.pop('header', None)
                 if header is None:
