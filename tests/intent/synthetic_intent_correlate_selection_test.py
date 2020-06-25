@@ -29,10 +29,6 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
     def tools(self) -> SyntheticIntentModel:
         return SyntheticBuilder.scratch_pad()
 
-    def test_canonical_smoke(self):
-        result = self.tools.correlate_selection(pd.DataFrame(), selection=[], action={})
-        self.assertEqual([], result)
-
     def test_action_value(self):
         tools = self.tools
         df = pd.DataFrame()

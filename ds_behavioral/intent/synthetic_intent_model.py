@@ -1827,10 +1827,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             if method in self.__dir__():
                 if str(method).startswith('get_'):
                     action.update({'size': select_idx.size, 'save_intent': False})
-                    result = eval(f"self.{method}(size=size, save_intent=False, **action)", globals(), locals())
+                    result = eval(f"self.{method}(**action)", globals(), locals())
                 elif str(method).startswith('correlate_'):
-                    result = eval(f"self.{method}(canonical=canonical.iloc[select_idx], save_intent=False, **action)",
-                                  globals(), locals())
+                    action.update({'canonical': canonical.iloc[select_idx], 'save_intent': False})
+                    result = eval(f"self.{method}(**action)", globals(), locals())
                 else:
                     raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
                 return pd.Series(data=result, index=select_idx)
