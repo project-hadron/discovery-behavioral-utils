@@ -36,6 +36,15 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
                                        reset_templates=False).intent_model
         self.assertTrue(SyntheticIntentModel, type(im))
 
+    def test_correlate_coefficient(self):
+        tools = self.tools
+        df = pd.DataFrame()
+        df['A'] = [1,2,3]
+        result = tools.correlate_polynomial(df, header='A', coefficient=[2,1])
+        self.assertEqual([3, 4, 5], result)
+        result = tools.correlate_polynomial(df, header='A', coefficient=[0, 0, 1])
+        self.assertEqual([1, 4, 9], result)
+
     def test_correlate_join(self):
         tools = self.tools
         df = pd.DataFrame()
