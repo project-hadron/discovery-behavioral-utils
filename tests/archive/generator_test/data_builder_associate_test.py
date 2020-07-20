@@ -118,7 +118,7 @@ class AssociateTest(unittest.TestCase):
 
         df_staff['registered'] = tools.associate_canonical(df_staff, associations=associations, actions=actions,
                                                            default_value=None)
-        # TODO finish this
+
 
 
 if __name__ == '__main__':

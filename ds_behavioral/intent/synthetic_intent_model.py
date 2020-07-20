@@ -155,7 +155,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         if not isinstance(range_value, (int, float)) and not isinstance(to_value, (int, float)):
-            raise ValueError(f"either a 'to_value' or a 'from_value' and to_value' must be provided as a parameter")
+            raise ValueError(f"either a 'range_value' or a 'range_value' and 'to_value' must be provided")
         if not isinstance(range_value, (float, int)):
             range_value = 0
         if not isinstance(to_value, (float, int)):
@@ -380,7 +380,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a date or size of dates in the format given.
          """
-        # TODO: This needs to be finished
         # pre check
         if start is None or until is None:
             raise ValueError("The start or until parameters cannot be of NoneType")
@@ -416,159 +415,78 @@ class SyntheticIntentModel(AbstractIntentModel):
                 rtn_list = pd.Series(rtn_list).dt.tz_convert(None).to_list()
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_datetime_pattern(self, start: Any, until: Any, default: Any=None, ordered: bool=None,
-                             year_pattern: list=None, month_pattern: list=None, weekday_pattern: list=None,
-                             hour_pattern: list=None, minute_pattern: list=None, quantity: float=None,
-                             date_format: str=None, size: int=None, seed: int=None, day_first: bool=None,
-                             year_first: bool=None, save_intent: bool=None, column_name: [int, str]=None,
-                             intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
-        """ returns a random date between two date and times. weighted patterns can be applied to the overall date
-        range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
-        Note: If no patterns are set this will return a linearly random number between the range boundaries.
-              Also if no patterns are set and a default date is given, that default date will be returnd each time
+    # def get_datetime_pattern(self, start: Any, until: Any, default: Any=None, ordered: bool=None,
+    #                          year_pattern: list=None, month_pattern: list=None, weekday_pattern: list=None,
+    #                          hour_pattern: list=None, minute_pattern: list=None, quantity: float=None,
+    #                          date_format: str=None, size: int=None, seed: int=None, day_first: bool=None,
+    #                          year_first: bool=None, save_intent: bool=None, column_name: [int, str]=None,
+    #                          intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+    #     """ returns a random date between two date and times. weighted patterns can be applied to the overall date
+    #     range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
+    #     Note: If no patterns are set this will return a linearly random number between the range boundaries.
+    #           Also if no patterns are set and a default date is given, that default date will be returnd each time
+    #
+    #     :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+    #     :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+    #     :param default: (optional) a fixed starting date that patterns are applied too.
+    #     :param ordered: (optional) if the return list should be date ordered. Default is True
+    #     :param year_pattern: (optional) adjusts the year selection to this pattern
+    #     :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
+    #     :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
+    #     :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
+    #     :param minute_pattern: (optional) adjusts the minutes selection to this pattern
+    #     :param quantity: the quantity of values that are not null. Number between 0 and 1
+    #     :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
+    #     :param size: the size of the sample to return. Default to 1
+    #     :param seed: a seed value for the random function: default to None
+    #     :param year_first: specifies if to parse with the year first
+    #             If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
+    #             If both dayfirst and yearfirst are True, yearfirst is preceded (same as dateutil).
+    #     :param day_first: specifies if to parse with the day first
+    #             If True, parses dates with the day first, eg %d-%m-%Y.
+    #             If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
+    #     :param save_intent (optional) if the intent contract should be saved to the property manager
+    #     :param column_name: (optional) the column name that groups intent to create a column
+    #     :param intent_order: (optional) the order in which each intent should run.
+    #                     If None: default's to -1
+    #                     if -1: added to a level above any current instance of the intent section, level 0 if not found
+    #                     if int: added to the level specified, overwriting any that already exist
+    #     :param replace_intent: (optional) if the intent method exists at the level, or default level
+    #                     True - replaces the current intent method with the new
+    #                     False - leaves it untouched, disregarding the new intent
+    #     :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+    #     :return: a date or size of dates in the format given.
+    #      """
+    #     # intent persist options
+    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+    #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
+    #     # Code block for intent
+    #     # TODO: This needs to be finished
+    #     ordered = ordered if isinstance(ordered, bool) else True
+    #     if start is None or until is None:
+    #         raise ValueError("The start or until parameters cannot be of NoneType")
+    #     quantity = self._quantity(quantity)
+    #     size = size if isinstance(size, int) else 1
+    #     _seed = seed if isinstance(seed, int) else self._seed()
+    #     if default:
+    #         date_values = [pd.to_datetime(default, errors='coerce', infer_datetime_format=True, dayfirst=day_first,
+    #                                       yearfirst=year_first)] * size
+    #     else:
+    #         date_values = self.get_datetime(start=start, until=until, date_format=date_format, day_first=day_first,
+    #                                         year_first=year_first, seed=_seed, size=size, save_intent=False)
+    #     date_values = pd.Series(date_values)
+    #     # filter by year
+    #     for _year in date_values.dt.year.unique():
+    #         yr_idx = date_values.where(date_values.dt.year == _year).dropna().index
 
-        :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
-        :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
-        :param default: (optional) a fixed starting date that patterns are applied too.
-        :param ordered: (optional) if the return list should be date ordered. Default is True
-        :param year_pattern: (optional) adjusts the year selection to this pattern
-        :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
-        :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
-        :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
-        :param minute_pattern: (optional) adjusts the minutes selection to this pattern
-        :param quantity: the quantity of values that are not null. Number between 0 and 1
-        :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
-        :param size: the size of the sample to return. Default to 1
-        :param seed: a seed value for the random function: default to None
-        :param year_first: specifies if to parse with the year first
-                If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
-                If both dayfirst and yearfirst are True, yearfirst is preceded (same as dateutil).
-        :param day_first: specifies if to parse with the day first
-                If True, parses dates with the day first, eg %d-%m-%Y.
-                If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a date or size of dates in the format given.
-         """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        ordered = ordered if isinstance(ordered, bool) else True
-        if start is None or until is None:
-            raise ValueError("The start or until parameters cannot be of NoneType")
-        quantity = self._quantity(quantity)
-        size = size if isinstance(size, int) else 1
-        _seed = seed if isinstance(seed, int) else self._seed()
-        _dt_start = pd.to_datetime(start, errors='coerce', infer_datetime_format=True,
-                                   dayfirst=day_first, yearfirst=year_first)
-        _dt_until = pd.to_datetime(until, errors='coerce', infer_datetime_format=True,
-                                   dayfirst=day_first, yearfirst=year_first)
-        _dt_base = pd.to_datetime(default, errors='coerce', infer_datetime_format=True,
-                                  dayfirst=day_first, yearfirst=year_first)
-        if _dt_start is pd.NaT or _dt_until is pd.NaT:
-            raise ValueError("The start or until parameters cannot be converted to a timestamp")
-        # ### Apply the patterns if any ###
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
-            _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0,
-                                                                            second=0, microsecond=0, nanosecond=0)
-            _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
-                                                                             second=59, microsecond=0, nanosecond=0)
-            # reset the starting base
-        _dt_default = _dt_base
-        rtn_dates = []
-        # ### years ###
-        rand_year = _dt_default.year
-        if year_pattern is not None:
-            rand_select = self._date_choice(_dt_start, _dt_until, year_pattern, seed=_seed)
-            if rand_select is pd.NaT:
-                rtn_dates.append(rand_select)
-
-            rand_year = rand_select.year
-        _max_date = _max_date.replace(year=rand_year)
-        _min_date = _min_date.replace(year=rand_year)
-        _dt_default = _dt_default.replace(year=rand_year)
-        # ### months ###
-        rand_month = _dt_default.month
-        rand_day = _dt_default.day
-        if month_pattern is not None:
-            month_start = _dt_start if _dt_start.year == _min_date.year else _min_date
-            month_end = _dt_until if _dt_until.year == _max_date.year else _max_date
-            rand_select = self._date_choice(month_start, month_end, month_pattern, limits='month', seed=_seed)
-            if rand_select is pd.NaT:
-                rtn_dates.append(rand_select)
-
-            rand_month = rand_select.month
-            rand_day = _dt_default.day if _dt_default.day <= rand_select.daysinmonth else rand_select.daysinmonth
-        _max_date = _max_date.replace(month=rand_month, day=rand_day)
-        _min_date = _min_date.replace(month=rand_month, day=rand_day)
-        _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
-        # ### weekday ###
-        if weekday_pattern is not None:
-            if not len(weekday_pattern) == 7:
-                raise ValueError("The weekday_pattern mut be a list of size 7 with index 0 as Monday")
-            _weekday = self._weighted_choice(weekday_pattern, seed=_seed)
-            if _weekday != _min_date.dayofweek:
-                if _dt_start <= (_dt_default + Week(weekday=_weekday)) <= _dt_until:
-                    rand_day = (_dt_default + Week(weekday=_weekday)).day
-                    rand_month = (_dt_default + Week(weekday=_weekday)).month
-                elif _dt_start <= (_dt_default - Week(weekday=_weekday)) <= _dt_until:
-                    rand_day = (_dt_default - Week(weekday=_weekday)).day
-                    rand_month = (_dt_default - Week(weekday=_weekday)).month
-                else:
-                    rtn_dates.append(pd.NaT)
-
-        _max_date = _max_date.replace(month=rand_month, day=rand_day)
-        _min_date = _min_date.replace(month=rand_month, day=rand_day)
-        _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
-        # ### hour ###
-        rand_hour = _dt_default.hour
-        if hour_pattern is not None:
-            hour_start = _dt_start if _min_date.strftime('%d%m%Y') == _dt_start.strftime('%d%m%Y') else _min_date
-            hour_end = _dt_until if _max_date.strftime('%d%m%Y') == _dt_until.strftime('%d%m%Y') else _max_date
-            rand_select = self._date_choice(hour_start, hour_end, hour_pattern, limits='hour', seed=seed)
-            if rand_select is pd.NaT:
-                rtn_dates.append(rand_select)
-
-            rand_hour = rand_select.hour
-        _max_date = _max_date.replace(hour=rand_hour)
-        _min_date = _min_date.replace(hour=rand_hour)
-        _dt_default = _dt_default.replace(hour=rand_hour)
-        # ### minutes ###
-        rand_minute = _dt_default.minute
-        if minute_pattern is not None:
-            minute_start = _dt_start \
-                if _min_date.strftime('%d%m%Y%H') == _dt_start.strftime('%d%m%Y%H') else _min_date
-            minute_end = _dt_until \
-                if _max_date.strftime('%d%m%Y%H') == _dt_until.strftime('%d%m%Y%H') else _max_date
-            rand_select = self._date_choice(minute_start, minute_end, minute_pattern, seed=seed)
-            if rand_select is pd.NaT:
-                rtn_dates.append(rand_select)
-
-            rand_minute = rand_select.minute
-        _max_date = _max_date.replace(minute=rand_minute)
-        _min_date = _min_date.replace(minute=rand_minute)
-        _dt_default = _dt_default.replace(minute=rand_minute)
-
-        # ### get the date ###
-
-    def _get_datetime_pattern(self, start: Any, until: Any, default: Any=None, ordered: bool=None,
-                             date_pattern: list=None, year_pattern: list=None, month_pattern: list=None,
-                             weekday_pattern: list=None, hour_pattern: list=None, minute_pattern: list=None,
-                             quantity: float=None, date_format: str=None, size: int=None, seed: int=None,
-                             day_first: bool = True, year_first: bool = False, save_intent: bool=None,
-                             column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                             remove_duplicates: bool=None) -> list:
+    def get_datetime_pattern(self, start: Any, until: Any, default: Any = None, ordered: bool = None,
+                             date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
+                             weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
+                             quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
+                             day_first: bool = True, year_first: bool = False, save_intent: bool = None,
+                             column_name: [int, str] = None, intent_order: int = None, replace_intent: bool = None,
+                             remove_duplicates: bool = None) -> list:
         """ returns a random date between two date and times. weighted patterns can be applied to the overall date
         range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
         Note: If no patterns are set this will return a linearly random number between the range boundaries.
@@ -592,10 +510,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param seed: a seed value for the random function: default to None
         :param year_first: specifies if to parse with the year first
                 If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
-                If both dayfirst and yearfirst are True, yearfirst is preceded (same as dateutil).
+                If both day_first and year_first are True, year_first is preceded (same as dateutil).
         :param day_first: specifies if to parse with the day first
                 If True, parses dates with the day first, eg %d-%m-%Y.
-                If False default to the a prefered preference, normally %m-%d-%Y (but not strict)
+                If False default to the a preferred preference, normally %m-%d-%Y (but not strict)
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -2190,13 +2108,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_weights.append(p[index])
         if length is None:
             return rtn_weights
-        if length <= len(rtn_weights):
-            return rtn_weights[:length]
-        rtn_pattern = []
-        for i in range(length):
-            index = int(np.round(((len(rtn_weights) - 1) / (length - 1)) * i, 2))
-            rtn_pattern.append(rtn_weights[index])
-        return rtn_pattern
+        return Commons.resize_list(rtn_weights, resize=length)
 
     def _set_quantity(self, selection, quantity, seed=None):
         """Returns the quantity percent of good values in selection with the rest fill"""
