@@ -1,5 +1,5 @@
 from aistac.properties.abstract_properties import AbstractPropertyManager
-from ds_behavioral.components.commons import Commons
+from ds_behavioral.components.commons import SyntheticCommons
 
 __author__ = 'Darryl Oatridge'
 
@@ -18,4 +18,4 @@ class SyntheticPropertyManager(AbstractPropertyManager):
     @staticmethod
     def list_formatter(value) -> list:
         """override of the list_formatter to include Pandas types"""
-        return Commons.list_formatter(value=value)
+        return SyntheticCommons.list_formatter(value=value)

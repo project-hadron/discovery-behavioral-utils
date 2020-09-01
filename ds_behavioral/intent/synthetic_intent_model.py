@@ -10,7 +10,7 @@ from pandas.tseries.offsets import Week
 
 from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
-from ds_behavioral.components.commons import Commons, DataAnalytics
+from ds_behavioral.components.commons import SyntheticCommons, DataAnalytics
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'
@@ -82,7 +82,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 if column in _get:
                                     _get.remove(column)
                                 _remove.append(column)
-                column_names = Commons.unique_list(_model + _get + _correlate + _associate + _remove)
+                column_names = SyntheticCommons.unique_list(_model + _get + _correlate + _associate + _remove)
             for column in column_names:
                 level_key = self._pm.join(self._pm.KEY.intent_key, column)
                 for order in sorted(self._pm.get(level_key, {})):
@@ -255,7 +255,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     while _remaining > 0:
                         _size = _limit if _remaining > _limit else _remaining
                         choice = list(np.random.randint(low=low, high=high, size=_size))
-                        choice = [i for i in choice if i not in Commons.list_formatter(dominant_values)]
+                        choice = [i for i in choice if i not in SyntheticCommons.list_formatter(dominant_values)]
                         rtn_list += choice
                         _remaining -= len(choice)
         else:
@@ -283,7 +283,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     while _remaining > 0:
                         _size = _limit if _remaining > _limit else _remaining
                         choice = np.round((np.random.random(size=_size)*(high-low)+low), precision).tolist()
-                        choice = [i for i in choice if i not in Commons.list_formatter(dominant_values) + [high]]
+                        choice = [i for i in choice if i not in SyntheticCommons.list_formatter(dominant_values) + [high]]
                         rtn_list += choice
                         _remaining -= len(choice)
         if isinstance(currency, str):
@@ -462,7 +462,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
     #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
     #     # Code block for intent
-    #     # TODO: This needs to be finished
+    #     # TODO: All this data pattern could be replaced by correlation layering, needs investigating
     #     ordered = ordered if isinstance(ordered, bool) else True
     #     if start is None or until is None:
     #         raise ValueError("The start or until parameters cannot be of NoneType")
@@ -480,182 +480,182 @@ class SyntheticIntentModel(AbstractIntentModel):
     #     for _year in date_values.dt.year.unique():
     #         yr_idx = date_values.where(date_values.dt.year == _year).dropna().index
 
-    def get_datetime_pattern(self, start: Any, until: Any, default: Any = None, ordered: bool = None,
-                             date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
-                             weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
-                             quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
-                             day_first: bool = True, year_first: bool = False, save_intent: bool = None,
-                             column_name: [int, str] = None, intent_order: int = None, replace_intent: bool = None,
-                             remove_duplicates: bool = None) -> list:
-        """ returns a random date between two date and times. weighted patterns can be applied to the overall date
-        range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
-        Note: If no patterns are set this will return a linearly random number between the range boundaries.
-              Also if no patterns are set and a default date is given, that default date will be returnd each time
-
-        :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
-        :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
-        :param default: (optional) a fixed starting date that patterns are applied too.
-        :param ordered: (optional) if the return list should be date ordered
-        :param date_pattern: (optional) A pattern across the whole date range.
-                If set, is the primary pattern with each subsequent pattern overriding this result
-                If no other pattern is set, this will return a random date based on this pattern
-        :param year_pattern: (optional) adjusts the year selection to this pattern
-        :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
-        :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
-        :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
-        :param minute_pattern: (optional) adjusts the minutes selection to this pattern
-        :param quantity: the quantity of values that are not null. Number between 0 and 1
-        :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
-        :param size: the size of the sample to return. Default to 1
-        :param seed: a seed value for the random function: default to None
-        :param year_first: specifies if to parse with the year first
-                If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
-                If both day_first and year_first are True, year_first is preceded (same as dateutil).
-        :param day_first: specifies if to parse with the day first
-                If True, parses dates with the day first, eg %d-%m-%Y.
-                If False default to the a preferred preference, normally %m-%d-%Y (but not strict)
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a date or size of dates in the format given.
-         """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        ordered = False if not isinstance(ordered, bool) else ordered
-        if start is None or until is None:
-            raise ValueError("The start or until parameters cannot be of NoneType")
-        quantity = self._quantity(quantity)
-        size = 1 if size is None else size
-        _seed = self._seed() if seed is None else seed
-        _dt_start = pd.to_datetime(start, errors='coerce', infer_datetime_format=True,
-                                   dayfirst=day_first, yearfirst=year_first)
-        _dt_until = pd.to_datetime(until, errors='coerce', infer_datetime_format=True,
-                                   dayfirst=day_first, yearfirst=year_first)
-        _dt_base = pd.to_datetime(default, errors='coerce', infer_datetime_format=True,
-                                  dayfirst=day_first, yearfirst=year_first)
-        if _dt_start is pd.NaT or _dt_until is pd.NaT:
-            raise ValueError("The start or until parameters cannot be converted to a timestamp")
-
-        # ### Apply the patterns if any ###
-        rtn_dates = []
-        for _ in range(size):
-            _seed = self._next_seed(_seed, seed)
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
-                _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0,
-                                                                                second=0, microsecond=0, nanosecond=0)
-                _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
-                                                                                 second=59, microsecond=0, nanosecond=0)
-                # reset the starting base
-            _dt_default = _dt_base
-            if not isinstance(_dt_default, pd.Timestamp):
-                _dt_default = np.random.random() * (_dt_until - _dt_start) + pd.to_timedelta(_dt_start)
-            # ### date ###
-            if date_pattern is not None:
-                _dp_start = self._convert_date2value(_dt_start)[0]
-                _dp_until = self._convert_date2value(_dt_until)[0]
-                value = self.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed,
-                                        save_intent=False)
-                _dt_default = self._convert_value2date(value)[0]
-            # ### years ###
-            rand_year = _dt_default.year
-            if year_pattern is not None:
-                rand_select = self._date_choice(_dt_start, _dt_until, year_pattern, seed=_seed)
-                if rand_select is pd.NaT:
-                    rtn_dates.append(rand_select)
-                    continue
-                rand_year = rand_select.year
-            _max_date = _max_date.replace(year=rand_year)
-            _min_date = _min_date.replace(year=rand_year)
-            _dt_default = _dt_default.replace(year=rand_year)
-            # ### months ###
-            rand_month = _dt_default.month
-            rand_day = _dt_default.day
-            if month_pattern is not None:
-                month_start = _dt_start if _dt_start.year == _min_date.year else _min_date
-                month_end = _dt_until if _dt_until.year == _max_date.year else _max_date
-                rand_select = self._date_choice(month_start, month_end, month_pattern, limits='month', seed=_seed)
-                if rand_select is pd.NaT:
-                    rtn_dates.append(rand_select)
-                    continue
-                rand_month = rand_select.month
-                rand_day = _dt_default.day if _dt_default.day <= rand_select.daysinmonth else rand_select.daysinmonth
-            _max_date = _max_date.replace(month=rand_month, day=rand_day)
-            _min_date = _min_date.replace(month=rand_month, day=rand_day)
-            _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
-            # ### weekday ###
-            if weekday_pattern is not None:
-                if not len(weekday_pattern) == 7:
-                    raise ValueError("The weekday_pattern mut be a list of size 7 with index 0 as Monday")
-                _weekday = self._weighted_choice(weekday_pattern, seed=_seed)
-                if _weekday != _min_date.dayofweek:
-                    if _dt_start <= (_dt_default + Week(weekday=_weekday)) <= _dt_until:
-                        rand_day = (_dt_default + Week(weekday=_weekday)).day
-                        rand_month = (_dt_default + Week(weekday=_weekday)).month
-                    elif _dt_start <= (_dt_default - Week(weekday=_weekday)) <= _dt_until:
-                        rand_day = (_dt_default - Week(weekday=_weekday)).day
-                        rand_month = (_dt_default - Week(weekday=_weekday)).month
-                    else:
-                        rtn_dates.append(pd.NaT)
-                        continue
-            _max_date = _max_date.replace(month=rand_month, day=rand_day)
-            _min_date = _min_date.replace(month=rand_month, day=rand_day)
-            _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
-            # ### hour ###
-            rand_hour = _dt_default.hour
-            if hour_pattern is not None:
-                hour_start = _dt_start if _min_date.strftime('%d%m%Y') == _dt_start.strftime('%d%m%Y') else _min_date
-                hour_end = _dt_until if _max_date.strftime('%d%m%Y') == _dt_until.strftime('%d%m%Y') else _max_date
-                rand_select = self._date_choice(hour_start, hour_end, hour_pattern, limits='hour', seed=seed)
-                if rand_select is pd.NaT:
-                    rtn_dates.append(rand_select)
-                    continue
-                rand_hour = rand_select.hour
-            _max_date = _max_date.replace(hour=rand_hour)
-            _min_date = _min_date.replace(hour=rand_hour)
-            _dt_default = _dt_default.replace(hour=rand_hour)
-            # ### minutes ###
-            rand_minute = _dt_default.minute
-            if minute_pattern is not None:
-                minute_start = _dt_start \
-                    if _min_date.strftime('%d%m%Y%H') == _dt_start.strftime('%d%m%Y%H') else _min_date
-                minute_end = _dt_until \
-                    if _max_date.strftime('%d%m%Y%H') == _dt_until.strftime('%d%m%Y%H') else _max_date
-                rand_select = self._date_choice(minute_start, minute_end, minute_pattern, seed=seed)
-                if rand_select is pd.NaT:
-                    rtn_dates.append(rand_select)
-                    continue
-                rand_minute = rand_select.minute
-            _max_date = _max_date.replace(minute=rand_minute)
-            _min_date = _min_date.replace(minute=rand_minute)
-            _dt_default = _dt_default.replace(minute=rand_minute)
-            # ### get the date ###
-            _dt_default = _dt_default.replace(second=np.random.randint(60))
-            if isinstance(_dt_default, pd.Timestamp):
-                _dt_default = _dt_default.tz_localize(None)
-            rtn_dates.append(_dt_default)
-        if ordered:
-            rtn_dates = sorted(rtn_dates)
-        rtn_list = []
-        if isinstance(date_format, str):
-            for d in rtn_dates:
-                if isinstance(d, pd.Timestamp):
-                    rtn_list.append(d.strftime(date_format))
-                else:
-                    rtn_list.append(str(d))
-        else:
-            rtn_list = rtn_dates
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+    # def get_datetime_pattern(self, start: Any, until: Any, default: Any = None, ordered: bool = None,
+    #                          date_pattern: list = None, year_pattern: list = None, month_pattern: list = None,
+    #                          weekday_pattern: list = None, hour_pattern: list = None, minute_pattern: list = None,
+    #                          quantity: float = None, date_format: str = None, size: int = None, seed: int = None,
+    #                          day_first: bool = True, year_first: bool = False, save_intent: bool = None,
+    #                          column_name: [int, str] = None, intent_order: int = None, replace_intent: bool = None,
+    #                          remove_duplicates: bool = None) -> list:
+    #     """ returns a random date between two date and times. weighted patterns can be applied to the overall date
+    #     range, the year, month, day-of-week, hours and minutes to create a fully customised random set of dates.
+    #     Note: If no patterns are set this will return a linearly random number between the range boundaries.
+    #           Also if no patterns are set and a default date is given, that default date will be returnd each time
+    #
+    #     :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+    #     :param until: then up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp
+    #     :param default: (optional) a fixed starting date that patterns are applied too.
+    #     :param ordered: (optional) if the return list should be date ordered
+    #     :param date_pattern: (optional) A pattern across the whole date range.
+    #             If set, is the primary pattern with each subsequent pattern overriding this result
+    #             If no other pattern is set, this will return a random date based on this pattern
+    #     :param year_pattern: (optional) adjusts the year selection to this pattern
+    #     :param month_pattern: (optional) adjusts the month selection to this pattern. Must be of length 12
+    #     :param weekday_pattern: (optional) adjusts the weekday selection to this pattern. Must be of length 7
+    #     :param hour_pattern: (optional) adjusts the hours selection to this pattern. must be of length 24
+    #     :param minute_pattern: (optional) adjusts the minutes selection to this pattern
+    #     :param quantity: the quantity of values that are not null. Number between 0 and 1
+    #     :param date_format: the string format of the date to be returned. if not set then pd.Timestamp returned
+    #     :param size: the size of the sample to return. Default to 1
+    #     :param seed: a seed value for the random function: default to None
+    #     :param year_first: specifies if to parse with the year first
+    #             If True parses dates with the year first, eg 10/11/12 is parsed as 2010-11-12.
+    #             If both day_first and year_first are True, year_first is preceded (same as dateutil).
+    #     :param day_first: specifies if to parse with the day first
+    #             If True, parses dates with the day first, eg %d-%m-%Y.
+    #             If False default to the a preferred preference, normally %m-%d-%Y (but not strict)
+    #     :param save_intent (optional) if the intent contract should be saved to the property manager
+    #     :param column_name: (optional) the column name that groups intent to create a column
+    #     :param intent_order: (optional) the order in which each intent should run.
+    #                     If None: default's to -1
+    #                     if -1: added to a level above any current instance of the intent section, level 0 if not found
+    #                     if int: added to the level specified, overwriting any that already exist
+    #     :param replace_intent: (optional) if the intent method exists at the level, or default level
+    #                     True - replaces the current intent method with the new
+    #                     False - leaves it untouched, disregarding the new intent
+    #     :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+    #     :return: a date or size of dates in the format given.
+    #      """
+    #     # intent persist options
+    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+    #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
+    #     # Code block for intent
+    #     ordered = False if not isinstance(ordered, bool) else ordered
+    #     if start is None or until is None:
+    #         raise ValueError("The start or until parameters cannot be of NoneType")
+    #     quantity = self._quantity(quantity)
+    #     size = 1 if size is None else size
+    #     _seed = self._seed() if seed is None else seed
+    #     _dt_start = pd.to_datetime(start, errors='coerce', infer_datetime_format=True,
+    #                                dayfirst=day_first, yearfirst=year_first)
+    #     _dt_until = pd.to_datetime(until, errors='coerce', infer_datetime_format=True,
+    #                                dayfirst=day_first, yearfirst=year_first)
+    #     _dt_base = pd.to_datetime(default, errors='coerce', infer_datetime_format=True,
+    #                               dayfirst=day_first, yearfirst=year_first)
+    #     if _dt_start is pd.NaT or _dt_until is pd.NaT:
+    #         raise ValueError("The start or until parameters cannot be converted to a timestamp")
+    #
+    #     # ### Apply the patterns if any ###
+    #     rtn_dates = []
+    #     for _ in range(size):
+    #         _seed = self._next_seed(_seed, seed)
+    #         with warnings.catch_warnings():
+    #             warnings.filterwarnings("ignore", message='Discarding nonzero nanoseconds in conversion')
+    #             _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0,
+    #                                                                             second=0, microsecond=0, nanosecond=0)
+    #             _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
+    #                                                                              second=59, microsecond=0, nanosecond=0)
+    #             # reset the starting base
+    #         _dt_default = _dt_base
+    #         if not isinstance(_dt_default, pd.Timestamp):
+    #             _dt_default = np.random.random() * (_dt_until - _dt_start) + pd.to_timedelta(_dt_start)
+    #         # ### date ###
+    #         if date_pattern is not None:
+    #             _dp_start = self._convert_date2value(_dt_start)[0]
+    #             _dp_until = self._convert_date2value(_dt_until)[0]
+    #             value = self.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed,
+    #                                     save_intent=False)
+    #             _dt_default = self._convert_value2date(value)[0]
+    #         # ### years ###
+    #         rand_year = _dt_default.year
+    #         if year_pattern is not None:
+    #             rand_select = self._date_choice(_dt_start, _dt_until, year_pattern, seed=_seed)
+    #             if rand_select is pd.NaT:
+    #                 rtn_dates.append(rand_select)
+    #                 continue
+    #             rand_year = rand_select.year
+    #         _max_date = _max_date.replace(year=rand_year)
+    #         _min_date = _min_date.replace(year=rand_year)
+    #         _dt_default = _dt_default.replace(year=rand_year)
+    #         # ### months ###
+    #         rand_month = _dt_default.month
+    #         rand_day = _dt_default.day
+    #         if month_pattern is not None:
+    #             month_start = _dt_start if _dt_start.year == _min_date.year else _min_date
+    #             month_end = _dt_until if _dt_until.year == _max_date.year else _max_date
+    #             rand_select = self._date_choice(month_start, month_end, month_pattern, limits='month', seed=_seed)
+    #             if rand_select is pd.NaT:
+    #                 rtn_dates.append(rand_select)
+    #                 continue
+    #             rand_month = rand_select.month
+    #             rand_day = _dt_default.day if _dt_default.day <= rand_select.daysinmonth else rand_select.daysinmonth
+    #         _max_date = _max_date.replace(month=rand_month, day=rand_day)
+    #         _min_date = _min_date.replace(month=rand_month, day=rand_day)
+    #         _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
+    #         # ### weekday ###
+    #         if weekday_pattern is not None:
+    #             if not len(weekday_pattern) == 7:
+    #                 raise ValueError("The weekday_pattern mut be a list of size 7 with index 0 as Monday")
+    #             _weekday = self._weighted_choice(weekday_pattern, seed=_seed)
+    #             if _weekday != _min_date.dayofweek:
+    #                 if _dt_start <= (_dt_default + Week(weekday=_weekday)) <= _dt_until:
+    #                     rand_day = (_dt_default + Week(weekday=_weekday)).day
+    #                     rand_month = (_dt_default + Week(weekday=_weekday)).month
+    #                 elif _dt_start <= (_dt_default - Week(weekday=_weekday)) <= _dt_until:
+    #                     rand_day = (_dt_default - Week(weekday=_weekday)).day
+    #                     rand_month = (_dt_default - Week(weekday=_weekday)).month
+    #                 else:
+    #                     rtn_dates.append(pd.NaT)
+    #                     continue
+    #         _max_date = _max_date.replace(month=rand_month, day=rand_day)
+    #         _min_date = _min_date.replace(month=rand_month, day=rand_day)
+    #         _dt_default = _dt_default.replace(month=rand_month, day=rand_day)
+    #         # ### hour ###
+    #         rand_hour = _dt_default.hour
+    #         if hour_pattern is not None:
+    #             hour_start = _dt_start if _min_date.strftime('%d%m%Y') == _dt_start.strftime('%d%m%Y') else _min_date
+    #             hour_end = _dt_until if _max_date.strftime('%d%m%Y') == _dt_until.strftime('%d%m%Y') else _max_date
+    #             rand_select = self._date_choice(hour_start, hour_end, hour_pattern, limits='hour', seed=seed)
+    #             if rand_select is pd.NaT:
+    #                 rtn_dates.append(rand_select)
+    #                 continue
+    #             rand_hour = rand_select.hour
+    #         _max_date = _max_date.replace(hour=rand_hour)
+    #         _min_date = _min_date.replace(hour=rand_hour)
+    #         _dt_default = _dt_default.replace(hour=rand_hour)
+    #         # ### minutes ###
+    #         rand_minute = _dt_default.minute
+    #         if minute_pattern is not None:
+    #             minute_start = _dt_start \
+    #                 if _min_date.strftime('%d%m%Y%H') == _dt_start.strftime('%d%m%Y%H') else _min_date
+    #             minute_end = _dt_until \
+    #                 if _max_date.strftime('%d%m%Y%H') == _dt_until.strftime('%d%m%Y%H') else _max_date
+    #             rand_select = self._date_choice(minute_start, minute_end, minute_pattern, seed=seed)
+    #             if rand_select is pd.NaT:
+    #                 rtn_dates.append(rand_select)
+    #                 continue
+    #             rand_minute = rand_select.minute
+    #         _max_date = _max_date.replace(minute=rand_minute)
+    #         _min_date = _min_date.replace(minute=rand_minute)
+    #         _dt_default = _dt_default.replace(minute=rand_minute)
+    #         # ### get the date ###
+    #         _dt_default = _dt_default.replace(second=np.random.randint(60))
+    #         if isinstance(_dt_default, pd.Timestamp):
+    #             _dt_default = _dt_default.tz_localize(None)
+    #         rtn_dates.append(_dt_default)
+    #     if ordered:
+    #         rtn_dates = sorted(rtn_dates)
+    #     rtn_list = []
+    #     if isinstance(date_format, str):
+    #         for d in rtn_dates:
+    #             if isinstance(d, pd.Timestamp):
+    #                 rtn_list.append(d.strftime(date_format))
+    #             else:
+    #                 rtn_list.append(str(d))
+    #     else:
+    #         rtn_list = rtn_dates
+    #     return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_intervals(self, intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
                       dominant_values: [float, list]=None, dominant_percent: float=None, dominance_weighting: list=None,
@@ -1101,8 +1101,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         drop = drop if isinstance(drop, bool) else False
         exclude = exclude if isinstance(exclude, bool) else False
         re_ignore_case = re_ignore_case if isinstance(re_ignore_case, bool) else False
-        return Commons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
-                                      regex=regex, re_ignore_case=re_ignore_case)
+        return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+                                               regex=regex, re_ignore_case=re_ignore_case)
 
     def model_noise(self, num_columns: int, inc_targets: bool=None, size: int=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1134,7 +1134,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         size = 1 if size is None else size
         num_columns = num_columns if isinstance(num_columns, int) else 1
         inc_targets = inc_targets if isinstance(inc_targets, int) else False
-        gen = Commons.label_gen()
+        gen = SyntheticCommons.label_gen()
         df_rtn = pd.DataFrame()
         for _ in range(num_columns):
             _seed = self._next_seed(_seed, seed)
@@ -1186,7 +1186,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn = df_high.iloc[idx]
         idx = self.get_number(df_low.shape[0], size=low_size, seed=seed, save_intent=False)
         df_rtn = df_rtn.append(df_low.iloc[idx])
-        df_rtn = Commons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State', 'StateCode', 'StateAbbrev'])
+        df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State', 'StateCode', 'StateAbbrev'])
         df_rtn['Zipcode'] = df['Zipcode'].round(0).astype(int)
         df_rtn['City'] = df_rtn['City'].str.title()
         if isinstance(rename_columns, dict):
@@ -1519,6 +1519,56 @@ class SyntheticIntentModel(AbstractIntentModel):
         result.loc[m_index] = m_names
         result.loc[f_index] = f_names
         return result.to_list()
+
+    # def correlate_sigmoid(self, canonical: pd.DataFrame, header: str, coefficient: list, quantity: float=None,
+    #                       seed: int=None, keep_zero: bool=None, save_intent: bool=None, column_name: [int, str]=None,
+    #                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+    #     """ creates a polynomial using the reference header values and apply the coefficients where the
+    #     index of the list represents the degree of the term in reverse order.
+    #
+    #               e.g  [6, -2, 0, 4] => f(x) = 4x**3 - 2x + 6
+    #
+    #     :param canonical: a DataFrame that contains a column to correlate
+    #     :param header: the header in the DataFrame to correlate
+    #     :param coefficient: the reverse list of term coefficients
+    #     :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+    #     :param seed: (optional) the random seed. defaults to current datetime
+    #     :param keep_zero: (optional) if True then zeros passed remain zero, Default is False
+    #     :param save_intent: (optional) if the intent contract should be saved to the property manager
+    #     :param column_name: (optional) the column name that groups intent to create a column
+    #     :param intent_order: (optional) the order in which each intent should run.
+    #                     If None: default's to -1
+    #                     if -1: added to a level above any current instance of the intent section, level 0 if not found
+    #                     if int: added to the level specified, overwriting any that already exist
+    #     :param replace_intent: (optional) if the intent method exists at the level, or default level
+    #                     True - replaces the current intent method with the new
+    #                     False - leaves it untouched, disregarding the new intent
+    #     :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+    #     :return: an equal length list of correlated values
+    #     """
+    #     # intent persist options
+    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+    #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
+    #     # Code block for intent
+    #     if not isinstance(canonical, pd.DataFrame):
+    #         raise ValueError(f"The canonical must be a pandas DataFrame")
+    #     if not isinstance(header, str) or header not in canonical.columns:
+    #         raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
+    #     s_values = canonical[header].copy()
+    #     if s_values.empty:
+    #         return list()
+    #     keep_zero = keep_zero if isinstance(keep_zero, bool) else False
+    #     quantity = self._quantity(quantity)
+    #     _seed = seed if isinstance(seed, int) else self._seed()
+    #
+    #     # TODO see Sinead's code
+    #     def _calc_sigmoid(x, L, x0, k):
+    #         y = L / (1 + np.exp(-k * (x - x0)))
+    #         return y
+    #
+    #     result = s_values.apply(lambda x: _calc_sigmoid(x, coefficient))
+    #     return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_polynomial(self, canonical: pd.DataFrame, header: str, coefficient: list, quantity: float=None,
                              seed: int=None, keep_zero: bool=None, save_intent: bool=None, column_name: [int, str]=None,
@@ -1907,7 +1957,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
 
         """
-        return Commons.param2dict(**locals())
+        return SyntheticCommons.param2dict(**locals())
 
     @staticmethod
     def action2dict(method: Any, **kwargs):
@@ -1924,7 +1974,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
 
         """
-        return Commons.param2dict(method=method, **kwargs)
+        return SyntheticCommons.param2dict(method=method, **kwargs)
 
     def _apply_action(self, canonical: pd.DataFrame, action: Any, select_idx: pd.Int64Index=None) -> pd.Series:
         """ applies an action returning an indexed Series
@@ -1953,7 +2003,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                     result = eval(f"self.{method}(**action)", globals(), locals())
                 else:
                     raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
-                return pd.Series(data=result, index=select_idx)
+                dtype = 'int' if any(isinstance(x, int) for x in result) else 'float' \
+                    if any(isinstance(x, float) for x in result) else 'object'
+                return pd.Series(data=result, index=select_idx, dtype=dtype)
             elif str(method).startswith('@header'):
                 header = action.pop('header', None)
                 if header is None:
@@ -2108,7 +2160,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_weights.append(p[index])
         if length is None:
             return rtn_weights
-        return Commons.resize_list(rtn_weights, resize=length)
+        return SyntheticCommons.resize_list(rtn_weights, resize=length)
 
     def _set_quantity(self, selection, quantity, seed=None):
         """Returns the quantity percent of good values in selection with the rest fill"""

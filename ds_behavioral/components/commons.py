@@ -2,12 +2,30 @@ import re
 import threading
 from copy import deepcopy
 import pandas as pd
+import numpy as np
 from aistac.components.aistac_commons import AistacCommons, AnalyticsCommons
 
 __author__ = 'Darryl Oatridge'
 
 
-class Commons(AistacCommons):
+class SyntheticCommons(AistacCommons):
+
+    @staticmethod
+    def exponential_tail(interval: float=None, precision: int=None, reverse: bool=False):
+        """ returns an exponential tail with values decenting for tailing off weighting patterns.
+        The tail values are generally between 0.9~ and 0.01~ with variance in length dependant on interval
+
+        :param interval: the interval value for the exponential values determing the length of the tail. default 0.3
+        :param precision: the precision of the values. default 3
+        :param reverse: if the exponential should be reversed
+        :return:
+        """
+        interval = interval if isinstance(interval, float) and interval < 1 else 0.3
+        precision = precision if isinstance(precision, int) else 3
+        result = np.exp(np.arange(-5, 0.0, interval)).round(precision)
+        if isinstance(reverse, bool) and reverse:
+            return list(result)
+        return list(np.flip(result))
 
     @staticmethod
     def report(canonical: pd.DataFrame, index_header: str, bold: [str, list]=None, large_font: [str, list]=None):
@@ -19,8 +37,8 @@ class Commons(AistacCommons):
         :param large_font
         :return: stylised report DataFrame
         """
-        bold = Commons.list_formatter(bold).append(index_header)
-        large_font = Commons.list_formatter(large_font).append(index_header)
+        bold = SyntheticCommons.list_formatter(bold).append(index_header)
+        large_font = SyntheticCommons.list_formatter(large_font).append(index_header)
         style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
                  {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
         index = canonical[canonical[index_header].duplicated()].index.to_list()
@@ -79,9 +97,9 @@ class Commons(AistacCommons):
         re_ignore_case = re_ignore_case if isinstance(re_ignore_case, bool) else False
         if not isinstance(df, pd.DataFrame):
             raise TypeError("The first function attribute must be a pandas 'DataFrame'")
-        _headers = Commons.list_formatter(headers)
-        dtype = Commons.list_formatter(dtype)
-        regex = Commons.list_formatter(regex)
+        _headers = SyntheticCommons.list_formatter(headers)
+        dtype = SyntheticCommons.list_formatter(dtype)
+        regex = SyntheticCommons.list_formatter(regex)
         _obj_cols = df.columns
         _rtn_cols = set()
         unmodified = True
@@ -128,8 +146,8 @@ class Commons(AistacCommons):
         if copy:
             with threading.Lock():
                 df = deepcopy(df)
-        obj_cols = Commons.filter_headers(df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
-                                          regex=regex, re_ignore_case=re_ignore_case)
+        obj_cols = SyntheticCommons.filter_headers(df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+                                                   regex=regex, re_ignore_case=re_ignore_case)
         return df.loc[:, obj_cols]
 
     @staticmethod
