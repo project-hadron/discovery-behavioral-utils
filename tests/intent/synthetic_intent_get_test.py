@@ -111,12 +111,11 @@ class SyntheticIntentGetTest(unittest.TestCase):
         count = result.where(result == 0).dropna()
         self.assertTrue(0.91 <= round(len(count)/sample_size, 2) <= 0.93)
 
-    def test_get_number_weighting(self):
+    def test_get_number_asc(self):
         tools = self.tools
         sample_size = 10
         result = tools.get_number(0, 10, ordered='asc', size=sample_size)
-        result = pd.Series(result)
-        print(result)
+        self.assertTrue(all([result[index] >= result[index + 1] for index in range(len(result) - 1)]))
 
     def test_get_number_weighting(self):
         tools = self.tools
@@ -129,6 +128,12 @@ class SyntheticIntentGetTest(unittest.TestCase):
         result = pd.Series(result)
         self.assertGreaterEqual(result.min(), 15)
         self.assertLess(result.max(), 20)
+
+    def test_get_email(self):
+        tools = self.tools
+        sample_size = 10000
+        result = tools.get_email(size=sample_size)
+        self.assertEqual(sample_size, len(result))
 
     def test_get_datetime_at_most(self):
         tools = self.tools

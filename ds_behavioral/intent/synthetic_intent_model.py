@@ -926,6 +926,38 @@ class SyntheticIntentModel(AbstractIntentModel):
         size = 1 if size is None else size
         return self.get_category(selection=ProfileSample.surnames(), size=size, seed=seed, save_intent=False)
 
+    def get_email(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                  intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+        """ returns a surnames """
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+        selection = ProfileSample.surnames(seed=seed) + ProfileSample.uk_cities(seed=_seed)
+        selection += ProfileSample.us_cities(seed=seed) + BusinessSample.company_names(seed=_seed)
+        # names = pd.Series(self.get_category(selection=selection, bounded_weighting=True,  size=size, seed=seed,
+        #                                     save_intent=False))
+        names = pd.Series(selection * (int(size/len(selection))+1)).str.lower().replace(' ', '_').iloc[:size]
+        selection = list('abcdefghijklmnopqrstuvwxyz')
+        # prefix = pd.Series(self.get_category(selection=selection, bounded_weighting=True, size=size, seed=seed,
+        #                    save_intent=False))
+        prefix = pd.Series(selection * (int(size/len(selection))+1)).iloc[:size]
+        email_name = names.combine(prefix, func=(lambda a, b: f"{b}{a}"))
+        email_name.drop_duplicates(inplace=True)
+        diff = size - email_name.size
+        if diff > 0:
+            numbers = pd.Series(range(diff))
+            np.random.shuffle(numbers)
+            np.random.shuffle(names)
+            sub_names = names.iloc[:diff]
+            email_name.append(sub_names.combine(numbers, func=(lambda a, b: f"{a}{b}")), ignore_index=True)
+        selection = ProfileSample.global_mail_domains(shuffle=False)
+        domains = pd.Series(self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
+                                              bounded_weighting=True, size=size, seed=_seed, save_intent=False))
+        return email_name.combine(domains,  func=(lambda a, b: f"{a}@{b}")).to_list()
+
     def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
                         quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                         intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:

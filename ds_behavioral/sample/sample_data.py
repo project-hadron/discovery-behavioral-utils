@@ -303,9 +303,9 @@ class ProfileSample(AbstractSample):
         :return: a list of names
         """
         selection = [
-             "aol.com", "att.net", "comcast.net", "facebook.com", "gmail.com", "gmx.com", "googlemail.com",
-             "google.com", "hotmail.com", "mac.com", "me.com", "mail.com", "msn.com", "live.com", "sbcglobal.net",
-             "verizon.net", "yahoo.com", "email.com", "fastmail.fm", "games.com", "gmx.net", "hush.com", "hushmail.com",
+             "hotmail.com", "google.com", "facebook.com", "gmail.com", "googlemail.com", "msn.com", "verizon.net",
+             "yahoo.com", "aol.com", "att.net", "comcast.net", "gmx.com", "mac.com", "me.com", "mail.com", "live.com",
+             "sbcglobal.net", "email.com", "fastmail.fm", "games.com", "gmx.net", "hush.com", "hushmail.com",
              "icloud.com", "iname.com", "inbox.com", "lavabit.com", "love.com" "outlook.com", "pobox.com",
              "protonmail.com", "rocketmail.com", "safe-mail.net", "wow.com", "ygm.com", "ymail.com", "zoho.com",
              "yandex.com", "bellsouth.net", "charter.net", "cox.net", "earthlink.net", "juno.com"]
