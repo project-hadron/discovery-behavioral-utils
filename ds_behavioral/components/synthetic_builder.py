@@ -84,6 +84,10 @@ class SyntheticBuilder(AbstractComponent):
     def intent_model(self) -> SyntheticIntentModel:
         return self._intent_model
 
+    @property
+    def tools(self) -> SyntheticIntentModel:
+        return self._intent_model
+
     def get_outcome_contract(self):
         """ gets the outcome connector contract that can be used as the next chain source"""
         return self.pm.get_connector_contract(self.CONNECTOR_OUTCOME)
