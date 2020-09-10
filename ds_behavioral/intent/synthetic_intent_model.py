@@ -2,11 +2,9 @@ import inspect
 import random
 import re
 import string
-import warnings
 from copy import deepcopy
 from typing import Any
 from matplotlib import dates as mdates
-from pandas.tseries.offsets import Week
 
 from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
@@ -1098,14 +1096,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def remove_columns(self, canonical: pd.DataFrame, headers: [str, list]=None, drop: bool=None,
+    def remove_columns(self, canonical: Any, headers: [str, list]=None, drop: bool=None,
                        dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
                        re_ignore_case: bool=None, seed: bool=None, save_intent: bool=None,
                        column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                        remove_duplicates: bool=None):
         """ removes columns from the passed canonical as a tidy up
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param headers: a list of headers to drop or filter on type
         :param drop: to drop or not drop the headers
         :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
@@ -1130,6 +1128,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        canonical = self._get_canonical(canonical)
         drop = drop if isinstance(drop, bool) else False
         exclude = exclude if isinstance(exclude, bool) else False
         re_ignore_case = re_ignore_case if isinstance(re_ignore_case, bool) else False
@@ -1304,7 +1303,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         If a DataFrame is not passed, the values column is referenced by the header '_default'
 
-        :param canonical: a str, int, float, list, pd.Series or pd.DataFrame
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param selection: a list of selections where conditions are filtered on, executed in list order
                 An example of a selection with the minimum requirements is: (see 'select2dict(...)')
                 [{'column': 'genre', 'condition': "=='Comedy'"}]
@@ -1365,16 +1364,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if not isinstance(canonical, (str, int, float, list, pd.Series, pd.DataFrame)):
-            raise TypeError("The canonical is not an accepted type")
-        if isinstance(canonical, (str, int, float)):
-            canonical = self._pm.list_formatter(canonical)
-        elif isinstance(canonical, (list, pd.Series)):
-            canonical = pd.DataFrame(data=deepcopy(canonical), columns=['_default'])
-        elif not isinstance(canonical, pd.DataFrame):
-            raise TypeError("The dataset given is not or could not be converted to a pandas DataFrame")
-        else:
-            canonical = deepcopy(canonical)
+        canonical = self._get_canonical(canonical)
         if len(canonical) == 0:
             raise TypeError("The canonical given is empty")
         if not isinstance(selection, list) or not all(isinstance(x, dict) for x in selection):
@@ -1402,14 +1392,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_values.update(self._apply_action(canonical, action=action, select_idx=select_idx))
         return self._set_quantity(rtn_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_custom(self, canonical: pd.DataFrame, code_str: str, use_exec: bool=None, save_intent: bool=None,
+    def correlate_custom(self, canonical: Any, code_str: str, use_exec: bool=None, save_intent: bool=None,
                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                          remove_duplicates: bool=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
         as it's parameter name 'canonical'.
 
-        :param canonical: a pd.DataFrame used in the action
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param code_str: an action on those column values
         :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
         :param kwargs: a set of kwargs to include in any executable function
@@ -1430,6 +1420,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        canonical = self._get_canonical(canonical)
         use_exec = use_exec if isinstance(use_exec, bool) else False
         local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
         if 'canonical' not in local_kwargs:
@@ -1440,12 +1431,12 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
-    def correlate_join(self, canonical: pd.DataFrame, header: str, action: [str, dict], sep: str=None,
+    def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None,
                        save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                        replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlate a column and join it with the result of the action
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: an ordered list of columns to join
         :param action: (optional) a string or a single action whose outcome will be joined to the header value
         :param sep: (optional) a separator between the values
@@ -1471,10 +1462,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # validation
+        canonical = self._get_canonical(canonical, header=header)
         if not isinstance(action, (dict, str)):
             raise ValueError(f"The action must be a dictionary of a single action or a string value")
-        if not isinstance(canonical, pd.DataFrame):
-            raise ValueError(f"The canonical must be a pandas DataFrame")
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         # Code block for intent
@@ -1506,12 +1496,12 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return s_values.to_list()
 
-    def correlate_forename_to_gender(self, canonical: pd.DataFrame, header: str, categories: list, seed: int=None,
+    def correlate_forename_to_gender(self, canonical: Any, header: str, categories: list, seed: int=None,
                                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                                      replace_intent: bool=None, remove_duplicates: bool=None):
         """correlate a forename to a gender column so as to matche the gender to an appropriate first name
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
         :param categories: a list of length two with the male then female category label to correlate e.g. ['M', 'F']
         :param seed: (optional) a seed value for the random function: default to None
@@ -1532,10 +1522,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # validation
+        canonical = self._get_canonical(canonical, header=header)
         if not isinstance(categories, list) or not len(categories) == 2:
             raise ValueError(f"The categories must list the Male and Female label to correlate, e.g. ['M', 'F']")
-        if not isinstance(canonical, pd.DataFrame):
-            raise ValueError(f"The canonical must be a pandas DataFrame")
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         # Code block for intent
@@ -1552,7 +1541,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         result.loc[f_index] = f_names
         return result.to_list()
 
-    # def correlate_sigmoid(self, canonical: pd.DataFrame, header: str, coefficient: list, quantity: float=None,
+    # def correlate_sigmoid(self, canonical: Any, header: str, coefficient: list, quantity: float=None,
     #                       seed: int=None, keep_zero: bool=None, save_intent: bool=None, column_name: [int, str]=None,
     #                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
     #     """ creates a polynomial using the reference header values and apply the coefficients where the
@@ -1560,7 +1549,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #
     #               e.g  [6, -2, 0, 4] => f(x) = 4x**3 - 2x + 6
     #
-    #     :param canonical: a DataFrame that contains a column to correlate
+    #     :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
     #     :param header: the header in the DataFrame to correlate
     #     :param coefficient: the reverse list of term coefficients
     #     :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
@@ -1583,8 +1572,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
     #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
     #     # Code block for intent
-    #     if not isinstance(canonical, pd.DataFrame):
-    #         raise ValueError(f"The canonical must be a pandas DataFrame")
+    #     canonical = self._get_canonical(canonical, header=header)
     #     if not isinstance(header, str) or header not in canonical.columns:
     #         raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
     #     s_values = canonical[header].copy()
@@ -1602,7 +1590,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #     result = s_values.apply(lambda x: _calc_sigmoid(x, coefficient))
     #     return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_polynomial(self, canonical: pd.DataFrame, header: str, coefficient: list, quantity: float=None,
+    def correlate_polynomial(self, canonical: Any, header: str, coefficient: list, quantity: float=None,
                              seed: int=None, keep_zero: bool=None, save_intent: bool=None, column_name: [int, str]=None,
                              intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ creates a polynomial using the reference header values and apply the coefficients where the
@@ -1610,7 +1598,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
                   e.g  [6, -2, 0, 4] => f(x) = 4x**3 - 2x + 6
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
         :param coefficient: the reverse list of term coefficients
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
@@ -1633,8 +1621,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if not isinstance(canonical, pd.DataFrame):
-            raise ValueError(f"The canonical must be a pandas DataFrame")
+        canonical = self._get_canonical(canonical, header=header)
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         s_values = canonical[header].copy()
@@ -1655,7 +1642,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         result = s_values.apply(lambda x: _calc_polynomial(x, coefficient))
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_numbers(self, canonical: pd.DataFrame, header: str, spread: float=None, offset: float=None,
+    def correlate_numbers(self, canonical: Any, header: str, spread: float=None, offset: float=None,
                           weighting_pattern: list=None, multiply_offset: bool=None, precision: int=None,
                           fill_nulls: bool=None, quantity: float=None, seed: int=None, keep_zero: bool=None,
                           min_value: [int, float]=None, max_value: [int, float]=None, save_intent: bool=None,
@@ -1664,7 +1651,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """ returns a number that correlates to the value given. The spread is based on a normal distribution
         with the value being the mean and the spread its standard deviation from that mean
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
         :param spread: (optional) the random spread or deviation from the value. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
@@ -1694,8 +1681,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if not isinstance(canonical, pd.DataFrame):
-            raise ValueError(f"The canonical must be a pandas DataFrame")
+        canonical = self._get_canonical(canonical, header=header)
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         s_values = canonical[header].copy()
@@ -1738,7 +1724,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_categories(self, canonical: pd.DataFrame, header: str, correlations: list, actions: dict,
+    def correlate_categories(self, canonical: Any, header: str, correlations: list, actions: dict,
                              fill_nulls: bool=None, quantity: float=None, seed: int=None,
                              save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None, 
                              replace_intent: bool=None, remove_duplicates: bool=None):
@@ -1755,7 +1741,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             you can also use the action to specify a specific value:
                 {0: 'F', 1: {'method': 'get_numbers', 'from_value': 0, to_value: 27}}
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
         :param correlations: a list of categories (can also contain lists for multiple correlations.
         :param actions: the correlated set of categories that should map to the index
@@ -1779,8 +1765,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if not isinstance(canonical, pd.DataFrame):
-            raise ValueError(f"The canonical must be a pandas DataFrame")
+        canonical = self._get_canonical(canonical, header=header)
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         s_values = canonical[header].copy().astype(str)
@@ -1824,7 +1809,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
-    def correlate_dates(self, canonical: pd.DataFrame, header: str, offset: [int, dict]=None, spread: int=None,
+    def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, spread: int=None,
                         spread_units: str=None, spread_pattern: list=None, date_format: str=None,
                         min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=None,
                         year_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
@@ -1832,7 +1817,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         remove_duplicates: bool=None):
         """ correlates dates to an existing date or list of dates.
 
-        :param canonical: a DataFrame that contains a column to correlate
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
         :param offset: (optional) and offset to the date. if int then assumed a 'days' offset
                 int or dictionary associated with pd. eg {'days': 1}
@@ -1864,8 +1849,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if not isinstance(canonical, pd.DataFrame):
-            raise ValueError(f"The canonical must be a pandas DataFrame")
+        canonical = self._get_canonical(canonical, header=header)
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         values = canonical[header].copy()
@@ -2242,3 +2226,20 @@ class SyntheticIntentModel(AbstractIntentModel):
             seed = self._seed() if isinstance(default, int) else default
         np.random.seed(seed)
         return seed
+
+    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str], header: str=None) -> pd.DataFrame:
+        if isinstance(data, pd.DataFrame):
+            return deepcopy(data)
+        elif isinstance(data, (list, pd.Series)):
+            header = header if isinstance(header, str) else 'default'
+            return pd.DataFrame(data=deepcopy(data), columns=[header])
+        elif isinstance(data, str):
+            if not self._pm.has_connector(connector_name=data):
+                raise ValueError(f"The data connector name '{data}' is not in the connectors catalog")
+            handler = self._pm.get_connector_handler(data)
+            canonical = handler.load_canonical()
+            if isinstance(canonical, dict):
+                canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
+            return canonical
+        raise ValueError(f"The canonical format is not recognised, pd.DataFrame, "
+                         f"ConnectorContract expected, {type(data)} passed")

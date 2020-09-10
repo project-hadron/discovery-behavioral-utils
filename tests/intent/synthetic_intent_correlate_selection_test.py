@@ -101,23 +101,6 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=default_action)
         self.assertEqual([1.0, 3.2, 1.6, 1.0, 4.8, 1.0], result)
 
-    def test_action_correlate_random(self):
-        tools = self.tools
-        df = pd.read_csv('data/certifai_measure_50_feature_v0.8.csv')
-
-        age_gen = tools.get_number(range_value=30, to_value=80, weight_pattern=[1, 3, 2, 1])[0]
-        edu_gen = tools.get_number(range_value=3, to_value=15, weight_pattern=[1, 3, 2, 1])[0]
-
-        selection = [tools.select2dict(column='age', condition=age_gen, operator='<'),
-                     tools.select2dict(column='education-num', condition=edu_gen, operator='<', logic='AND')]
-
-        action = tools.action2dict(method='correlate_numbers', header='salary', offset=0.9, multiply_offset=True)
-        default = tools.action2dict(method='get_number', range_value=1000, to_value=100000)
-
-        df['result'] = tools.correlate_selection(df, selection=selection, action=action, default_action=default)
-        print(df.head())
-
-
     def test_raise(self):
         with self.assertRaises(KeyError) as context:
             env = os.environ['NoEnvValueTest']

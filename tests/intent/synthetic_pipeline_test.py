@@ -1,6 +1,8 @@
 import unittest
 import os
 import shutil
+from pprint import pprint
+
 import pandas as pd
 import numpy as np
 from ds_behavioral import SyntheticBuilder
@@ -28,7 +30,7 @@ class SyntheticPipelineTest(unittest.TestCase):
 
     @property
     def builder(self) -> SyntheticBuilder:
-        return SyntheticBuilder.from_env('tester')
+        return SyntheticBuilder.from_env('tester', has_contract=False)
 
     def test_run_synthetic_pipeline(self):
         sb = self.builder
@@ -47,15 +49,15 @@ class SyntheticPipelineTest(unittest.TestCase):
         self.assertEqual(size, result['numbers'].value_counts().values[0])
 
     def test_run_intent_pipeline_get(self):
-        tools = self.builder.intent_model
-        tools.get_number(1, 2, column_name='numbers')
-        result = self.builder.pm.report_intent()
+        sb = self.builder
+        sb.tools.get_number(1, 2, column_name='numbers')
+        result = sb.pm.report_intent()
         self.assertEqual(['numbers'], result.get('level'))
         self.assertEqual(['0'], result.get('order'))
         self.assertEqual(['get_number'], result.get('intent'))
         self.assertEqual([['range_value=1', 'to_value=2', "column_name='numbers'"]], result.get('parameters'))
-        tools.get_category(selection=['M'], column_name='gender')
-        result = tools.run_intent_pipeline(size=10, columns=['numbers', 'gender', 'jim'])
+        sb.tools.get_category(selection=['M'], column_name='gender')
+        result = sb.tools.run_intent_pipeline(size=10, columns=['numbers', 'gender', 'jim'])
         self.assertEqual((10, 2), result.shape)
         self.assertCountEqual(['numbers', 'gender'], result.columns)
         self.assertEqual('M', result['gender'].value_counts().index[0])

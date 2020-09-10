@@ -26,7 +26,7 @@ class SyntheticBuilderTest(unittest.TestCase):
 
     def test_runs(self):
         """Basic smoke test"""
-        self.assertEqual(SyntheticBuilder, type(SyntheticBuilder.from_env('tester')))
+        self.assertEqual(SyntheticBuilder, type(SyntheticBuilder.from_env('tester', has_contract=False)))
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:

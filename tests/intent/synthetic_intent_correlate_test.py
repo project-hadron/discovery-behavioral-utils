@@ -33,7 +33,7 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
     def test_runs(self):
         """Basic smoke test"""
         im = SyntheticBuilder.from_env('tester', default_save=False, default_save_intent=False,
-                                       reset_templates=False).intent_model
+                                       reset_templates=False, has_contract=False).intent_model
         self.assertTrue(SyntheticIntentModel, type(im))
 
     def test_correlate_coefficient(self):
