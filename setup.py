@@ -63,7 +63,7 @@ setup(
         'pandas>1.0',
         'aistac-foundation',
         'discovery-connectors',
-        'matplotlib'
+        'matplotlib',
         'scipy'
     ],
     test_suite='tests',
