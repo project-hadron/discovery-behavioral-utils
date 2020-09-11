@@ -1136,9 +1136,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                regex=regex, re_ignore_case=re_ignore_case)
 
     def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
-                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, shuffled: bool=None,
-                      save_intent: bool=None,  column_name: [int, str]=None, intent_order: int=None,
-                      replace_intent: bool=None,  remove_duplicates: bool=None) -> pd.DataFrame:
+                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, save_intent: bool=None,
+                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                      remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source
 
         :param connector_name: a connector_name for a connector to a data source
@@ -1148,7 +1148,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param exclude: to exclude or include the dtypes
         :param regex: a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt' columns
         :param re_ignore_case: true if the regex should ignore case. Default is False
-        :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
