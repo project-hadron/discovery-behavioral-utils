@@ -58,12 +58,13 @@ setup(
         # If any package contains *.yaml or *.csv files, include them:
         '': ['*.yaml', '*.csv'],
     },
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     install_requires=[
         'pandas>1.0',
         'aistac-foundation',
         'discovery-connectors',
         'matplotlib'
+        'scipy'
     ],
     test_suite='tests',
 )

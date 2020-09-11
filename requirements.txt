@@ -9,6 +9,7 @@ aistac-foundation
 discovery-connectors
 matplotlib
 numpy
+scipy
 
 # SQl and HTML libs
 #sqlalchemy
