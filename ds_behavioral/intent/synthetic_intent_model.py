@@ -1175,9 +1175,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                regex=regex, re_ignore_case=re_ignore_case)
 
     def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
-                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, save_intent: bool=None,
-                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                      remove_duplicates: bool=None) -> pd.DataFrame:
+                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, shuffle: bool=None,
+                      size: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                      replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source
 
         :param connector_name: a connector_name for a connector to a data source
@@ -1187,6 +1187,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param exclude: to exclude or include the dtypes
         :param regex: a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt' columns
         :param re_ignore_case: true if the regex should ignore case. Default is False
+        :param shuffle: (optional) if the rows in the loaded canonical should be shuffled
+        :param size: (optional) the size of the return. default to the size of the return
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1206,13 +1208,22 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         if not self._pm.has_connector(connector_name=connector_name):
             raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
+        shuffle = shuffle if isinstance(shuffle, bool) else False
+
         handler = self._pm.get_connector_handler(connector_name)
         canonical = handler.load_canonical()
         if isinstance(canonical, dict):
             canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
         self._pm.set_modified(connector_name, handler.get_modified())
-        return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
-                                               regex=regex, re_ignore_case=re_ignore_case, copy=False)
+        df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+                                                 regex=regex, re_ignore_case=re_ignore_case, copy=False)
+        if shuffle:
+            df_rtn.sample(frac=1)
+        size = size if isinstance(size, int) else df_rtn.shape[0]
+        if size <= df_rtn.shape[0]:
+            return df_rtn.iloc[:size]
+        df_buffer = pd.DataFrame(index=range(size-df_rtn.shape[0]), columns=df_rtn.columns.to_list())
+        return df_rtn.append(df_buffer, ignore_index=True)
 
     def model_noise(self, num_columns: int, inc_targets: bool=None, size: int=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
