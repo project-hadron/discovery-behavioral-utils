@@ -47,11 +47,11 @@ class FileBuilderTest(unittest.TestCase):
     def test_from(self):
         tools = DataBuilderTools
         values = list('ABCDEFG')
-        result = tools.get_from(canonical=values, size=100)
+        result = tools.get_selection(canonical=values, size=100)
         self.assertEqual(100, len(result))
         for v in values:
             self.assertIn(v, result)
-        result = tools.get_from(canonical=values, sample_size=3, size=100)
+        result = tools.get_selection(canonical=values, sample_size=3, size=100)
         self.assertEqual(100, len(result))
         for v in list('ABC'):
             self.assertIn(v, result)

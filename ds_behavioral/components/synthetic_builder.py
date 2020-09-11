@@ -12,6 +12,10 @@ class SyntheticBuilder(AbstractComponent):
 
     CONNECTOR_OUTCOME = 'outcome'
 
+    DEFAULT_MODULE = 'ds_discovery.handlers.pandas_handlers'
+    DEFAULT_SOURCE_HANDLER = 'PandasSourceHandler'
+    DEFAULT_PERSIST_HANDLER = 'PandasPersistHandler'
+
     def __init__(self, property_manager: SyntheticPropertyManager, intent_model: SyntheticIntentModel,
                  default_save=None, reset_templates: bool = None, align_connectors: bool = None):
         """ Encapsulation class for the discovery set of classes

@@ -846,11 +846,11 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = [i + j for i, j in zip(rtn_list, result)] if len(rtn_list) > 0 else result
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_from(self, connector_name: str, column_header: str, weight_pattern: list=None, selection_size: int=None,
-                 sample_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=None, quantity: float=None,
-                 seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                 replace_intent: bool=None, remove_duplicates: bool=None) -> list:
-        """ returns a random list of values where the selection of those values is taken a connector dataset.
+    def get_selection(self, connector_name: str, column_header: str, weight_pattern: list=None, sample_size: int=None,
+                      selection_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=None,
+                      quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                      intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+        """ returns a random list of values where the selection of those values is taken from a connector source.
 
         :param connector_name: a connector_name for a connector to a data source
         :param column_header: the name of the column header to correlate
@@ -1134,6 +1134,47 @@ class SyntheticIntentModel(AbstractIntentModel):
         re_ignore_case = re_ignore_case if isinstance(re_ignore_case, bool) else False
         return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                regex=regex, re_ignore_case=re_ignore_case)
+
+    def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
+                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, shuffled: bool=None,
+                      save_intent: bool=None,  column_name: [int, str]=None, intent_order: int=None,
+                      replace_intent: bool=None,  remove_duplicates: bool=None) -> pd.DataFrame:
+        """ returns the full column values directly from another connector data source
+
+        :param connector_name: a connector_name for a connector to a data source
+        :param headers: a list of headers to drop or filter on type
+        :param drop: to drop or not drop the headers
+        :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
+        :param exclude: to exclude or include the dtypes
+        :param regex: a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt' columns
+        :param re_ignore_case: true if the regex should ignore case. Default is False
+        :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return:
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        if not self._pm.has_connector(connector_name=connector_name):
+            raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
+        handler = self._pm.get_connector_handler(connector_name)
+        canonical = handler.load_canonical()
+        if isinstance(canonical, dict):
+            canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
+        self._pm.set_modified(connector_name, handler.get_modified())
+        return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+                                               regex=regex, re_ignore_case=re_ignore_case, copy=False)
 
     def model_noise(self, num_columns: int, inc_targets: bool=None, size: int=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
