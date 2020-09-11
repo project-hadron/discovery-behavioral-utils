@@ -765,6 +765,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
+        precision = precision if isinstance(precision, int) else 3
         _seed = self._seed() if seed is None else seed
         rtn_list = list(truncnorm((lower-mean)/std, (upper-mean)/std, loc=mean, scale=std).rvs(size).round(precision))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
