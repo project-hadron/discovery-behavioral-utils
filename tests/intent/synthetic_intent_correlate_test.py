@@ -56,6 +56,17 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         result = tools.correlate_join(df, header='A', action=tools.action2dict(method='correlate_numbers', header='C'))
         self.assertEqual(['14.2', '27.1', '34.1'], result)
 
+    def test_correlate_columns(self):
+        tools = self.tools
+        df = pd.DataFrame({'A': [1,1,1,1,None], 'B': [1,None,2,3,None], 'C': [2,2,2,2,None], 'D': [5,5,5,5,None]})
+        result = tools.correlate_columns(df, headers=list('ABC'), action='sum')
+        control = [4.0, 3.0, 5.0, 6.0, 0.0]
+        self.assertEqual(result, control)
+        for action in ['sum', 'prod', 'count', 'min', 'max', 'mean']:
+            print(action)
+            result = tools.correlate_columns(df, headers=list('ABC'), action=action)
+            self.assertEqual(5, len(result))
+
     def test_correlate_forename_to_gender(self):
         tools = self.tools
         df = pd.DataFrame(data=['M', 'F', 'M', 'M', 'M', 'F', np.nan], columns=['gender'])

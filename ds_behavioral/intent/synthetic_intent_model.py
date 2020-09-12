@@ -1521,6 +1521,42 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return result
 
+    def correlate_columns(self, canonical: Any, headers: list, action: str, save_intent: bool=None, precision: int=None,
+                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                          remove_duplicates: bool=None):
+        """ correlate two or more columns with each other through a finite set of functions.
+
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param headers: a list of headers to correlate
+        :param action: the action to take onthe row values. The available functions are:
+                            'sum', 'prod', 'count', 'min', 'max', 'mean'
+        :param precision: the value precision of the return values
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a list of equal length to the one passed
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # validation
+        if not isinstance(headers, list) or len(headers) < 2:
+            raise ValueError("The headers value must be a list of at least two header str")
+        if action not in ['sum', 'prod', 'count', 'min', 'max', 'mean', 'median']:
+            raise ValueError("The only allowed func values are 'sum', 'prod', 'count', 'min', 'max', 'mean'")
+        canonical = self._get_canonical(canonical)
+        # Code block for intent
+        precision = precision if isinstance(precision, int) else 3
+        return eval(f"canonical.loc[:, headers].{action}(axis=1)", globals(), locals()).round(precision).to_list()
+
     def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None,
                        save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                        replace_intent: bool=None, remove_duplicates: bool=None):
