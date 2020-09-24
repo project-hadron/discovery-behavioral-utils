@@ -1135,14 +1135,19 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def remove_columns(self, canonical: Any, headers: [str, list]=None, drop: bool=None,
-                       dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
-                       re_ignore_case: bool=None, seed: bool=None, save_intent: bool=None,
-                       column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                       remove_duplicates: bool=None):
-        """ removes columns from the passed canonical as a tidy up
+    def remove_filter(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
+                      dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
+                      re_ignore_case: bool=None, seed: bool=None, save_intent: bool=None,
+                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                      remove_duplicates: bool=None) -> pd.DataFrame:
+        """ removes columns and rows from the passed canonical as a tidy up. The columns and rows can be
+        selected where selection on rows is done before the column filter so columns can be referenced even though
+        they might not be included the final columns.
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param selection: a list of selections where conditions are filtered on, executed in list order
+                An example of a selection with the minimum requirements is: (see 'select2dict(...)')
+                [{'column': 'genre', 'condition': "=='Comedy'"}]
         :param headers: a list of headers to drop or filter on type
         :param drop: to drop or not drop the headers
         :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
@@ -1160,7 +1165,22 @@ class SyntheticIntentModel(AbstractIntentModel):
                         True - replaces the current intent method with the new
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a list of equal length to the one passed
+        :return: pd.DataFrame
+
+
+        Selections are a list of dictionaries of conditions and optional additional parameters to filter.
+        To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
+        options available to build a condition.
+        An example of a condition with the minimum requirements is
+                [{'column': 'genre', 'condition': "=='Comedy'"}]
+
+        an example of using the helper method
+                selection = [inst.select2dict(column='gender', condition="=='M'"),
+                             inst.select2dict(column='age', condition=">65", logic='XOR')]
+
+        Using the 'select2dict' method ensure the correct keys are used and the dictionary is properly formed. It also
+        helps with building the logic that is executed in order
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1168,24 +1188,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
+        if isinstance(selection, list):
+            selection = deepcopy(selection)
+            # run the select logic
+            select_idx = None
+            for _where in selection:
+                select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
+            canonical = canonical.iloc[select_idx]
         drop = drop if isinstance(drop, bool) else False
         exclude = exclude if isinstance(exclude, bool) else False
         re_ignore_case = re_ignore_case if isinstance(re_ignore_case, bool) else False
         return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                regex=regex, re_ignore_case=re_ignore_case)
 
-    def model_columns(self, connector_name: str, selection: list=None, headers: [str, list]=None, drop: bool=None,
+    def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None,
                       dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
                       shuffle: bool=None, size: int=None, save_intent: bool=None, column_name: [int, str]=None,
                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
-        """ returns the full column values directly from another connector data source. The columns and rows can be
-        selected where selection on rows is done before the column filter so columns can be referenced even though
-        they might not be included the final columns.
+        """ returns the full column values directly from another connector data source.
 
         :param connector_name: a connector_name for a connector to a data source
-        :param selection: a list of selections where conditions are filtered on, executed in list order
-                An example of a selection with the minimum requirements is: (see 'select2dict(...)')
-                [{'column': 'genre', 'condition': "=='Comedy'"}]
         :param headers: a list of headers to drop or filter on type
         :param drop: to drop or not drop the headers
         :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
@@ -1205,19 +1227,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a pd.DataFrame
-
-        Selections are a list of dictionaries of conditions and optional additional parameters to filter.
-        To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
-        options available to build a condition.
-        An example of a condition with the minimum requirements is
-                [{'column': 'genre', 'condition': "=='Comedy'"}]
-
-        an example of using the helper method
-                selection = [inst.select2dict(column='gender', condition="=='M'"),
-                             inst.select2dict(column='age', condition=">65", logic='XOR')]
-
-        Using the 'select2dict' method ensure the correct keys are used and the dictionary is properly formed. It also
-        helps with building the logic that is executed in order
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1233,13 +1242,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         if isinstance(canonical, dict):
             canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
         self._pm.set_modified(connector_name, handler.get_modified())
-        if isinstance(selection, list):
-            selection = deepcopy(selection)
-            # run the select logic
-            select_idx = None
-            for _where in selection:
-                select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
-            canonical = canonical.iloc[select_idx]
         # Filter on the columns
         df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                  regex=regex, re_ignore_case=re_ignore_case, copy=False)
