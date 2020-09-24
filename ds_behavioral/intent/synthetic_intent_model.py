@@ -61,7 +61,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 _get = []
                 _correlate = []
                 _associate = []
-                _remove = []
+                _frame = []
                 for column in self._pm.get_intent().keys():
                     for order in self._pm.get(self._pm.join(self._pm.KEY.intent_key, column), {}):
                         for method in self._pm.get(self._pm.join(self._pm.KEY.intent_key, column, order), {}).keys():
@@ -77,11 +77,11 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 if column in _get:
                                     _get.remove(column)
                                 _associate.append(column)
-                            elif str(method).startswith('remove_'):
+                            elif str(method).startswith('frame_'):
                                 if column in _get:
                                     _get.remove(column)
-                                _remove.append(column)
-                column_names = SyntheticCommons.unique_list(_model + _get + _correlate + _associate + _remove)
+                                _frame.append(column)
+                column_names = SyntheticCommons.unique_list(_model + _get + _correlate + _associate + _frame)
             for column in column_names:
                 level_key = self._pm.join(self._pm.KEY.intent_key, column)
                 for order in sorted(self._pm.get(level_key, {})):
@@ -104,7 +104,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 result = pd.DataFrame(result)
                                 df = pd.concat([df, result], axis=1, sort=False, copy=False)
                                 continue
-                            elif str(method).startswith('remove_'):
+                            elif str(method).startswith('frame_'):
                                 df = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                           globals(), locals())
                                 continue
@@ -1135,12 +1135,12 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def clean_canonical(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
+    def frame_selection(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
                         dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
                         seed: bool=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                         replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
-        """ cleans the canonical removes unwanted rows and columns. The filters are what you wish to keep.
-        rows are filtered before the column filter so columns can be referenced even though they might not be included
+        """ Selects rows and/or columns changing the shape of the DatFrame. This is always run last in a pipeline
+        Rows are filtered before the column filter so columns can be referenced even though they might not be included
         the final column list.
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
