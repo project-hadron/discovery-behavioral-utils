@@ -1135,13 +1135,12 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(eval(code_str, globals(), local_kwargs))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def remove_filter(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
-                      dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
-                      re_ignore_case: bool=None, seed: bool=None, save_intent: bool=None,
-                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                      remove_duplicates: bool=None) -> pd.DataFrame:
-        """ removes columns and rows from the passed canonical as a tidy up. The columns and rows can be
-        selected where selection on rows is done before the column filter so columns can be referenced even though
+    def remove_unwanted(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
+                        dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
+                        seed: bool=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                        replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+        """ removes unwanted rows and columns and rows from the passed canonical as a tidy up. The columns and rows can
+        be selected where selection on rows is done before the column filter so columns can be referenced even though
         they might not be included the final columns.
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
