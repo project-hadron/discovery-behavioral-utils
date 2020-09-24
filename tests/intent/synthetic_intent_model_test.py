@@ -36,11 +36,19 @@ class SyntheticIntentModelTest(unittest.TestCase):
         except:
             pass
 
-    def test_model_columns(self):
+    def test_model_columns_headers(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
         builder.set_source_uri(uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
-        result = builder.tools.model_columns(connector_name=builder.CONNECTOR_SOURCE, headers=['sex', 'fare'])
-        self.assertEqual(['sex', 'fare'], list(result.columns))
+        result = builder.tools.model_columns(connector_name=builder.CONNECTOR_SOURCE, headers=['survived', 'sex', 'fare'])
+        self.assertCountEqual(['survived', 'sex', 'fare'], list(result.columns))
+
+    def test_model_columns_selection(self):
+        builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
+        builder.set_source_uri(uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
+        selection = [builder.tools.select2dict(column='survived', condition='==1')]
+        result = builder.tools.model_columns(connector_name=builder.CONNECTOR_SOURCE, selection=selection, headers=['survived', 'sex', 'fare'])
+        self.assertCountEqual(['survived', 'sex', 'fare'], list(result.columns))
+        self.assertEqual(1, result['survived'].min())
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:
