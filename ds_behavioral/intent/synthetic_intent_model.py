@@ -732,6 +732,45 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
+    def get_bernoulli(self, trials: int, probability: float, size: int=None, quantity: float=None, seed: int=None,
+                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                      replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+        """A Bernoulli discrete random distribution.
+
+        Note:
+            This uses numpy random binomila where numpy implements random number generation in C with two
+            different algorithms implemented.
+                    If n * p <= 30 it uses inverse transform sampling.
+                    If n * p > 30 the BTPE algorithm of (Kachitvichyanukul and Schmeiser 1988) is used.
+
+        :param trials: the number of trials to perform
+        :param probability: the probability occurrence
+        :param size: the size of the sample
+        :param quantity: a number between 0 and 1 representing data that isn't null
+        :param seed: a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a random number
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        quantity = self._quantity(quantity)
+        size = 1 if size is None else size
+        _seed = self._seed() if seed is None else seed
+        rtn_list = list(np.random.binomial(n=trials, p=probability, size=size))
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+
     def get_bounded_normal(self, mean: float, std: float, lower: float, upper: float, precision: int=None,
                            size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                            column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -926,7 +965,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         canonical = handler.load_canonical()
         if isinstance(canonical, dict):
             canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
-        self._pm.set_modified(connector_name, handler.get_modified())
         if column_header not in canonical.columns:
             raise ValueError(f"The column '{column_header}' not found in the data from connector '{connector_name}'")
         _values = canonical[column_header].iloc[:sample_size]
@@ -1240,7 +1278,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         canonical = handler.load_canonical()
         if isinstance(canonical, dict):
             canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
-        self._pm.set_modified(connector_name, handler.get_modified())
         # Filter on the columns
         df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                  regex=regex, re_ignore_case=re_ignore_case, copy=False)
@@ -1334,7 +1371,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn = df_high.iloc[idx]
         idx = self.get_number(df_low.shape[0], size=low_size, seed=seed, save_intent=False)
         df_rtn = df_rtn.append(df_low.iloc[idx])
-        df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State', 'StateCode', 'StateAbbrev'])
+        df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State', 'StateCode',
+                                                                  'StateAbbrev'])
         df_rtn['Zipcode'] = df['Zipcode'].round(0).astype(int)
         df_rtn['City'] = df_rtn['City'].str.title()
         if isinstance(rename_columns, dict):
@@ -1694,54 +1732,46 @@ class SyntheticIntentModel(AbstractIntentModel):
         result.loc[f_index] = f_names
         return result.to_list()
 
-    # def correlate_sigmoid(self, canonical: Any, header: str, coefficient: list, quantity: float=None,
-    #                       seed: int=None, keep_zero: bool=None, save_intent: bool=None, column_name: [int, str]=None,
-    #                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
-    #     """ creates a polynomial using the reference header values and apply the coefficients where the
-    #     index of the list represents the degree of the term in reverse order.
-    #
-    #               e.g  [6, -2, 0, 4] => f(x) = 4x**3 - 2x + 6
-    #
-    #     :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
-    #     :param header: the header in the DataFrame to correlate
-    #     :param coefficient: the reverse list of term coefficients
-    #     :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
-    #     :param seed: (optional) the random seed. defaults to current datetime
-    #     :param keep_zero: (optional) if True then zeros passed remain zero, Default is False
-    #     :param save_intent: (optional) if the intent contract should be saved to the property manager
-    #     :param column_name: (optional) the column name that groups intent to create a column
-    #     :param intent_order: (optional) the order in which each intent should run.
-    #                     If None: default's to -1
-    #                     if -1: added to a level above any current instance of the intent section, level 0 if not found
-    #                     if int: added to the level specified, overwriting any that already exist
-    #     :param replace_intent: (optional) if the intent method exists at the level, or default level
-    #                     True - replaces the current intent method with the new
-    #                     False - leaves it untouched, disregarding the new intent
-    #     :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-    #     :return: an equal length list of correlated values
-    #     """
-    #     # intent persist options
-    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-    #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-    #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
-    #     # Code block for intent
-    #     canonical = self._get_canonical(canonical, header=header)
-    #     if not isinstance(header, str) or header not in canonical.columns:
-    #         raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
-    #     s_values = canonical[header].copy()
-    #     if s_values.empty:
-    #         return list()
-    #     keep_zero = keep_zero if isinstance(keep_zero, bool) else False
-    #     quantity = self._quantity(quantity)
-    #     _seed = seed if isinstance(seed, int) else self._seed()
-    #
-    #     # TODO see Sinead's code
-    #     def _calc_sigmoid(x, L, x0, k):
-    #         y = L / (1 + np.exp(-k * (x - x0)))
-    #         return y
-    #
-    #     result = s_values.apply(lambda x: _calc_sigmoid(x, coefficient))
-    #     return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
+    def correlate_sigmoid(self, canonical: Any, header: str, precision: int=None, quantity: float=None, seed: int=None,
+                          save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                          replace_intent: bool=None, remove_duplicates: bool=None):
+        """ logistic sigmoid a.k.a logit, takes an array of real numbers and transforms them to a value
+        between (0,1) and is defined as
+                                        f(x) = 1/(1+exp(-x)
+
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param header: the header in the DataFrame to correlate
+        :param precision: (optional) how many decimal places. default to 3
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param seed: (optional) the random seed used with quantity. defaults to current datetime
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: an equal length list of correlated values
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        canonical = self._get_canonical(canonical, header=header)
+        if not isinstance(header, str) or header not in canonical.columns:
+            raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
+        s_values = canonical[header].copy()
+        if s_values.empty:
+            return list()
+        precision = precision if isinstance(precision, int) else 3
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
+        result = np.round(1 / (1 + np.exp(-s_values)), precision)
+        return self._set_quantity(list(result), quantity=quantity, seed=_seed)
 
     def correlate_polynomial(self, canonical: Any, header: str, coefficient: list, quantity: float=None,
                              seed: int=None, keep_zero: bool=None, save_intent: bool=None, column_name: [int, str]=None,
@@ -1755,7 +1785,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param header: the header in the DataFrame to correlate
         :param coefficient: the reverse list of term coefficients
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
-        :param seed: (optional) the random seed. defaults to current datetime
+        :param seed: (optional) the random seed used with quantity. defaults to current datetime
         :param keep_zero: (optional) if True then zeros passed remain zero, Default is False
         :param save_intent: (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column

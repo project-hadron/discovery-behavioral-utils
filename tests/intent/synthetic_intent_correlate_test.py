@@ -173,6 +173,12 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action)
         self.assertEqual([False, False, False, True, True, True, True, True], result)
 
+    def test_expit(self):
+        tools = self.tools
+        df = pd.DataFrame(columns=['num'], data=[-2, 1, 0, -2, 2, 0])
+        result = tools.correlate_sigmoid(df, header='num')
+        self.assertEqual([0.119, 0.731, 0.5, 0.119, 0.881, 0.5], result)
+
     def test_correlate_date(self):
         tools = self.tools
         df = pd.DataFrame(columns=['dates'], data=['2019/01/30', '2019/02/12', '2019/03/07', '2019/03/07'])
