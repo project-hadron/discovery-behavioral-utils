@@ -80,13 +80,6 @@ class SyntheticBuilder(AbstractComponent):
         _handler = 'AwsS3PersistHandler'
         return _module_name, _handler
 
-    @classmethod
-    def _from_remote_eb(cls) -> (str, str):
-        """ Class Factory Method that builds the connector handlers an Hadron EventBook Handler."""
-        _module_name = 'ds_engines.handlers.event_handlers'
-        _handler = 'EventPersistHandler'
-        return _module_name, _handler
-
     @property
     def pm(self) -> SyntheticPropertyManager:
         return self._component_pm
