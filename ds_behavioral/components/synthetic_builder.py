@@ -146,14 +146,19 @@ class SyntheticBuilder(AbstractComponent):
         result = self.intent_model.run_intent_pipeline(size=size, columns=columns)
         self.save_synthetic_canonical(canonical=result)
 
-    def report_connectors(self, connector_filter: [str, list] = None, stylise: bool = True):
+    def report_connectors(self, connector_filter: [str, list]=None, inc_pm: bool=None, inc_template: bool=None,
+                          stylise: bool=True):
         """ generates a report on the source contract
 
         :param connector_filter: (optional) filters on the connector name.
+        :param inc_pm: (optional) include the property manager connector
+        :param inc_template: (optional) include the template connectors
         :param stylise: (optional) returns a stylised DataFrame with formatting
         :return: pd.DataFrame
         """
-        df = pd.DataFrame.from_dict(data=self.pm.report_connectors(connector_filter=connector_filter), orient='columns')
+        report = self.pm.report_connectors(connector_filter=connector_filter, inc_pm=inc_pm,
+                                           inc_template=inc_template)
+        df = pd.DataFrame.from_dict(data=report, orient='columns')
         if stylise:
             SyntheticCommons.report(df, index_header='connector_name')
         df.set_index(keys='connector_name', inplace=True)
@@ -178,11 +183,11 @@ class SyntheticBuilder(AbstractComponent):
         :param stylise: (optional) returns a stylised dataframe with formatting
         :return: pd.Dataframe
         """
-        if isinstance(levels, (int,str)):
+        if isinstance(levels, (int, str)):
             df = pd.DataFrame.from_dict(data=self.pm.report_intent_params(level=levels), orient='columns')
             if stylise:
-                SyntheticCommons.report(df, index_header='order')
-                df.set_index(keys='order', inplace=True)
+                SyntheticCommons.report(df, index_header=['order', 'intent'], bold='intent')
+                df.set_index(keys=['order', 'intent'], inplace=True)
                 return df
         df = pd.DataFrame.from_dict(data=self.pm.report_intent(levels=levels), orient='columns')
         if stylise:
