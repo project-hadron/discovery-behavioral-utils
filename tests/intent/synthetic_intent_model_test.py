@@ -1,6 +1,7 @@
 import unittest
 import os
 import shutil
+import pandas as pd
 from ds_behavioral import SyntheticBuilder
 from aistac.properties.property_manager import PropertyManager
 
@@ -54,8 +55,13 @@ class SyntheticIntentModelTest(unittest.TestCase):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
         builder.set_source_uri(uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
         selection = [builder.tools.select2dict(column='survived', condition='==1')]
-        result = builder.tools.frame_selection(canonical=builder.CONNECTOR_SOURCE, selection=selection, )
+        result = builder.tools.frame_selection(canonical=builder.CONNECTOR_SOURCE, selection=selection)
         self.assertEqual(1, result['survived'].min())
+
+    def test_model_us_zip(self):
+        builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
+        result = builder.tools.model_us_zip(size=1000, state_code_filter=['NY', 'TX', 'FRED'])
+        self.assertCountEqual(['NY', 'TX'], result['StateCode'].value_counts().index.to_list())
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:

@@ -1333,14 +1333,15 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn['target2'] = df_rtn.iloc[:, :5].mean(axis=1).round(2)
         return df_rtn
 
-    def model_us_zip(self, rename_columns: dict=None, size: int=None, seed: int=None, save_intent: bool=None,
-                     column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                     remove_duplicates: bool=None) -> pd.DataFrame:
+    def model_us_zip(self, rename_columns: dict=None, size: int=None, state_code_filter: list=None, seed: int=None,
+                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                     replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
 
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
+        :param state_code_filter: (optional) a list of state code's to filter on, returning only these states
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1361,6 +1362,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         size = 1 if size is None else size
         df = MappedSample.us_zipcode_primary(cleaned=True)
+        if isinstance(state_code_filter, list):
+            df = df[df['StateCode'].isin(state_code_filter)]
         df_high = df.where(df['EstimatedPopulation'] > 20000).dropna()
         df_low = df.where(df['EstimatedPopulation'] <= 20000).dropna()
         df = df.sort_values(by='EstimatedPopulation', ascending=False)
