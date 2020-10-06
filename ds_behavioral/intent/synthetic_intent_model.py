@@ -2166,8 +2166,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                                       save_intent=save_intent)
         return
 
-    @staticmethod
-    def samples() -> list:
+    @property
+    def samples(self) -> list:
         """A list of sample options"""
         return Sample().__dir__()
 
