@@ -1026,16 +1026,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                                           seed=seed, save_intent=False)
         return middle
 
-    def get_profile_surname(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                            intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
-        """ returns a surnames """
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        size = 1 if size is None else size
-        return self.get_category(selection=Sample.surnames(), size=size, seed=seed, save_intent=False)
-
     def get_email(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                   intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ returns a surnames """
