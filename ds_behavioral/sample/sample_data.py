@@ -142,7 +142,7 @@ class Sample(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
+    def names(size: int=None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of names taken from other sample such as company, surname etc.
         Note: These are title case and might have spaces
 
@@ -153,7 +153,8 @@ class Sample(AbstractSample):
         """
         selection = Sample.surnames(seed=seed) + Sample.uk_cities(seed=seed)
         selection += Sample.us_cities(seed=seed) + Sample.company_names(seed=seed)
-        return pd.Series(selection).str.title().to_list()
+        selection = pd.Series(selection).str.title().to_list()
+        return Sample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def female_names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
