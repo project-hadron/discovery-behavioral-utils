@@ -142,6 +142,20 @@ class Sample(AbstractSample):
         return rtn_list
 
     @staticmethod
+    def names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
+        """returns a randomly selected list of names taken from other sample such as company, surname etc.
+        Note: These are title case and might have spaces
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        selection = Sample.surnames(seed=seed) + Sample.uk_cities(seed=seed)
+        selection += Sample.us_cities(seed=seed) + Sample.company_names(seed=seed)
+        return pd.Series(selection).str.title().to_list()
+
+    @staticmethod
     def female_names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of female first names of size
 

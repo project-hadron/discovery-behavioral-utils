@@ -1007,8 +1007,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else True
-        selection = eval(f"Sample.{sample_name}(size={size}, seed={seed}, shuffle={shuffle})")[:sample_size]
-        return self.get_category(selection=selection, quantity=quantity, size=size, seed=_seed, save_intent=False)
+        selection = eval(f"Sample.{sample_name}(size={size}, seed={seed})")
+        selection = pd.Series(selection * (int(size / len(selection)) + 1)).iloc[:size]
+        if shuffle:
+            np.random.shuffle(selection)
+        return self._set_quantity(selection.to_list(), quantity=quantity, seed=_seed)
 
     def get_profile_middle_initials(self, size: int=None, seed: int=None, save_intent: bool=None,
                                     column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -1035,8 +1038,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
-        selection = Sample.surnames(seed=seed) + Sample.uk_cities(seed=_seed)
-        selection += Sample.us_cities(seed=seed) + Sample.company_names(seed=_seed)
+        selection = Sample.surnames(seed=_seed) + Sample.uk_cities(seed=_seed)
+        selection += Sample.us_cities(seed=_seed) + Sample.company_names(seed=_seed)
         # names = pd.Series(self.get_category(selection=selection, bounded_weighting=True,  size=size, seed=seed,
         #                                     save_intent=False))
         names = pd.Series(selection * (int(size/len(selection))+1)).str.lower().replace(' ', '_').iloc[:size]
