@@ -151,9 +151,9 @@ class Sample(AbstractSample):
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        selection = Sample.surnames(seed=seed) + Sample.uk_cities(seed=seed)
-        selection += Sample.us_cities(seed=seed) + Sample.company_names(seed=seed)
-        selection = pd.Series(selection).str.title().to_list()
+        selection = Sample.surnames(seed=seed) + Sample.us_cities(seed=seed) + Sample.uk_cities(seed=seed)
+        selection += Sample.company_names(seed=seed) + Sample.company_fortune_1000(seed=seed)
+        selection = pd.Series(selection).str.title().drop_duplicates().to_list()
         return Sample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
