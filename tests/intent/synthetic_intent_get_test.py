@@ -150,6 +150,10 @@ class SyntheticIntentGetTest(unittest.TestCase):
         result = tools.get_datetime(0, 1, date_format="%Y-%m-%d", ignore_time=True, size=sample_size)
         self.assertEqual(pd.Timestamp.now().strftime("%Y-%m-%d"), pd.Series(result).value_counts().index[0])
 
+    def test_get_sample(self):
+        tools = self.tools
+        result = tools.get_sample(sample_name='us_states', size=1000)
+        self.assertEqual(1000, len(result))
 
 
 if __name__ == '__main__':

@@ -282,7 +282,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     while _remaining > 0:
                         _size = _limit if _remaining > _limit else _remaining
                         choice = np.round((np.random.random(size=_size)*(high-low)+low), precision).tolist()
-                        choice = [i for i in choice if i not in SyntheticCommons.list_formatter(dominant_values) + [high]]
+                        choice = [i for i in choice if i not in self._pm.list_formatter(dominant_values) + [high]]
                         rtn_list += choice
                         _remaining -= len(choice)
         if isinstance(currency, str):
@@ -925,7 +925,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_selection(self, connector_name: str, column_header: str, weight_pattern: list=None, sample_size: int=None,
-                      selection_size: int=None, size: int=None, at_most: bool=None, shuffled: bool=None,
+                      selection_size: int=None, size: int=None, at_most: bool=None, shuffle: bool=None,
                       quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """ returns a random list of values where the selection of those values is taken from a connector source.
@@ -936,7 +936,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
         :param sample_size: (optional) the size of the sample to take from the reference file
         :param at_most: (optional) the most times a selection should be chosen
-        :param shuffled: (optional) if the selection should be shuffled before selection. Default is true
+        :param shuffle: (optional) if the selection should be shuffled before selection. Default is true
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
         :param size: (optional) size of the return. default to 1
         :param seed: (optional) a seed value for the random function: default to None
@@ -968,12 +968,47 @@ class SyntheticIntentModel(AbstractIntentModel):
         if column_header not in canonical.columns:
             raise ValueError(f"The column '{column_header}' not found in the data from connector '{connector_name}'")
         _values = canonical[column_header].iloc[:sample_size]
-        if isinstance(selection_size, float) and shuffled:
+        if isinstance(selection_size, float) and shuffle:
             _values = _values.sample(frac=1).reset_index(drop=True)
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
         return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed, save_intent=False)
+
+    def get_sample(self, sample_name: str, sample_size: int=None, shuffle: bool=None, size: int=None,
+                   quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                   intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+        """ returns a sample set based on sector and name
+
+        :param sample_name: The name of the Sample method to be used.
+        :param sample_size: (optional) the size of the sample to take from the reference file
+        :param shuffle: (optional) if the selection should be shuffled before selection. Default is true
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param size: (optional) size of the return. default to 1
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a sample list
+        """
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        size = 1 if size is None else size
+        sample_size = sample_name if isinstance(sample_size, int) else size
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
+        shuffle = shuffle if isinstance(shuffle, bool) else True
+        selection = eval(f"Sample.{sample_name}(size={size}, seed={seed}, shuffle={shuffle})")[:sample_size]
+        return self.get_category(selection=selection, quantity=quantity, size=size, seed=_seed, save_intent=False)
 
     def get_profile_middle_initials(self, size: int=None, seed: int=None, save_intent: bool=None,
                                     column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -999,7 +1034,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         size = 1 if size is None else size
-        return self.get_category(selection=ProfileSample.surnames(), size=size, seed=seed, save_intent=False)
+        return self.get_category(selection=Sample.surnames(), size=size, seed=seed, save_intent=False)
 
     def get_email(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                   intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
@@ -1010,8 +1045,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
-        selection = ProfileSample.surnames(seed=seed) + ProfileSample.uk_cities(seed=_seed)
-        selection += ProfileSample.us_cities(seed=seed) + BusinessSample.company_names(seed=_seed)
+        selection = Sample.surnames(seed=seed) + Sample.uk_cities(seed=_seed)
+        selection += Sample.us_cities(seed=seed) + Sample.company_names(seed=_seed)
         # names = pd.Series(self.get_category(selection=selection, bounded_weighting=True,  size=size, seed=seed,
         #                                     save_intent=False))
         names = pd.Series(selection * (int(size/len(selection))+1)).str.lower().replace(' ', '_').iloc[:size]
@@ -1028,7 +1063,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             np.random.shuffle(names)
             sub_names = names.iloc[:diff]
             email_name.append(sub_names.combine(numbers, func=(lambda a, b: f"{a}{b}")), ignore_index=True)
-        selection = ProfileSample.global_mail_domains(shuffle=False)
+        selection = Sample.global_mail_domains(shuffle=False)
         domains = pd.Series(self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
                                               bounded_weighting=True, size=size, seed=_seed, save_intent=False))
         return email_name.combine(domains,  func=(lambda a, b: f"{a}@{b}")).to_list()
@@ -1726,9 +1761,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = seed if isinstance(seed, int) else self._seed()
         m_index = s_values[s_values == categories[0]].index
         f_index = s_values[s_values == categories[1]].index
-        m_names = self.get_category(selection=ProfileSample.male_names(seed=_seed), size=m_index.size, seed=_seed,
+        m_names = self.get_category(selection=Sample.male_names(seed=_seed), size=m_index.size, seed=_seed,
                                     save_intent=False)
-        f_names = self.get_category(selection=ProfileSample.female_names(seed=_seed), size=f_index.size, seed=_seed,
+        f_names = self.get_category(selection=Sample.female_names(seed=_seed), size=f_index.size, seed=_seed,
                                     save_intent=False)
         result = pd.Series(data=[np.nan] * s_values.size)
         result.loc[m_index] = m_names
@@ -2137,6 +2172,11 @@ class SyntheticIntentModel(AbstractIntentModel):
                                       replace_intent=replace_intent, remove_duplicates=remove_duplicates,
                                       save_intent=save_intent)
         return
+
+    @staticmethod
+    def samples() -> list:
+        """A list of sample options"""
+        return Sample().__dir__()
 
     @staticmethod
     def select2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,

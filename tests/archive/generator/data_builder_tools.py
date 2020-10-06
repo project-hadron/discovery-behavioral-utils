@@ -747,9 +747,9 @@ class DataBuilderTools(object):
         choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
         middle += DataBuilderTools.get_string_pattern(pattern="U U", choices=choices, choice_only=False,
                                                       size=size-len(middle))
-        m_names = DataBuilderTools.get_category(selection=ProfileSample.male_names(), size=int(size*dominance))
-        f_names = DataBuilderTools.get_category(selection=ProfileSample.female_names(), size=size-len(m_names))
-        surname = DataBuilderTools.get_category(selection=ProfileSample.surnames(), size=size)
+        m_names = DataBuilderTools.get_category(selection=Sample.male_names(), size=int(size * dominance))
+        f_names = DataBuilderTools.get_category(selection=Sample.female_names(), size=size - len(m_names))
+        surname = DataBuilderTools.get_category(selection=Sample.surnames(), size=size)
 
         df = pd.DataFrame(zip(m_names + f_names, middle, surname, ['M'] * len(m_names) + ['F'] * len(f_names)),
                           columns=['forename', 'initials', 'surname', 'gender'])
