@@ -1939,9 +1939,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
     def correlate_categories(self, canonical: Any, header: str, correlations: list, actions: dict,
-                             fill_nulls: bool=None, quantity: float=None, seed: int=None,
-                             save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None, 
-                             replace_intent: bool=None, remove_duplicates: bool=None):
+                             default_action: [str, int, float, dict]=None, quantity: float=None,
+                             seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                             intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlation of a set of values to an action, the correlations must map to the dictionary index values.
         Note. to use the current value in the passed values as a parameter value pass an empty dict {} as the keys
         value. If you want the action value to be the current value of the passed value then again pass an empty dict
@@ -1959,7 +1959,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param header: the header in the DataFrame to correlate
         :param correlations: a list of categories (can also contain lists for multiple correlations.
         :param actions: the correlated set of categories that should map to the index
-        :param fill_nulls: (optional) if True then fills nulls with the most common values
+        :param default_action: (optional) a default action to take if the selection is not fulfilled
         :param quantity: (optional) a number between 0 and 1 presenting the percentage quantity of the data
         :param seed: a seed value for the random function: default to None
         :param save_intent: (optional) if the intent contract should be saved to the property manager
@@ -1973,6 +1973,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
+
+        Actions are the resulting outcome of the selection (or the default). An action can be just a value or a dict
+        that executes a intent method such as get_number(). To help build actions there is a helper function called
+        action2dict(...) that takes a method as a mandatory attribute.
+
+        With actions there are special keyword 'method' values:
+            @header: use a column as the value reference, expects the 'header' key
+            @constant: use a value constant, expects the key 'value'
+            @eval: evaluate a code string, expects the key 'code_str' and any locals() required
+
+        An example of a simple action to return a selection from a list:
+                {'method': 'get_category', selection=['M', 'F', 'U']
+
+        an example of using the helper method, in this example we use the keyword @header to get a value from another
+        column at the same index position:
+                inst.action2dict(method="@header", header='value')
+
+        We can even execute some sort of evaluation at run time:
+                inst.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1982,46 +2002,24 @@ class SyntheticIntentModel(AbstractIntentModel):
         canonical = self._get_canonical(canonical, header=header)
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
-        s_values = canonical[header].copy().astype(str)
-        if s_values.empty:
-            return list()
-        fill_nulls = fill_nulls if isinstance(fill_nulls, bool) else False
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         actions = deepcopy(actions)
         correlations = deepcopy(correlations)
-        if fill_nulls:
-            s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
-        null_idx = s_values[s_values.isna()].index
-        s_values.to_string()
         corr_list = []
         for corr in correlations:
             corr_list.append(self._pm.list_formatter(corr))
-        class_methods = self.__dir__()
+        if not isinstance(default_action, (str, int, float, dict)):
+            default_action = None
+        rtn_values = self._apply_action(canonical, action=default_action)
+        s_values = canonical[header].copy().astype(str)
         for i in range(len(corr_list)):
-            corr_idx = s_values[s_values.isin(corr_list[i])].index
-            action = actions.get(i, -1)
+            action = actions.get(i, actions.get(str(i), -1))
             if action is -1:
                 continue
-            if isinstance(action, dict):
-                method = action.pop('method', None)
-                if method is None:
-                    raise ValueError(f"The action key '{i}' dictionary has no 'method' key.")
-                if method in class_methods:
-                    params = actions.get(i, {})
-                    if not isinstance(params, dict):
-                        params = {}
-                    params.update({'size': corr_idx.size, 'save_intent': False})
-                    data = eval(f"self.{method}(**params)", globals(), locals())
-                    result = pd.Series(data=data, index=corr_idx)
-                else:
-                    raise ValueError(f"The 'method' key {method} is not a recognised intent method")
-            else:
-                result = pd.Series(data=([action] * corr_idx.size), index=corr_idx)
-            s_values.update(result)
-        if null_idx.size > 0:
-            s_values.iloc[null_idx] = np.nan
-        return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
+            corr_idx = s_values[s_values.isin(map(str, corr_list[i]))].index
+            rtn_values.update(self._apply_action(canonical, action=action, select_idx=corr_idx))
+        return self._set_quantity(rtn_values.tolist(), quantity=quantity, seed=_seed)
 
     def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, spread: int=None,
                         spread_units: str=None, spread_pattern: list=None, date_format: str=None,

@@ -3,6 +3,8 @@ import os
 import shutil
 import numpy as np
 import pandas as pd
+from aistac import ConnectorContract
+
 from ds_behavioral import SyntheticBuilder
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.properties.property_manager import PropertyManager
@@ -153,7 +155,7 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         df = pd.DataFrame(columns=['cat'], data=list("ABCDE"))
         correlation = ['A', 'D']
         action = {0: 'F', 1: 'G'}
-        result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action)
+        result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action, default_action=tools.action2dict(method='@header', header='cat'))
         self.assertEqual(['F', 'B', 'C', 'G', 'E'], result)
         correlation = ['A', 'D']
         action = {0: {'method': 'get_category', 'selection': list("HIJ")}, 1: {'method': 'get_number', 'to_value': 10}}
@@ -163,6 +165,22 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         df = pd.DataFrame(columns=['cat'], data=tools.get_category(selection=list("ABCDE"), size=5000))
         result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action)
         self.assertEqual(5000, len(result))
+
+    def test_correlate_categories_builder(self):
+        builder = SyntheticBuilder.from_env('test', has_contract=False)
+        from ds_engines.handlers.event_handlers import EventPersistHandler
+        builder.set_outcome_contract(ConnectorContract(uri="eb://synthetic_members", module_name='ds_engines.handlers.event_handlers', handler='EventPersistHandler'))
+        sample_size = 10
+        df = pd.DataFrame()
+        df['pcp_tax_id'] = builder.tools.get_category(selection=[993406113, 133757370, 260089066, 448512481, 546434723],
+                                                      size=sample_size, column_name='pcp_tax_id')
+        correlations = [993406113, 133757370, 260089066, 448512481, 546434723]
+        actions = {0: 'LABCORP OF AMERICA', 1: 'LPCH MEDICAL GROUP', 2: 'ST JOSEPH HERITAGE MEDICAL',
+                   3: 'MONARCH HEALTHCARE', 4: 'PRIVIA MEICAL GROUP'}
+        df['pcp_name'] = builder.tools.correlate_categories(df, header='pcp_tax_id', correlations=correlations,
+                                                            actions=actions, column_name='pcp_name')
+        df = builder.tools.run_intent_pipeline(size=10)
+        print(df)
 
     def test_correlate_categories_multi(self):
         tools = self.tools
@@ -226,7 +244,6 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         result = tools.correlate_dates(df, 'dates', spread=5, max_date="2018/01/01", date_format='%Y/%m/%d')
         self.assertEqual("2018/01/01", pd.Series(result).max())
         self.assertEqual("2017/12/30", pd.Series(result).min())
-
 
 
 if __name__ == '__main__':
