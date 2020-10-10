@@ -5,7 +5,7 @@ import string
 from copy import deepcopy
 from typing import Any
 from matplotlib import dates as mdates
-from scipy.stats import truncnorm
+from scipy import stats
 
 from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.properties.abstract_properties import AbstractPropertyManager
@@ -732,18 +732,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_bernoulli(self, trials: int, probability: float, size: int=None, quantity: float=None, seed: int=None,
+    def get_bernoulli(self, probability: float, size: int=None, quantity: float=None, seed: int=None,
                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                       replace_intent: bool=None, remove_duplicates: bool=None) -> list:
-        """A Bernoulli discrete random distribution.
+        """A Bernoulli discrete random distribution using scipy
 
-        Note:
-            This uses numpy random binomila where numpy implements random number generation in C with two
-            different algorithms implemented.
-                    If n * p <= 30 it uses inverse transform sampling.
-                    If n * p > 30 the BTPE algorithm of (Kachitvichyanukul and Schmeiser 1988) is used.
-
-        :param trials: the number of trials to perform
         :param probability: the probability occurrence
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
@@ -768,7 +761,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
-        rtn_list = list(np.random.binomial(n=trials, p=probability, size=size))
+        rtn_list = list(stats.bernoulli.rvs(p=probability, size=size, random_state=_seed))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_bounded_normal(self, mean: float, std: float, lower: float, upper: float, precision: int=None,
@@ -806,22 +799,21 @@ class SyntheticIntentModel(AbstractIntentModel):
         size = 1 if size is None else size
         precision = precision if isinstance(precision, int) else 3
         _seed = self._seed() if seed is None else seed
-        rtn_list = list(truncnorm((lower-mean)/std, (upper-mean)/std, loc=mean, scale=std).rvs(size).round(precision))
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
+        rtn_list = stats.truncnorm((lower-mean)/std, (upper-mean)/std, loc=mean, scale=std).rvs(size).round(precision)
+        return self._set_quantity(list(rtn_list), quantity=quantity, seed=_seed)
 
-    def get_distribution(self, method: str=None, offset: float=None, precision: int=None, size: int=None,
+    def get_distribution(self, distribution: str, package: str=None, precision: int=None, size: int=None,
                          quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                          intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None,
                          **kwargs) -> list:
-        """returns a number based the distribution type. Supports Normal, Beta and
+        """returns a number based the distribution type.
 
-        :param method: any method name under np.random. Default is 'normal'
-        :param offset: a value to offset the number by. n * offset
-        :param precision: the precision of the returned number
-        :param size: the size of the sample
-        :param quantity: a number between 0 and 1 representing data that isn't null
-        :param seed: a seed value for the random function: default to None
-        :param kwargs: the parameters of the method
+        :param distribution: The string name of the distribution function from numpy random Generator class
+        :param package: (optional) The name of the package to use, options are 'numpy' (default) and 'scipy'.
+        :param precision: (optional) the precision of the returned number
+        :param size: (optional) the size of the sample
+        :param quantity: (optional) a number between 0 and 1 representing data that isn't null
+        :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -832,6 +824,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         True - replaces the current intent method with the new
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :param kwargs: the parameters of the method
         :return: a random number
         """
         # intent persist options
@@ -839,18 +832,16 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        offset = 1 if offset is None or not isinstance(offset, (float, int)) else offset
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
         _seed = self._seed() if seed is None else seed
-
-        method = 'normal' if method is None else method
         precision = 3 if precision is None else precision
-        func = "np.random.{}(**{})".format(method, kwargs)
-        rtn_list = []
-        for _ in range(size):
-            _seed = self._next_seed(_seed, seed)
-            rtn_list.append(round(eval(func) * offset, precision))
+        if isinstance(package, str) and package == 'scipy':
+            rtn_list = eval(f"stats.{distribution}.rvs(size=size, random_state=_seed, **kwargs)", globals(), locals())
+        else:
+            generator = np.random.default_rng(seed=_seed)
+            rtn_list = eval(f"generator.{distribution}(size=size, **kwargs)", globals(), locals())
+        rtn_list = list(rtn_list.round(precision))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_string_pattern(self, pattern: str, choices: dict=None, quantity: [float, int]=None, size: int=None,
@@ -1161,46 +1152,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list.append(choice)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_custom(self, code_str: str, quantity: float=None, size: int=None, seed: int=None, save_intent: bool=None,
-                   column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                   remove_duplicates: bool=None, **kwargs) -> list:
-        """returns a number based on the random func. The code should generate a value per line
-        example:
-            code_str = 'round(np.random.normal(loc=loc, scale=scale), 3)'
-            fbt.get_custom(code_str, loc=0.4, scale=0.1)
-
-        :param code_str: an evaluable code as a string
-        :param quantity: (optional) a number between 0 and 1 representing data that isn't null
-        :param size: (optional) the size of the sample
-        :param seed: (optional) a seed value for the random function: default to None
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a random value based on function called
-        """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        quantity = self._quantity(quantity)
-        size = 1 if size is None else size
-        _seed = self._seed() if seed is None else seed
-
-        rtn_list = []
-        for _ in range(size):
-            _seed = self._next_seed(_seed, seed)
-            local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
-            rtn_list.append(eval(code_str, globals(), local_kwargs))
-        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
-
     def frame_selection(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
                         dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
                         seed: bool=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1353,7 +1304,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _seed = self._next_seed(_seed, seed)
             a = np.random.choice(range(1, 6))
             b = np.random.choice(range(1, 6))
-            df_rtn[next(gen)] = self.get_distribution(method='beta', a=a, b=b, precision=3, size=size, seed=_seed,
+            df_rtn[next(gen)] = self.get_distribution(distribution='beta', a=a, b=b, precision=3, size=size, seed=_seed,
                                                       save_intent=False)
         if inc_targets:
             result = df_rtn.mean(axis=1)

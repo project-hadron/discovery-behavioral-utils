@@ -152,7 +152,7 @@ class FileBuilderTest(unittest.TestCase):
 
     def test_distribution(self):
         tools = DataBuilderTools
-        result = tools.get_distribution(method='beta', seed=101, a=5, b=2)
+        result = tools.get_distribution(distribution='beta', seed=101, a=5, b=2)
         self.assertEqual([0.745], result)
 
     def test_interval(self):
