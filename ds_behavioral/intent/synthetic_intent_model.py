@@ -44,6 +44,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param size: the size of the outcome data set
         :param columns: (optional) a single or list of intent_level to run, if list, run in order given
+        :param
         :param kwargs: additional parameters to pass beyond the contracted parameters
         :return: a pandas dataframe
         """

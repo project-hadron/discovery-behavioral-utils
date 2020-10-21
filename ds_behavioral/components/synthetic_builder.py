@@ -73,13 +73,6 @@ class SyntheticBuilder(AbstractComponent):
         return cls(property_manager=_pm, intent_model=_intent_model, default_save=default_save,
                    reset_templates=reset_templates, align_connectors=align_connectors)
 
-    @classmethod
-    def _from_remote_s3(cls) -> (str, str):
-        """ Class Factory Method that builds the connector handlers an Amazon AWS s3 remote store."""
-        _module_name = 'ds_connectors.handlers.aws_s3_handlers'
-        _handler = 'AwsS3PersistHandler'
-        return _module_name, _handler
-
     @property
     def pm(self) -> SyntheticPropertyManager:
         return self._component_pm
@@ -141,9 +134,9 @@ class SyntheticBuilder(AbstractComponent):
             self.pm_persist(save)
         return
 
-    def run_synthetic_pipeline(self, size: int, columns: [str, list]=None):
+    def run_synthetic_pipeline(self, size: int, columns: [str, list]=None, **kwargs):
         """Runs the transition pipeline from source to persist"""
-        result = self.intent_model.run_intent_pipeline(size=size, columns=columns)
+        result = self.intent_model.run_intent_pipeline(size=size, columns=columns, **kwargs)
         self.save_synthetic_canonical(canonical=result)
 
     def report_connectors(self, connector_filter: [str, list]=None, inc_pm: bool=None, inc_template: bool=None,
