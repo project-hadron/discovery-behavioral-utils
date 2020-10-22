@@ -245,6 +245,14 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         self.assertEqual("2018/01/01", pd.Series(result).max())
         self.assertEqual("2017/12/30", pd.Series(result).min())
 
+    def test_correlate_date_as_delta(self):
+        tools = self.tools
+        # control
+        df = pd.DataFrame(columns=['dates'], data=['1964-01-14', '1967-09-28', '1996-05-22', '1997-12-11'])
+        result = tools.correlate_dates(df, 'dates', now_delta='Y')
+        print(result)
+
+
 
 if __name__ == '__main__':
     unittest.main()

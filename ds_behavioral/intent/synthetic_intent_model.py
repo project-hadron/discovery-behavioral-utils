@@ -44,7 +44,6 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param size: the size of the outcome data set
         :param columns: (optional) a single or list of intent_level to run, if list, run in order given
-        :param
         :param kwargs: additional parameters to pass beyond the contracted parameters
         :return: a pandas dataframe
         """
@@ -1974,12 +1973,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(rtn_values.tolist(), quantity=quantity, seed=_seed)
 
     def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, spread: int=None,
-                        spread_units: str=None, spread_pattern: list=None, date_format: str=None,
+                        spread_units: str=None, spread_pattern: list=None, now_delta: str=None, date_format: str=None,
                         min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=None,
                         year_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                         column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                         remove_duplicates: bool=None):
-        """ correlates dates to an existing date or list of dates.
+        """ correlates dates to an existing date or list of dates. The return is a list of pd
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
@@ -1988,6 +1987,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param spread: (optional) the random spread or deviation in days
         :param spread_units: (optional) the units of the spread, Options: 'W', 'D', 'h', 'm', 's'. default 'D'
         :param spread_pattern: (optional) a weighting pattern with the pattern mid point the mid point of the spread
+        :param now_delta: (optional) returns a delta from now as an int list, Options: 'Y', 'M', 'W', 'D', 'h', 'm', 's'
         :param min_date: (optional)a minimum date not to go below
         :param max_date: (optional)a max date not to go above
         :param fill_nulls: (optional) if no date values should remain untouched or filled based on the list mode date
@@ -2035,6 +2035,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         fill_nulls = False if fill_nulls is None or not isinstance(fill_nulls, bool) else fill_nulls
         offset = _clean(offset) if isinstance(offset, (dict, int)) else None
+        if isinstance(now_delta, str) and now_delta not in ['Y', 'M', 'W', 'D', 'h', 'm', 's']:
+            raise ValueError(f"the now_delta offset unit '{now_delta}' is not recognised "
+                             f"use of of ['Y', 'M', 'W', 'D', 'h', 'm', 's']")
         units_allowed = ['W', 'D', 'h', 'm', 's']
         spread_units = spread_units if isinstance(spread_units, str) and spread_units in units_allowed else 'D'
         spread = pd.Timedelta(value=spread, unit=spread_units) if isinstance(spread, int) else None
@@ -2079,12 +2082,17 @@ class SyntheticIntentModel(AbstractIntentModel):
                 s_values.iloc[max_idx] = _max_date
             else:
                 raise ValueError(f"The max value {max_date} is less than the min result value {s_values.min()}")
-        if isinstance(date_format, str):
-            s_values = s_values.dt.strftime(date_format)
+        if now_delta:
+            s_values = (s_values.dt.tz_convert(None) - pd.Timestamp('now')).abs()
+            s_values = (s_values / np.timedelta64(1, now_delta))
+            s_values = s_values.round(0) if null_idx.size > 0 else s_values.astype(int)
         else:
-            s_values = s_values.dt.tz_convert(None)
-        if null_idx.size > 0:
-            s_values.iloc[null_idx].apply(lambda x: np.nan)
+            if isinstance(date_format, str):
+                s_values = s_values.dt.strftime(date_format)
+            else:
+                s_values = s_values.dt.tz_convert(None)
+            if null_idx.size > 0:
+                s_values.iloc[null_idx].apply(lambda x: np.nan)
         return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
 
     """

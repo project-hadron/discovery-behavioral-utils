@@ -28,6 +28,21 @@ class SyntheticBuilderTest(unittest.TestCase):
         """Basic smoke test"""
         self.assertEqual(SyntheticBuilder, type(SyntheticBuilder.from_env('tester', has_contract=False)))
 
+    def test_run_synthetic_pipeline_seed(self):
+        builder = SyntheticBuilder.from_env('tester', has_contract=False)
+        builder.set_outcome()
+        tools: SyntheticIntentModel = builder.tools
+        _ = tools.get_category(selection=['M', 'F'], weight_pattern=[4, 3], column_name='gender')
+        _ = tools.get_number(range_value=18, to_value=80,  column_name='age')
+        builder.run_synthetic_pipeline(size=1000, seed=23)
+        df = builder.load_synthetic_canonical()
+        dist = df['gender'].value_counts().values
+        mean = df['age'].mean()
+        builder.run_synthetic_pipeline(size=1000, seed=23)
+        df = builder.load_synthetic_canonical()
+        self.assertCountEqual(dist, df['gender'].value_counts().values)
+        self.assertEqual(mean, df['age'].mean())
+
     def test_raise(self):
         with self.assertRaises(KeyError) as context:
             env = os.environ['NoEnvValueTest']

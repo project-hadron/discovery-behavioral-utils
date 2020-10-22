@@ -134,9 +134,9 @@ class SyntheticBuilder(AbstractComponent):
             self.pm_persist(save)
         return
 
-    def run_synthetic_pipeline(self, size: int, columns: [str, list]=None, **kwargs):
+    def run_synthetic_pipeline(self, size: int, columns: [str, list]=None, seed: int=None):
         """Runs the transition pipeline from source to persist"""
-        result = self.intent_model.run_intent_pipeline(size=size, columns=columns, **kwargs)
+        result = self.intent_model.run_intent_pipeline(size=size, columns=columns, seed=seed)
         self.save_synthetic_canonical(canonical=result)
 
     def report_connectors(self, connector_filter: [str, list]=None, inc_pm: bool=None, inc_template: bool=None,
