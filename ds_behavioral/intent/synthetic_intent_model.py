@@ -38,13 +38,14 @@ class SyntheticIntentModel(AbstractIntentModel):
                          default_intent_order=default_intent_order, default_replace_intent=default_replace_intent,
                          intent_type_additions=intent_type_additions)
 
-    def run_intent_pipeline(self, size: int, columns: [str, list]=None, **kwargs) -> pd.DataFrame:
+    def run_intent_pipeline(self, size: int, columns: [str, list]=None, seed: int=None) -> pd.DataFrame:
         """Collectively runs all parameterised intent taken from the property manager against the code base as
-        defined by the intent_contract.
+        defined by the intent_contract. The whole run can be seeded though any parameterised seeding in the intent
+        contracts will take precedence
 
         :param size: the size of the outcome data set
         :param columns: (optional) a single or list of intent_level to run, if list, run in order given
-        :param kwargs: additional parameters to pass beyond the contracted parameters
+        :param seed: a seed value that will be applied across the run: default to None
         :return: a pandas dataframe
         """
         df = pd.DataFrame()
@@ -90,12 +91,11 @@ class SyntheticIntentModel(AbstractIntentModel):
                             result = []
                             params.update(params.pop('kwargs', {}))
                             _ = params.pop('intent_creator', 'Unknown')
-                            if isinstance(kwargs, dict):
-                                params.update(kwargs)
                             if str(method).startswith('get_'):
                                 result = eval(f"self.{method}(size=size, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('correlate_'):
+                                _ = params.pop('seed', None)
                                 result = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('model_'):
@@ -409,7 +409,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if not as_num:
             rtn_list = mdates.num2date(rtn_list)
             if isinstance(date_format, str):
-                rtn_list = pd.Series(rtn_list).dt.strftime(date_format).tolist()
+                rtn_list = pd.Series(rtn_list).dt.strftime(date_format).to_list()
             else:
                 rtn_list = pd.Series(rtn_list).dt.tz_convert(None).to_list()
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
@@ -963,7 +963,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _values = _values.sample(frac=1).reset_index(drop=True)
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
-        return self.get_category(selection=_values.tolist(), weight_pattern=weight_pattern, quantity=quantity,
+        return self.get_category(selection=_values.to_list(), weight_pattern=weight_pattern, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed, save_intent=False)
 
     def get_sample(self, sample_name: str, sample_size: int=None, shuffle: bool=None, size: int=None,
@@ -1154,7 +1154,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def frame_selection(self, canonical: Any, selection: list=None, headers: [str, list]=None, drop: bool=None,
                         dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
-                        seed: bool=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                        seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                         replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ Selects rows and/or columns changing the shape of the DatFrame. This is always run last in a pipeline
         Rows are filtered before the column filter so columns can be referenced even though they might not be included
@@ -1217,9 +1217,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                regex=regex, re_ignore_case=re_ignore_case)
 
-    def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None,
-                      dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
-                      shuffle: bool=None, size: int=None, save_intent: bool=None, column_name: [int, str]=None,
+    def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
+                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, shuffle: bool=None,
+                      size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
@@ -1232,6 +1232,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param re_ignore_case: true if the regex should ignore case. Default is False
         :param shuffle: (optional) if the rows in the loaded canonical should be shuffled
         :param size: (optional) the size of the return. default to the size of the return
+        :param seed: this is a place holder, here for compatibility across methods
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1527,11 +1528,11 @@ class SyntheticIntentModel(AbstractIntentModel):
             default_action = None
         rtn_values = self._apply_action(canonical, action=default_action)
         rtn_values.update(self._apply_action(canonical, action=action, select_idx=select_idx))
-        return self._set_quantity(rtn_values.tolist(), quantity=quantity, seed=_seed)
+        return self._set_quantity(rtn_values.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_custom(self, canonical: Any, code_str: str, use_exec: bool=None, save_intent: bool=None,
-                         column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                         remove_duplicates: bool=None, **kwargs):
+    def correlate_custom(self, canonical: Any, code_str: str, use_exec: bool=None, quantity: float=None, seed: int=None,
+                         save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                         replace_intent: bool=None, remove_duplicates: bool=None, **kwargs):
         """ enacts an action on a dataFrame, returning the output of the action or the DataFrame if using exec or
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
         as it's parameter name 'canonical'.
@@ -1540,6 +1541,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param code_str: an action on those column values
         :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
         :param kwargs: a set of kwargs to include in any executable function
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1558,6 +1561,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
         use_exec = use_exec if isinstance(use_exec, bool) else False
         local_kwargs = locals().get('kwargs') if 'kwargs' in locals() else dict()
         if 'canonical' not in local_kwargs:
@@ -1566,11 +1571,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         result = exec(code_str, globals(), local_kwargs) if use_exec else eval(code_str, globals(), local_kwargs)
         if result is None:
             return canonical
-        return result
+        return self._set_quantity(result, quantity=quantity, seed=_seed)
 
-    def correlate_columns(self, canonical: Any, headers: list, action: str, save_intent: bool=None, precision: int=None,
-                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                          remove_duplicates: bool=None):
+    def correlate_columns(self, canonical: Any, headers: list, action: str, quantity: float=None, seed: int=None,
+                          save_intent: bool=None, precision: int=None, column_name: [int, str]=None,
+                          intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlate two or more columns with each other through a finite set of functions.
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
@@ -1578,6 +1583,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param action: the action to take onthe row values. The available functions are:
                             'sum', 'prod', 'count', 'min', 'max', 'mean'
         :param precision: the value precision of the return values
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
         :param save_intent: (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1601,11 +1608,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError("The only allowed func values are 'sum', 'prod', 'count', 'min', 'max', 'mean'")
         canonical = self._get_canonical(canonical)
         # Code block for intent
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
         precision = precision if isinstance(precision, int) else 3
-        return eval(f"canonical.loc[:, headers].{action}(axis=1)", globals(), locals()).round(precision).to_list()
+        result = eval(f"canonical.loc[:, headers].{action}(axis=1)", globals(), locals()).round(precision)
+        return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None,
-                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+    def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None, quantity: float=None,
+                       seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                        replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlate a column and join it with the result of the action
 
@@ -1613,6 +1623,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param header: an ordered list of columns to join
         :param action: (optional) a string or a single action whose outcome will be joined to the header value
         :param sep: (optional) a separator between the values
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
         :param save_intent: (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1641,6 +1653,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         # Code block for intent
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
         sep = sep if isinstance(sep, str) else ''
         s_values = canonical[header].copy()
         if s_values.empty:
@@ -1667,16 +1681,17 @@ class SyntheticIntentModel(AbstractIntentModel):
         s_values = s_values.combine(result, func=(lambda a, b: f"{a}{sep}{b}"))
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan
-        return s_values.to_list()
+        return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_forename_to_gender(self, canonical: Any, header: str, categories: list, seed: int=None,
-                                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                                     replace_intent: bool=None, remove_duplicates: bool=None):
+    def correlate_forename_to_gender(self, canonical: Any, header: str, categories: list, quantity: float=None,
+                                     seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """correlate a forename to a gender column so as to matche the gender to an appropriate first name
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
         :param categories: a list of length two with the male then female category label to correlate e.g. ['M', 'F']
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
         :param seed: (optional) a seed value for the random function: default to None
         :param save_intent: (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1701,6 +1716,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if not isinstance(header, str) or header not in canonical.columns:
             raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
         # Code block for intent
+        quantity = self._quantity(quantity)
         s_values = canonical[header].copy()
         _seed = seed if isinstance(seed, int) else self._seed()
         m_index = s_values[s_values == categories[0]].index
@@ -1712,7 +1728,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         result = pd.Series(data=[np.nan] * s_values.size)
         result.loc[m_index] = m_names
         result.loc[f_index] = f_names
-        return result.to_list()
+        return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_sigmoid(self, canonical: Any, header: str, precision: int=None, quantity: float=None, seed: int=None,
                           save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1887,7 +1903,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values = s_values.astype(int)
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan
-        return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
+        return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_categories(self, canonical: Any, header: str, correlations: list, actions: dict,
                              default_action: [str, int, float, dict]=None, quantity: float=None,
@@ -1970,7 +1986,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 continue
             corr_idx = s_values[s_values.isin(map(str, corr_list[i]))].index
             rtn_values.update(self._apply_action(canonical, action=action, select_idx=corr_idx))
-        return self._set_quantity(rtn_values.tolist(), quantity=quantity, seed=_seed)
+        return self._set_quantity(rtn_values.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, spread: int=None,
                         spread_units: str=None, spread_pattern: list=None, now_delta: str=None, date_format: str=None,
@@ -2093,7 +2109,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 s_values = s_values.dt.tz_convert(None)
             if null_idx.size > 0:
                 s_values.iloc[null_idx].apply(lambda x: np.nan)
-        return self._set_quantity(s_values.tolist(), quantity=quantity, seed=_seed)
+        return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
 
     """
         PRIVATE METHODS SECTION
