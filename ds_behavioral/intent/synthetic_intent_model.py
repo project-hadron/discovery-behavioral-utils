@@ -90,12 +90,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                         if method in self.__dir__():
                             result = []
                             params.update(params.pop('kwargs', {}))
+                            if isinstance(seed, int):
+                                params.update({'seed': seed})
                             _ = params.pop('intent_creator', 'Unknown')
                             if str(method).startswith('get_'):
                                 result = eval(f"self.{method}(size=size, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('correlate_'):
-                                _ = params.pop('seed', None)
                                 result = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('model_'):
@@ -182,7 +183,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             if sample_count > 0:
                 if isinstance(dominant_values, list):
                     dominant_list = self.get_category(selection=dominant_values, weight_pattern=dominance_weighting,
-                                                      size=sample_count, bounded_weighting=True, save_intent=False)
+                                                      size=sample_count, bounded_weighting=True, seed=_seed,
+                                                      save_intent=False)
                 else:
                     dominant_list = [dominant_values] * sample_count
             size -= sample_count
@@ -195,11 +197,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                     if 0 < at_most < counter[i]:
                         counter[i] = at_most
                     if counter[i] == 0 and weight_pattern[i] > 0:
-                        if counter[self._weighted_choice(weight_pattern)] == i:
+                        _seed = self._next_seed(seed=_seed, default=seed)
+                        if counter[self._weighted_choice(weight_pattern, seed=_seed)] == i:
                             counter[i] = 1
             else:
                 for _ in range(size):
-                    counter[self._weighted_choice(weight_pattern)] += 1
+                    _seed = self._next_seed(seed=_seed, default=seed)
+                    counter[self._weighted_choice(weight_pattern, seed=_seed)] += 1
                 for i in range(len(counter)):
                     if 0 < at_most < counter[i]:
                         counter[i] = at_most
@@ -209,16 +213,16 @@ class SyntheticIntentModel(AbstractIntentModel):
                         if counter[index] >= at_most:
                             counter[index] = at_most
                             weight_pattern[index] = 0
+                _seed = self._next_seed(seed=_seed, default=seed)
                 if sum(counter) < size:
-                    counter[self._weighted_choice(weight_pattern)] += 1
+                    counter[self._weighted_choice(weight_pattern, seed=_seed)] += 1
                 else:
-                    weight_idx = self._weighted_choice(weight_pattern)
+                    weight_idx = self._weighted_choice(weight_pattern, seed=_seed)
                     if counter[weight_idx] > 0:
                         counter[weight_idx] -= 1
 
         else:
             counter = [size]
-        _seed = self._next_seed(_seed, seed)
         rtn_list = []
         if is_int:
             value_bins = []
@@ -231,6 +235,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                 ref = position
             value_bins.append((ref, to_value))
             for index in range(counter_len):
+                _seed = self._next_seed(seed=_seed, default=seed)
+                np.random.seed(_seed)
                 low, high = value_bins[index]
                 # check our range is not also the dominants
                 if high - low <= 1:
@@ -260,6 +266,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         else:
             value_bins = pd.interval_range(start=range_value, end=to_value, periods=len(counter), closed='both')
             for index in range(len(counter)):
+                _seed = self._next_seed(seed=_seed, default=seed)
+                np.random.seed(_seed)
                 low = value_bins[index].left
                 high = value_bins[index].right
                 if low >= high:
@@ -334,7 +342,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         quantity = self._quantity(quantity)
         select_index = self.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most, size=size,
-                                       bounded_weighting=bounded_weighting, quantity=1, seed=seed, save_intent=False)
+                                       bounded_weighting=bounded_weighting, quantity=1, seed=_seed, save_intent=False)
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
@@ -904,9 +912,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                         "The key '{}' must contain a 'list' of replacements opotions. '{}' found".format(k, type(v)))
 
         rtn_list = []
-        _seed = self._next_seed(_seed, seed)
         for c in list(pattern):
             if c in choices.keys():
+                _seed = self._next_seed(_seed, seed)
                 result = np.random.choice(choices[c], size=size)
             elif not choice_only:
                 result = [c]*size
@@ -960,7 +968,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError(f"The column '{column_header}' not found in the data from connector '{connector_name}'")
         _values = canonical[column_header].iloc[:sample_size]
         if isinstance(selection_size, float) and shuffle:
-            _values = _values.sample(frac=1).reset_index(drop=True)
+            _values = _values.sample(frac=1, random_state=_seed).reset_index(drop=True)
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
         return self.get_category(selection=_values.to_list(), weight_pattern=weight_pattern, quantity=quantity,
@@ -998,13 +1006,13 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else True
-        selection = eval(f"Sample.{sample_name}(size={size}, seed={seed})")
+        selection = eval(f"Sample.{sample_name}(size={size}, seed={_seed})")
         selection = pd.Series(selection * (int(size / len(selection)) + 1)).iloc[:size]
         if shuffle:
             np.random.shuffle(selection)
         return self._set_quantity(selection.to_list(), quantity=quantity, seed=_seed)
 
-    def get_profile_middle_initials(self, size: int=None, seed: int=None, save_intent: bool=None,
+    def get_profile_middle_initials(self, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                                     column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                                     remove_duplicates: bool=None):
         """generates random middle initials"""
@@ -1013,21 +1021,25 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         size = 1 if size is None else size
+        quantity = self._quantity(quantity)
+        _seed = self._seed() if seed is None else seed
         middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW") + ['  '] * 4, size=int(size * 0.95),
-                                   seed=seed, save_intent=False)
+                                   seed=_seed, save_intent=False)
         choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
         middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size - len(middle),
-                                          seed=seed, save_intent=False)
-        return middle
+                                          seed=_seed, save_intent=False)
+        return self._set_quantity(middle, quantity=quantity, seed=_seed)
 
-    def get_email(self, size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                  intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+    def get_email(self, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
+                  column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                  remove_duplicates: bool=None):
         """ returns a surnames """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         size = 1 if size is None else size
+        quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         selection = Sample.surnames(seed=_seed) + Sample.uk_cities(seed=_seed)
         selection += Sample.us_cities(seed=_seed) + Sample.company_names(seed=_seed)
@@ -1050,7 +1062,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         selection = Sample.global_mail_domains(shuffle=False)
         domains = pd.Series(self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
                                               bounded_weighting=True, size=size, seed=_seed, save_intent=False))
-        return email_name.combine(domains,  func=(lambda a, b: f"{a}@{b}")).to_list()
+        result =  email_name.combine(domains,  func=(lambda a, b: f"{a}@{b}"))
+        return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
                         quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
@@ -1081,6 +1094,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        _seed = self._seed() if seed is None else seed
         (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
@@ -1090,9 +1104,9 @@ class SyntheticIntentModel(AbstractIntentModel):
             suffix = ''
         rtn_list = []
         for i in self.get_number(range_value=from_value, to_value=to_value, at_most=1, size=size, precision=0,
-                                 seed=seed, save_intent=False):
+                                 seed=_seed, save_intent=False):
             rtn_list.append("{}{}{}".format(prefix, i, suffix))
-        return self._set_quantity(rtn_list, quantity=quantity, seed=seed)
+        return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, size: int=None,
                            quantity: [float, int]=None, seed: int=None, save_intent: bool=None,
@@ -1252,6 +1266,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         if not self._pm.has_connector(connector_name=connector_name):
             raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
+        _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else False
 
         handler = self._pm.get_connector_handler(connector_name)
@@ -1262,7 +1277,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                  regex=regex, re_ignore_case=re_ignore_case, copy=False)
         if shuffle:
-            df_rtn.sample(frac=1)
+            df_rtn.sample(frac=1, random_state=_seed)
         size = size if isinstance(size, int) else df_rtn.shape[0]
         if size <= df_rtn.shape[0]:
             return df_rtn.iloc[:size]
@@ -1350,9 +1365,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         low_size = int(0.001 * size)
         high_size = size - low_size
         idx = self.get_number(df_high.shape[0], weight_pattern=[10, 7, 6, 5, 4, 3, 2, 0.9] + [0.6]*50 + [0.3]*50,
-                              seed=seed, size=high_size, save_intent=False)
+                              seed=_seed, size=high_size, save_intent=False)
         df_rtn = df_high.iloc[idx]
-        idx = self.get_number(df_low.shape[0], size=low_size, seed=seed, save_intent=False)
+        idx = self.get_number(df_low.shape[0], size=low_size, seed=_seed, save_intent=False)
         df_rtn = df_rtn.append(df_low.iloc[idx])
         df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State', 'StateCode',
                                                                   'StateAbbrev'])
@@ -1360,7 +1375,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn['City'] = df_rtn['City'].str.title()
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
-        return df_rtn.sample(frac=1).reset_index(drop=True)
+        return df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
 
     def model_analysis(self, analytics_model: dict, size: int=None, seed: int=None, save_intent: bool=None,
                        column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -1389,7 +1404,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
 
-        def get_level(analysis: dict, sample_size: int):
+        def get_level(analysis: dict, sample_size: int, _seed: int=None):
+            _seed = self._next_seed(seed=_seed, default=seed)
             for name, values in analysis.items():
                 if row_dict.get(name) is None:
                     row_dict[name] = list()
@@ -1397,7 +1413,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if str(_analysis.intent.dtype).startswith('cat'):
                     row_dict[name] += self.get_category(selection=_analysis.intent.selection,
                                                         weight_pattern=_analysis.patterns.weight_pattern,
-                                                        quantity=1-_analysis.stats.nulls_percent, seed=seed,
+                                                        quantity=1-_analysis.stats.nulls_percent, seed=_seed,
                                                         size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.intent.selection,
@@ -1407,7 +1423,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                          dominance_weighting=_analysis.patterns.dominance_weighting,
                                                          precision=_analysis.intent.precision,
                                                          quantity=1 - _analysis.stats.nulls_percent,
-                                                         seed=seed, size=sample_size, save_intent=False)
+                                                         seed=_seed, size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('date'):
                     row_dict[name] += self.get_datetime(start=_analysis.intent.lower, until=_analysis.intent.upper,
                                                         weight_pattern=_analysis.patterns.weight_pattern,
@@ -1415,19 +1431,20 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                         day_first=_analysis.intent.day_first,
                                                         year_first=_analysis.intent.year_first,
                                                         quantity=1 - _analysis.stats.nulls_percent,
-                                                        seed=seed, size=sample_size, save_intent=False)
+                                                        seed=_seed, size=sample_size, save_intent=False)
                 unit = sample_size / sum(_analysis.patterns.weight_pattern)
                 if values.get('sub_category'):
                     section_map = _analysis.weight_map
                     for i in section_map.index:
                         section_size = int(round(_analysis.weight_map.loc[i] * unit, 0))+1
                         next_item = values.get('sub_category').get(i)
-                        get_level(next_item, section_size)
+                        get_level(next_item, section_size, _seed)
             return
 
         row_dict = dict()
+        _seed = self._seed() if seed is None else seed
         size = 1 if not isinstance(size, int) else size
-        get_level(analytics_model, sample_size=size)
+        get_level(analytics_model, sample_size=size, _seed=_seed)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
         return pd.DataFrame.from_dict(data=row_dict)
@@ -1526,8 +1543,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
         if not isinstance(default_action, (str, int, float, dict)):
             default_action = None
-        rtn_values = self._apply_action(canonical, action=default_action)
-        rtn_values.update(self._apply_action(canonical, action=action, select_idx=select_idx))
+        rtn_values = self._apply_action(canonical, action=default_action, seed=_seed)
+        rtn_values.update(self._apply_action(canonical, action=action, select_idx=select_idx, seed=_seed))
         return self._set_quantity(rtn_values.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_custom(self, canonical: Any, code_str: str, use_exec: bool=None, quantity: float=None, seed: int=None,
@@ -1637,10 +1654,24 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
 
-        An action is a dictionary that can be a single element or an intent and takes the form:
-                {'action': '_cat'}
-        to append _cat the the end of each entry, or
-                 {'action': 'get_category', 'selection': ['A', 'B', 'C'], 'weight_pattern': [4, 2, 1]}
+        Actions are the resulting outcome of the selection (or the default). An action can be just a value or a dict
+        that executes a intent method such as get_number(). To help build actions there is a helper function called
+        action2dict(...) that takes a method as a mandatory attribute.
+
+        With actions there are special keyword 'method' values:
+            @header: use a column as the value reference, expects the 'header' key
+            @constant: use a value constant, expects the key 'value'
+            @eval: evaluate a code string, expects the key 'code_str' and any locals() required
+
+        An example of a simple action to return a selection from a list:
+                {'method': 'get_category', selection=['M', 'F', 'U']
+
+        an example of using the helper method, in this example we use the keyword @header to get a value from another
+        column at the same index position:
+                inst.action2dict(method="@header", header='value')
+
+        We can even execute some sort of evaluation at run time:
+                inst.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1662,22 +1693,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         action = deepcopy(action)
         null_idx = s_values[s_values.isna()].index
         s_values.to_string()
-        if isinstance(action, dict):
-            method = action.pop('method', None)
-            if method is None:
-                raise ValueError(f"The 'method' key was not in the action dictionary.")
-            if method in self.__dir__():
-                if str(method).startswith('get_') or str(method).startswith('model_'):
-                    action.update({'size': s_values.size})
-                if str(method).startswith('correlate_') or str(method).startswith('associate_'):
-                    action.update({'canonical': canonical})
-                action.update({'save_intent': False})
-                data = eval(f"self.{method}(**action)", globals(), locals())
-                result = pd.Series(data=data)
-            else:
-                raise ValueError(f"The 'method' key {method} is not a recognised intent method")
-        else:
-            result = pd.Series(data=([action] * s_values.size))
+        result = self._apply_action(canonical, action=action, seed=_seed)
         s_values = s_values.combine(result, func=(lambda a, b: f"{a}{sep}{b}"))
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan
@@ -1875,6 +1891,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         if fill_nulls:
+            np.random.seed(_seed)
             s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
         null_idx = s_values[s_values.isna()].index
         zero_idx = s_values.where(s_values == 0).dropna().index if keep_zero else []
@@ -1882,7 +1899,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             s_values = s_values.mul(offset) if action == 'multiply' else s_values.add(offset)
         if isinstance(spread, (int, float)) and spread != 0:
             sample = self.get_number(-abs(spread) / 2, abs(spread) / 2, weight_pattern=weighting_pattern,
-                                     size=s_values.size, save_intent=False)
+                                     size=s_values.size, save_intent=False, seed=_seed)
             s_values = s_values.add(sample)
         if isinstance(min_value, (int, float)):
             if min_value < s_values.max():
@@ -1978,14 +1995,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             corr_list.append(self._pm.list_formatter(corr))
         if not isinstance(default_action, (str, int, float, dict)):
             default_action = None
-        rtn_values = self._apply_action(canonical, action=default_action)
+        rtn_values = self._apply_action(canonical, action=default_action, seed=_seed)
         s_values = canonical[header].copy().astype(str)
         for i in range(len(corr_list)):
             action = actions.get(i, actions.get(str(i), -1))
             if action is -1:
                 continue
             corr_idx = s_values[s_values.isin(map(str, corr_list[i]))].index
-            rtn_values.update(self._apply_action(canonical, action=action, select_idx=corr_idx))
+            rtn_values.update(self._apply_action(canonical, action=action, select_idx=corr_idx, seed=_seed))
         return self._set_quantity(rtn_values.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, spread: int=None,
@@ -2078,7 +2095,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 value = int(spread.to_timedelta64().astype(int)/1000000000)
                 zip_units = 's'
             zip_spread = self.get_number(-abs(value) / 2, (abs(value+1) / 2), weight_pattern=spread_pattern,
-                                         precision=0, size=s_values.size, save_intent=False)
+                                         precision=0, size=s_values.size, save_intent=False, seed=_seed)
             zipped_dt = list(zip(zip_spread, [zip_units]*s_values.size))
             s_values = s_values + np.array([pd.Timedelta(x, y).to_timedelta64() for x, y in zipped_dt])
         if fill_nulls:
@@ -2185,7 +2202,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         return SyntheticCommons.param2dict(method=method, **kwargs)
 
-    def _apply_action(self, canonical: pd.DataFrame, action: Any, select_idx: pd.Int64Index=None) -> pd.Series:
+    def _apply_action(self, canonical: pd.DataFrame, action: Any, select_idx: pd.Int64Index=None, seed: int=None):
         """ applies an action returning an indexed Series
         Special method values
             @header: use a column as the value reference, expects the 'header' key
@@ -2195,6 +2212,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param canonical: a reference canonical
         :param action: the action dictionary
         :param select_idx: (optional) the index selection of the return Series. if None then canonical index taken
+        :param seed: a seed to apply to any action
         :return: pandas Series with passed index
         """
         if not isinstance(select_idx, pd.Int64Index):
@@ -2204,6 +2222,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             if method is None:
                 raise ValueError(f"The action dictionary has no 'method' key.")
             if method in self.__dir__():
+                if isinstance(seed, int) and 'seed' not in action.keys():
+                    action.update({'seed': seed})
                 if str(method).startswith('get_'):
                     action.update({'size': select_idx.size, 'save_intent': False})
                     result = eval(f"self.{method}(**action)", globals(), locals())
@@ -2212,8 +2232,11 @@ class SyntheticIntentModel(AbstractIntentModel):
                     result = eval(f"self.{method}(**action)", globals(), locals())
                 else:
                     raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
-                dtype = 'int' if any(isinstance(x, int) for x in result) else 'float' \
-                    if any(isinstance(x, float) for x in result) else 'object'
+                dtype = 'object'
+                if any(isinstance(x, int) for x in result):
+                    dtype = 'int'
+                elif any(isinstance(x, float) for x in result):
+                    dtype = 'float'
                 return pd.Series(data=result, index=select_idx, dtype=dtype)
             elif str(method).startswith('@header'):
                 header = action.pop('header', None)
@@ -2416,7 +2439,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     def _next_seed(self, seed: int, default: int):
         seed += 1
         if seed > 2 ** 31:
-            seed = self._seed() if isinstance(default, int) else default
+            seed = default if isinstance(default, int) else self._seed()
         np.random.seed(seed)
         return seed
 
