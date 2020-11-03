@@ -743,8 +743,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     def get_normal(self, mean: float, std: float, size: int=None, quantity: float=None, seed: int=None,
                    save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                    replace_intent: bool=None, remove_duplicates: bool=None) -> list:
-        """A binomial discrete random distribution. The Binomial Distribution represents the number of
-           successes and failures in n independent Bernoulli trials for some given value of n
+        """A normal (Gaussian) continuous random distribution.
 
         :param mean: The mean (“centre”) of the distribution.
         :param std: The standard deviation (spread or “width”) of the distribution. Must be >= 0
