@@ -104,7 +104,7 @@ class SyntheticBuilder(AbstractComponent):
         :param uri_file: the uri_file is appended to the template path
         :param save: (optional) if True, save to file. Default is True
         """
-        file_pattern = self.pm.file_pattern(connector_name=self.CONNECTOR_OUTCOME)
+        file_pattern = self.pm.file_pattern(name=self.CONNECTOR_OUTCOME)
         uri_file = uri_file if isinstance(uri_file, str) else file_pattern
         self.add_connector_from_template(connector_name=self.CONNECTOR_OUTCOME, uri_file=uri_file,
                                          template_name=self.TEMPLATE_PERSIST, save=save, **kwargs)
