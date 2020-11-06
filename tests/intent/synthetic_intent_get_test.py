@@ -131,9 +131,10 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_get_email(self):
         tools = self.tools
-        sample_size = 100000
+        sample_size = 500000
         result = tools.get_email(size=sample_size)
         self.assertEqual(sample_size, len(result))
+        self.assertEqual(pd.Series(result).nunique(), sample_size)
 
     def test_get_datetime_at_most(self):
         tools = self.tools

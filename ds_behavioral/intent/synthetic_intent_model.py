@@ -1143,32 +1143,28 @@ class SyntheticIntentModel(AbstractIntentModel):
         size = 1 if size is None else size
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
+        # surname
         selection = Sample.surnames(seed=_seed) + Sample.uk_cities(seed=_seed)
         selection += Sample.us_cities(seed=_seed) + Sample.company_names(seed=_seed)
-        # names = pd.Series(self.get_category(selection=selection, bounded_weighting=True,  size=size, seed=seed,
-        #                                     save_intent=False))
-        names = pd.Series(selection * (int(size/len(selection))+1)).str.lower().replace(' ', '_').iloc[:size]
-        selection = list('abcdefghijklmnopqrstuvwxyz')
-        # prefix = pd.Series(self.get_category(selection=selection, bounded_weighting=True, size=size, seed=seed,
-        #                    save_intent=False))
-        prefix = pd.Series(selection * (int(size/len(selection))+1)).iloc[:size]
-        email_name = names.combine(prefix, func=(lambda a, b: f"{b}{a}"))
-        email_name.drop_duplicates(inplace=True)
-        diff = size - email_name.size
-        if diff > 0:
-            numbers = pd.Series(range(diff))
-            np.random.shuffle(numbers)
-            np.random.shuffle(names)
-            sub_names = names.iloc[:diff]
-            email_name.append(sub_names.combine(numbers, func=(lambda a, b: f"{a}{b}")), ignore_index=True)
+        surnames = (pd.Series(selection).str.strip().str.lower().str.replace(' ', '_').to_list() * 3)
+        # forename
+        selection = Sample.female_names(seed=_seed) + Sample.male_names(seed=_seed)
+        forenames = pd.Series(selection).str.strip().str.lower().str.replace(' ', '_').to_list()
+        forenames *= int(len(surnames) / len(selection)) + 1
+        # join
+        email_name = [f"{a}.{b}" for a, b in zip(forenames, surnames)]
+        email_name = pd.Series(email_name).drop_duplicates()
+        while email_name.size < size:
+            number = self.get_number(10, 100000, at_most=1, size=99000, save_intent=False)
+            email_name = email_name.append(pd.Series([f"{a}{b}" for a, b in zip(surnames, number)])).iloc[:size]
+            email_name = email_name.drop_duplicates()
+        email_name = email_name.to_list()
+        np.random.shuffle(email_name)
         selection = Sample.global_mail_domains(shuffle=False)
-        domains = pd.Series(self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
-                                              bounded_weighting=True, size=size, seed=_seed, save_intent=False))
-        result = email_name.combine(domains,  func=(lambda a, b: f"{a}@{b}"))
-        nan_sample = Sample.surnames(seed=_seed, size=100)
-        result = result.apply(lambda a: a.replace('nan@', f"{np.random.choice(nan_sample).lower()}"
-                                                          f"{np.random.randint(10, 10000)}@"))
-        return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
+        domains = self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
+                                    bounded_weighting=True, size=size, seed=_seed, save_intent=False)
+        result = [f"{a}@{b}" for a, b in zip(email_name, domains)]
+        return self._set_quantity(result, quantity=quantity, seed=_seed)
 
     def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
                         quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
