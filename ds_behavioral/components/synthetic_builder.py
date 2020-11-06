@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 from aistac.handlers.abstract_handlers import ConnectorContract
 from ds_behavioral.components.commons import SyntheticCommons
@@ -11,6 +13,7 @@ __author__ = 'Darryl Oatridge'
 class SyntheticBuilder(AbstractComponent):
 
     CONNECTOR_OUTCOME = 'outcome'
+    REPORT_CATALOG = 'catalog'
 
     DEFAULT_MODULE = 'ds_discovery.handlers.pandas_handlers'
     DEFAULT_SOURCE_HANDLER = 'PandasSourceHandler'
@@ -35,7 +38,7 @@ class SyntheticBuilder(AbstractComponent):
                  pm_module: str=None, pm_handler: str=None, pm_kwargs: dict=None, default_save=None,
                  reset_templates: bool=None, align_connectors: bool=None, default_save_intent: bool=None,
                  default_intent_level: bool=None, order_next_available: bool=None, default_replace_intent: bool=None,
-                 has_contract: bool=None):
+                 has_contract: bool=None) -> SyntheticBuilder:
         """ Class Factory Method to instantiates the components application. The Factory Method handles the
         instantiation of the Properties Manager, the Intent Model and the persistence of the uploaded properties.
         See class inline docs for an example method
@@ -109,6 +112,32 @@ class SyntheticBuilder(AbstractComponent):
         self.add_connector_from_template(connector_name=self.CONNECTOR_OUTCOME, uri_file=uri_file,
                                          template_name=self.TEMPLATE_PERSIST, save=save, **kwargs)
 
+    def set_report_persist(self, connector_name: [str, list] = None, uri_file: str = None, save: bool = None,
+                           **kwargs):
+        """sets the report persist using the TEMPLATE_PERSIST connector contract, there are preset constants that
+        should be used. These constance can be found using Transition.REPORT_<NAME> or <instance>.REPORT_<NAME>
+        where <name> is the name of the report. if no report connector name is given then all the report connectors
+        are set with default values.
+
+        :param connector_name: (optional) the name(s) of the report connector to set (see class REPORT constants)
+        :param uri_file: (optional) the uri_file is appended to the template path
+        :param save: (optional) if True, save to file. Default is True
+        """
+        _default_reports = [self.REPORT_CATALOG] + self.REPORTS_BASE_LIST
+        if not isinstance(connector_name, (str, list)):
+            connector_name = _default_reports
+        for _report in self.pm.list_formatter(connector_name):
+            if _report not in _default_reports:
+                raise ValueError(f"Report name(s) {_report} must be from the report constants {_default_reports}")
+            file_pattern = uri_file
+            if not isinstance(uri_file, str):
+                file_pattern = self.pm.file_pattern(name=_report, file_type='json', versioned=True)
+                if 'orient' not in kwargs.keys():
+                    kwargs.update({'orient': 'records'})
+            self.add_connector_from_template(connector_name=_report, uri_file=file_pattern,
+                                             template_name=self.TEMPLATE_PERSIST, save=save, **kwargs)
+        return
+
     def load_synthetic_canonical(self) -> pd.DataFrame:
         """loads the clean pandas.DataFrame from the clean folder for this contract"""
         return self.load_canonical(self.CONNECTOR_OUTCOME)
@@ -122,6 +151,31 @@ class SyntheticBuilder(AbstractComponent):
         if isinstance(canonical, dict):
             canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
         return canonical
+
+    def save_report_canonical(self, report_connector_name: str, report: [dict, pd.DataFrame],
+                              auto_connectors: bool=None, **kwargs):
+        """Saves the canonical to the data quality folder, auto creating the connector from template if not set"""
+        if report_connector_name not in [self.REPORT_CATALOG] + self.REPORTS_BASE_LIST:
+            raise ValueError("Report name must be one of the class report constants")
+        if auto_connectors if isinstance(auto_connectors, bool) else True:
+            if not self.pm.has_connector(report_connector_name):
+                self.set_report_persist(connector_name=report_connector_name)
+        self.persist_canonical(connector_name=report_connector_name, canonical=report, **kwargs)
+
+    def save_canonical_schema(self, schema_name: str=None, canonical: pd.DataFrame=None, save: bool=None):
+        """ Saves the canonical schema to the Property contract. The default loads the clean canonical but optionally
+        a canonical can be passed to base the schema on and optionally a name given other than the default
+
+        :param schema_name: (optional) the name of the schema to save
+        :param canonical: (optional) the canonical to base the schema on
+        :param save: (optional) if True, save to file. Default is True
+        """
+        schema_name = schema_name if isinstance(schema_name, str) else self.REPORT_SCHEMA
+        canonical = canonical if isinstance(canonical, pd.DataFrame) else self.load_synthetic_canonical()
+        report = self.canonical_report(canonical=canonical, stylise=False).to_dict()
+        self.pm.set_canonical_schema(name=schema_name, canonical_report=report)
+        self.pm_persist(save=save)
+        return
 
     def save_synthetic_canonical(self, canonical):
         """Saves the pandas.DataFrame to the clean files folder"""
@@ -138,6 +192,37 @@ class SyntheticBuilder(AbstractComponent):
         """Runs the transition pipeline from source to persist"""
         result = self.intent_model.run_intent_pipeline(size=size, columns=columns, seed=seed)
         self.save_synthetic_canonical(canonical=result)
+
+    @staticmethod
+    def canonical_report(canonical: pd.DataFrame, stylise: bool=True, inc_next_dom: bool=False,
+                         report_header: str=None, condition: str=None):
+        """The Canonical Report is a data dictionary of the canonical providing a reference view of the dataset's
+        attribute properties
+
+        :param canonical: the DataFrame to view
+        :param stylise: if True present the report stylised.
+        :param inc_next_dom: (optional) if to include the next dominate element column
+        :param report_header: (optional) filter on a header where the condition is true. Condition must exist
+        :param condition: (optional) the condition to apply to the header. Header must exist. examples:
+                ' > 0.95', ".str.contains('shed')"
+        :return:
+        """
+        return SyntheticCommons.data_dictionary(df=canonical, stylise=stylise, inc_next_dom=inc_next_dom,
+                                                report_header=report_header, condition=condition)
+
+    def report_canonical_schema(self, schema_name: str=None, stylise: bool=True):
+        """ presents the current canonical schema
+
+        :param schema_name: (optional) the name of the schema
+        :param stylise: if True present the report stylised.
+        :return: pd.DataFrame
+        """
+        schema_name = schema_name if isinstance(schema_name, str) else self.REPORT_SCHEMA
+        report = self.pm.get_canonical_schema(name=schema_name)
+        if len(report) == 0:
+            report = {'Attributes (0)': {}, 'dType': {}, '%_Null': {}, '%_Dom': {}, 'Count': {}, 'Unique': {},
+                      'Observations': {}}
+        return SyntheticCommons.data_schema(report=report, stylise=stylise)
 
     def report_connectors(self, connector_filter: [str, list]=None, inc_pm: bool=None, inc_template: bool=None,
                           stylise: bool=True):
@@ -228,3 +313,17 @@ class SyntheticBuilder(AbstractComponent):
             df.set_index(keys='column_name', inplace=True)
         return df
 
+    def setup_bootstrap(self, domain: str=None, project_name: str=None, path: str=None):
+        """ Creates a bootstrap simulator with a SyntheticBuilder
+
+        :param project_name: (optional) a project name that will replace the hadron naming on file prefix
+        :param path: (optional) a path added to the template path default
+        :return: a SyntheticBuilder
+        """
+        project_name = project_name if isinstance(project_name, str) else 'hadron'
+        file_name = self.pm.file_pattern(name='complete', project=project_name.lower(), path=path, file_type='parquet',
+                                         versioned=True)
+        self.set_outcome(uri_file=file_name)
+        self.set_report_persist(report_names=[self.REPORT_INTENT])
+        self.set_report_persist(report_names=[self.REPORT_CATALOG])
+        self.set_description(f"A domain specific {domain} simulated {project_name} dataset for {self.pm.task_name}")
