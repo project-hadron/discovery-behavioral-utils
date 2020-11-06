@@ -1165,6 +1165,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         domains = pd.Series(self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
                                               bounded_weighting=True, size=size, seed=_seed, save_intent=False))
         result = email_name.combine(domains,  func=(lambda a, b: f"{a}@{b}"))
+        nan_sample = Sample.surnames(seed=_seed, size=100)
+        result = result.apply(lambda a: a.replace('nan@', f"{np.random.choice(nan_sample).lower()}"
+                                                          f"{np.random.randint(10, 10000)}@"))
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,

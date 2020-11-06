@@ -131,7 +131,7 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_get_email(self):
         tools = self.tools
-        sample_size = 10000
+        sample_size = 100000
         result = tools.get_email(size=sample_size)
         self.assertEqual(sample_size, len(result))
 
