@@ -1332,6 +1332,101 @@ class SyntheticIntentModel(AbstractIntentModel):
         return SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                regex=regex, re_ignore_case=re_ignore_case)
 
+    def model_iterator(self, canonical: Any, marker_col: str=None, starting_frame: str=None, selection: list=None,
+                       default_action: dict=None, iteration_actions: dict=None,
+                       iter_start: int=None, iter_stop: int=None, seed: int=None,
+                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                       replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+        """ This method allows one to model repeating data subset that has some form of action applied per iteration.
+        The optional marker column must be included in order to apply actions or apply an iteration marker
+        An example of use might be a recommender generator where a cohort of unique users need to be selected, for
+        different recommendation strategies but users can be repeated across recommendation strategy
+
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param marker_col: (optional) the marker column name for the action outcome. default is to not include
+        :param starting_frame: (optional) a str referencing an existing connector contract name as the base DataFrame
+        :param selection: (optional) a list of selections where conditions are filtered on, executed in list order
+                An example of a selection with the minimum requirements is: (see 'select2dict(...)')
+                [{'column': 'genre', 'condition': "=='Comedy'"}]
+        :param default_action: (optional) a default action to take on all iterations. defaults to iteration value
+        :param iteration_actions: (optional) a dictionary of actions where the key is a specific iteration
+        :param iter_start: (optional) the start value of the range iteration default is 0
+        :param iter_stop: (optional) the stop value of the range iteration default is start iteration + 1
+        :param seed: (optional) this is a place holder, here for compatibility across methods
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: pd.DataFrame
+
+        Selections are a list of dictionaries of conditions and optional additional parameters to filter.
+        To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
+        options available to build a condition.
+        An example of a condition with the minimum requirements is
+                [{'column': 'genre', 'condition': "=='Comedy'"}]
+
+        an example of using the helper method
+                selection = [inst.select2dict(column='gender', condition="=='M'"),
+                             inst.select2dict(column='age', condition=">65", logic='XOR')]
+
+        Using the 'select2dict' method ensure the correct keys are used and the dictionary is properly formed. It also
+        helps with building the logic that is executed in order
+
+        Actions are the resulting outcome of the selection (or the default). An action can be just a value or a dict
+        that executes a intent method such as get_number(). To help build actions there is a helper function called
+        action2dict(...) that takes a method as a mandatory attribute.
+
+        With actions there are special keyword 'method' values:
+            @header: use a column as the value reference, expects the 'header' key
+            @constant: use a value constant, expects the key 'value'
+            @eval: evaluate a code string, expects the key 'code_str' and any locals() required
+
+        An example of a simple action to return a selection from a list:
+                {'method': 'get_category', selection: ['M', 'F', 'U']}
+
+        This same action using the helper method would look like:
+                inst.action2dict(method='get_category', selection=['M', 'F', 'U'])
+
+        an example of using the helper method, in this example we use the keyword @header to get a value from another
+        column at the same index position:
+                inst.action2dict(method="@header", header='value')
+
+        We can even execute some sort of evaluation at run time:
+                inst.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        canonical = self._get_canonical(canonical)
+        rtn_frame = self._get_canonical(starting_frame) if isinstance(starting_frame, str) else pd.DataFrame()
+        _seed = self._seed() if seed is None else seed
+        iter_start = iter_start if isinstance(iter_start, int) else 0
+        iter_stop = iter_stop if isinstance(iter_stop, int) and iter_stop > iter_start else iter_start + 1
+        default_action = default_action if isinstance(default_action, dict) else 0
+        iteration_actions = iteration_actions if isinstance(iteration_actions, dict) else {}
+        for counter in range(iter_start, iter_stop):
+            df_count = canonical.copy()
+            # selection
+            df_count = self.frame_selection(df_count, selection=selection, seed=_seed, save_intent=False)
+            # actions
+            if isinstance(marker_col, str):
+                if counter in iteration_actions.keys():
+                    _action = iteration_actions.get(counter, None)
+                    df_count[marker_col] = self._apply_action(df_count, action=_action, seed=_seed)
+                else:
+                    default_action = default_action if isinstance(default_action, dict) else counter
+                    df_count[marker_col] = self._apply_action(df_count, action=default_action, seed=_seed)
+            rtn_frame = pd.concat([rtn_frame, df_count], ignore_index=True)
+        return rtn_frame
+
     def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
                       exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, shuffle: bool=None,
                       size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
@@ -1388,7 +1483,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     def model_noise(self, num_columns: int, inc_targets: bool=None, size: int=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                     replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
-        """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
+        """ Generates multiple columns of noise in your dataset
 
         :param num_columns: the number of columns of noise
         :param inc_targets: (optional) if a predictor target should be included. default is false
@@ -1604,7 +1699,10 @@ class SyntheticIntentModel(AbstractIntentModel):
             @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
         An example of a simple action to return a selection from a list:
-                {'method': 'get_category', selection=['M', 'F', 'U']
+                {'method': 'get_category', selection: ['M', 'F', 'U']}
+
+        This same action using the helper method would look like:
+                inst.action2dict(method='get_category', selection=['M', 'F', 'U'])
 
         an example of using the helper method, in this example we use the keyword @header to get a value from another
         column at the same index position:
@@ -1612,8 +1710,6 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         We can even execute some sort of evaluation at run time:
                 inst.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
-
-        an example of an action from a dictionary
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),

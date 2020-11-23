@@ -191,6 +191,18 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         result = tools.correlate_categories(df, 'cat', correlations=correlation, actions=action)
         self.assertEqual([False, False, False, True, True, True, True, True], result)
 
+    def test_correlate_categories_nulls(self):
+        tools = self.tools
+        df = pd.DataFrame()
+        df['pcp_tax_id'] = tools.get_category(selection=['993406113', '133757370', '260089066', '448512481', '546434723'],
+                                              quantity=0.9, size=100, column_name='pcp_tax_id')
+        correlations = ['993406113', '133757370', '260089066', '448512481', '546434723']
+        actions = {0: 'LABCORP OF AMERICA', 1: 'LPCH MEDICAL GROUP', 2: 'ST JOSEPH HERITAGE MEDICAL',
+                   3: 'MONARCH HEALTHCARE', 4: 'PRIVIA MEICAL GROUP'}
+        df['pcp_name'] = tools.correlate_categories(df, header='pcp_tax_id', correlations=correlations,
+                                                    actions=actions, column_name='pcp_name')
+        print(df.head())
+
     def test_expit(self):
         tools = self.tools
         df = pd.DataFrame(columns=['num'], data=[-2, 1, 0, -2, 2, 0])
@@ -251,7 +263,6 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         df = pd.DataFrame(columns=['dates'], data=['1964-01-14', '1967-09-28', '1996-05-22', '1997-12-11'])
         result = tools.correlate_dates(df, 'dates', now_delta='Y')
         print(result)
-
 
 
 if __name__ == '__main__':
