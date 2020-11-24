@@ -6,6 +6,7 @@ from pprint import pprint
 import pandas as pd
 import numpy as np
 from ds_behavioral import SyntheticBuilder
+from ds_behavioral.components.commons import SyntheticCommons
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.properties.property_manager import PropertyManager
 
@@ -77,6 +78,16 @@ class SyntheticPipelineTest(unittest.TestCase):
         self.assertEqual(2, result['numbers'].value_counts().index[0])
         self.assertEqual(1, result['corr_plus'].value_counts().size)
         self.assertEqual(3, result['corr_plus'].value_counts().index[0])
+
+    def test_canonical_run_pipeline_dict(self):
+        tools = self.builder.intent_model
+        df = pd.DataFrame()
+        df['numbers'] = tools.get_number(1, 2, column_name='numbers')
+        # create a remote pm contract
+        inst = SyntheticBuilder.from_env('sub_set', has_contract=False)
+        _ = inst.tools.get_category(selection=['A', 'B'], column_name='value')
+        sub_set = SyntheticCommons.param2dict()
+        df['corr_num'] = tools.correlate_numbers(df, offset=1, header='numbers', column_name='numbers', intent_order=1)
 
 
 

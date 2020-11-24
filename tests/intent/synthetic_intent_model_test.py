@@ -72,6 +72,7 @@ class SyntheticIntentModelTest(unittest.TestCase):
         # do nothing
         result = tools.model_iterator(canonical='titanic')
         self.assertEqual(builder.load_canonical('titanic').shape, result.shape)
+        # add marker
         result = tools.model_iterator(canonical='titanic', marker_col='marker')
         self.assertEqual(builder.load_canonical('titanic').shape[1]+1, result.shape[1])
         # with selection

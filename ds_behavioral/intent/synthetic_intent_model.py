@@ -8,8 +8,8 @@ from matplotlib import dates as mdates
 from scipy import stats
 
 from aistac.intent.abstract_intent import AbstractIntentModel
-from aistac.properties.abstract_properties import AbstractPropertyManager
 from ds_behavioral.components.commons import SyntheticCommons, DataAnalytics
+from ds_behavioral.managers.synthetic_property_manager import SyntheticPropertyManager
 from ds_behavioral.sample.sample_data import *
 
 __author__ = 'Darryl Oatridge'
@@ -17,7 +17,7 @@ __author__ = 'Darryl Oatridge'
 
 class SyntheticIntentModel(AbstractIntentModel):
 
-    def __init__(self, property_manager: AbstractPropertyManager, default_save_intent: bool=None,
+    def __init__(self, property_manager: SyntheticPropertyManager, default_save_intent: bool=None,
                  default_intent_level: bool=None, order_next_available: bool=None, default_replace_intent: bool=None):
         """initialisation of the Intent class.
 
@@ -2360,6 +2360,20 @@ class SyntheticIntentModel(AbstractIntentModel):
         return Sample().__dir__()
 
     @staticmethod
+    def remote2dict(domain_contract: str, size: int=None, run_book: str=None, seed: int=None):
+        """ a utility method to help build a remote pipeline. The domain contract is a connector_name pointing to
+        a remote property domain contract with the runnable pipeline of synthetic intent
+
+        :param domain_contract: the name of the domain connector contract
+        :param size: (optional) the number of rows to synthesis
+        :param run_book: (optional) an optional runbook name that must exist in the remote domain contract
+        :param seed: (optional) a seed to apply to the run pipeline
+        :return: dictionary of the parameters
+
+        """
+        return SyntheticCommons.param2dict(**locals())
+
+    @staticmethod
     def select2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,
                     date_format: str=None, offset: int=None):
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
@@ -2640,9 +2654,20 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.seed(seed)
         return seed
 
-    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str], header: str=None) -> pd.DataFrame:
+    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str, dict], header: str=None) -> pd.DataFrame:
         if isinstance(data, pd.DataFrame):
             return deepcopy(data)
+        if isinstance(data, dict):
+            domain_contract = data.get('domain_contract', None)
+            if not self._pm.has_connector(connector_name=domain_contract):
+                raise ValueError(f"The domain contract '{domain_contract}' is not in the connectors catalog")
+            local_pm = SyntheticPropertyManager(task_name='_temporary_pm', username='_process')
+            local_pm.set_property_connector(connector_contract=self._pm.get_connector_contract(domain_contract))
+            local_intent = SyntheticIntentModel(property_manager=local_pm, default_save_intent=False)
+            size = data.get('size', None)
+            seed = data.get('seed', None)
+            run_book = data.get('run_book', None)
+            return local_intent.run_intent_pipeline(size=size, columns=run_book, seed=seed)
         elif isinstance(data, (list, pd.Series)):
             header = header if isinstance(header, str) else 'default'
             return pd.DataFrame(data=deepcopy(data), columns=[header])

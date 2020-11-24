@@ -378,11 +378,10 @@ class Sample(AbstractSample):
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return Sample._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed,
-                                   shuffle=shuffle)
+        return Sample._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def road_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
+    def us_road_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -390,9 +389,19 @@ class Sample(AbstractSample):
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        selection = [
-            'Alley', 'Avenue', 'Boulevard', 'Close', 'Circle', 'Crescent', 'Crossing', 'Court', 'Drive', 'Hill',
-            'Lane', 'Road', 'Park', 'Parkway', 'Plaza', 'Street', 'Terrace', 'Way']
+        return Sample._get_dataset(filename='lookup_us_street_suffix.csv', size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
+    def uk_road_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        selection = ['Road', 'Street', 'Way', 'Avenue', 'Drive', 'Lane', 'Grove', 'Gardens', 'Place', 'Circus',
+                     'Crescent', 'Bypass', 'Close', 'Square', 'Hill', 'Mews', 'Vale', 'Rise', 'Row', 'Mead', 'Wharf']
         return Sample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
