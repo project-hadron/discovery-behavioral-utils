@@ -64,6 +64,7 @@ class SyntheticIntentModelTest(unittest.TestCase):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
         result = builder.tools.model_us_zip(size=1000, state_code_filter=['NY', 'TX', 'FRED'])
         self.assertCountEqual(['NY', 'TX'], result['StateCode'].value_counts().index.to_list())
+        print(result.head())
 
     def test_model_iterator(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)

@@ -1,7 +1,7 @@
 from os.path import abspath, join, dirname
 import time
 from pathlib import Path
-
+from ast import literal_eval
 import pandas as pd
 import numpy as np
 from abc import ABC, abstractmethod
@@ -99,36 +99,15 @@ class MappedSample(AbstractSample):
         return df.iloc[:size]
 
     @staticmethod
-    def profile_us_500(size: int=None) -> pd.DataFrame:
+    def us_phone_code(size: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
         :return: the mapping DataFrame
         """
-        _path = Path(AbstractSample._full_path('profile_us_500.csv'))
+        _path = Path(AbstractSample._full_path('map_us_phone_code.csv'))
         df = pd.read_csv(_path, encoding='latin1')
-        return df.iloc[:size]
-
-    @staticmethod
-    def profile_uk_500(size: int=None) -> pd.DataFrame:
-        """returns the first 'size' dataframe
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :return: the mapping DataFrame
-        """
-        _path = Path(AbstractSample._full_path('profile_uk_500.csv'))
-        df = pd.read_csv(_path, encoding='latin1')
-        return df.iloc[:size]
-
-    @staticmethod
-    def profile_au_500(size: int=None) -> pd.DataFrame:
-        """returns the first 'size' dataframe
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :return: the mapping DataFrame
-        """
-        _path = Path(AbstractSample._full_path('profile_au_500.csv'))
-        df = pd.read_csv(_path, encoding='latin1')
+        df['AreaCode'] = [literal_eval(x) for x in df['AreaCode']]
         return df.iloc[:size]
 
 
@@ -202,6 +181,19 @@ class Sample(AbstractSample):
         return Sample._get_dataset(filename='lookup_professions.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
+    def uk_street_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        selection = ['Road', 'Street', 'Way', 'Avenue', 'Drive', 'Lane', 'Grove', 'Gardens', 'Place', 'Circus',
+                     'Crescent', 'Bypass', 'Close', 'Square', 'Hill', 'Mews', 'Vale', 'Rise', 'Row', 'Mead', 'Wharf']
+        return Sample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
     def uk_cities(size: int = None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
@@ -223,6 +215,28 @@ class Sample(AbstractSample):
         """
         return Sample._get_dataset(filename='lookup_uk_postcode_district.csv', size=size, seed=seed,
                                    shuffle=shuffle)
+
+    @staticmethod
+    def us_street_names(size: int = None, shuffle: bool=True, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        return Sample._get_dataset(filename='lookup_us_street_names.csv', size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
+    def us_street_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
+        """returns a randomly selected list of size
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: a list of names
+        """
+        return Sample._get_dataset(filename='lookup_us_street_suffix.csv', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def us_cities(size: int = None, shuffle: bool=True, seed: int = None) -> list:
@@ -379,30 +393,6 @@ class Sample(AbstractSample):
         :return: a list of names
         """
         return Sample._get_dataset(filename='lookup_slogan_phrases.csv', size=size, seed=seed, shuffle=shuffle)
-
-    @staticmethod
-    def us_road_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
-        """returns a randomly selected list of size
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :param shuffle: (optional) if the list should be shuffled. Default is True
-        :param seed: (optional) a seed value
-        :return: a list of names
-        """
-        return Sample._get_dataset(filename='lookup_us_street_suffix.csv', size=size, seed=seed, shuffle=shuffle)
-
-    @staticmethod
-    def uk_road_types(size: int = None, shuffle: bool = True, seed: int = None) -> list:
-        """returns a randomly selected list of size
-
-        :param size: (optional) the size of the sample. If None then all the names are returned
-        :param shuffle: (optional) if the list should be shuffled. Default is True
-        :param seed: (optional) a seed value
-        :return: a list of names
-        """
-        selection = ['Road', 'Street', 'Way', 'Avenue', 'Drive', 'Lane', 'Grove', 'Gardens', 'Place', 'Circus',
-                     'Crescent', 'Bypass', 'Close', 'Square', 'Hill', 'Mews', 'Vale', 'Rise', 'Row', 'Mead', 'Wharf']
-        return Sample._select_list(selection=selection, size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def mutual_fund_type(size: int = None, shuffle: bool = True, seed: int = None) -> list:

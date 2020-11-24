@@ -1551,8 +1551,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         _seed = self._seed() if seed is None else seed
+        np.random.seed(_seed)
         size = 1 if size is None else size
         df = MappedSample.us_zipcode_primary(cleaned=True)
+        phone_map = MappedSample.us_phone_code()
         if isinstance(state_code_filter, list):
             df = df[df['StateCode'].isin(state_code_filter)]
         df_high = df.where(df['EstimatedPopulation'] > 20000).dropna()
@@ -1569,6 +1571,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                                   'StateAbbrev'])
         df_rtn['Zipcode'] = df['Zipcode'].round(0).astype(int)
         df_rtn['City'] = df_rtn['City'].str.title()
+        df_rtn = df_rtn.merge(phone_map, how='left', on='State')
+        df_rtn['AreaCode'] = [f"({np.random.choice(x)})" for x in df_rtn['AreaCode']]
+        df_rtn['LastSeven'] = self.get_string_pattern(pattern="ddd-dddd", choices={'d': list("0123456789")},
+                                                       size=df_rtn.shape[0], choice_only=False, save_intent=False)
+        action = self.action2dict(method='@header', header='LastSeven')
+        df_rtn['Phone'] = self.correlate_join(df_rtn, header='AreaCode', action=action, sep=' ', save_intent=False)
+        df_rtn.drop(columns=['AreaCode', 'LastSeven'], inplace=True)
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
         return df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
