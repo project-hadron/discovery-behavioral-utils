@@ -59,6 +59,15 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
         self.assertEqual([1, -1, 2, -1, -1, -1], result)
 
+    def test_action_sample(self):
+        tools = self.tools
+        df = pd.DataFrame()
+        df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
+        selection = [tools.select2dict(column='letters', condition="== 'A'")]
+        action = tools.action2dict(method="@sample", name='us_states', shuffle=False)
+        result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
+        self.assertEqual(['AA', -1, 'AE', -1, -1, -1], result)
+
     def test_action_method(self):
         tools = self.tools
         df = pd.DataFrame()

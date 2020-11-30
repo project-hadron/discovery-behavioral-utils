@@ -64,7 +64,14 @@ class SyntheticIntentModelTest(unittest.TestCase):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
         result = builder.tools.model_us_zip(size=1000, state_code_filter=['NY', 'TX', 'FRED'])
         self.assertCountEqual(['NY', 'TX'], result['StateCode'].value_counts().index.to_list())
-        print(result.head())
+        self.assertCountEqual(['StateAbbrev', 'Zipcode', 'City', 'State', 'StateCode', 'Phone'], result.columns.to_list())
+        self.assertEqual(1000, result.shape[0])
+
+    def test_model_us_person(self):
+        builder = SyntheticBuilder.from_memory(default_save_intent=False)
+        result = builder.tools.model_person(size=1000)
+        self.assertCountEqual(['given_name', 'gender', 'family_name', 'initials', 'email'], result.columns.to_list())
+        self.assertEqual(1000, result.shape[0])
 
     def test_model_iterator(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)

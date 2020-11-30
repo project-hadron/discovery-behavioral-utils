@@ -1108,63 +1108,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else True
-        selection = eval(f"Sample.{sample_name}(size={size}, seed={_seed})")
-        selection = pd.Series(selection * (int(size / len(selection)) + 1)).iloc[:size]
-        if shuffle:
-            np.random.shuffle(selection)
-        return self._set_quantity(selection.to_list(), quantity=quantity, seed=_seed)
-
-    def get_profile_middle_initials(self, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                                    column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                                    remove_duplicates: bool=None):
-        """generates random middle initials"""
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        size = 1 if size is None else size
-        quantity = self._quantity(quantity)
-        _seed = self._seed() if seed is None else seed
-        middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW") + ['  '] * 4, size=int(size * 0.95),
-                                   seed=_seed, save_intent=False)
-        choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
-        middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size - len(middle),
-                                          seed=_seed, save_intent=False)
-        return self._set_quantity(middle, quantity=quantity, seed=_seed)
-
-    def get_email(self, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                  column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                  remove_duplicates: bool=None):
-        """ returns a surnames """
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        size = 1 if size is None else size
-        quantity = self._quantity(quantity)
-        _seed = self._seed() if seed is None else seed
-        # surname
-        selection = Sample.surnames(seed=_seed) + Sample.uk_cities(seed=_seed)
-        selection += Sample.us_cities(seed=_seed) + Sample.company_names(seed=_seed)
-        surnames = (pd.Series(selection).str.strip().str.lower().str.replace(' ', '_').to_list() * 3)
-        # forename
-        selection = Sample.female_names(seed=_seed) + Sample.male_names(seed=_seed)
-        forenames = pd.Series(selection).str.strip().str.lower().str.replace(' ', '_').to_list()
-        forenames *= int(len(surnames) / len(selection)) + 1
-        # join
-        email_name = [f"{a}.{b}" for a, b in zip(forenames, surnames)]
-        email_name = pd.Series(email_name).drop_duplicates()
-        while email_name.size < size:
-            number = self.get_number(10, 100000, at_most=1, size=99000, save_intent=False)
-            email_name = email_name.append(pd.Series([f"{a}{b}" for a, b in zip(surnames, number)])).iloc[:size]
-            email_name = email_name.drop_duplicates()
-        email_name = email_name.to_list()
-        np.random.shuffle(email_name)
-        selection = Sample.global_mail_domains(shuffle=False)
-        domains = self.get_category(selection=selection, weight_pattern=[40, 5, 4, 3, 2, 1],
-                                    bounded_weighting=True, size=size, seed=_seed, save_intent=False)
-        result = [f"{a}@{b}" for a, b in zip(email_name, domains)]
-        return self._set_quantity(result, quantity=quantity, seed=_seed)
+        selection = eval(f"Sample.{sample_name}(size={size}, shuffle={shuffle}, seed={_seed})")
+        return self._set_quantity(selection, quantity=quantity, seed=_seed)
 
     def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
                         quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
@@ -1385,6 +1330,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         With actions there are special keyword 'method' values:
             @header: use a column as the value reference, expects the 'header' key
             @constant: use a value constant, expects the key 'value'
+            @sample: use to get sample values, expected 'name' of the Sample method, optional 'shuffle' boolean
             @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
         An example of a simple action to return a selection from a list:
@@ -1522,6 +1468,57 @@ class SyntheticIntentModel(AbstractIntentModel):
             result = df_rtn.mean(axis=1)
             df_rtn['target1'] = result.apply(lambda x: 1 if x > 0.5 else 0)
             df_rtn['target2'] = df_rtn.iloc[:, :5].mean(axis=1).round(2)
+        return df_rtn
+
+    def model_person(self, rename_columns: dict=None, female_bias: float=None, size: int=None, seed: int=None,
+                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                     replace_intent: bool=None, remove_duplicates: bool=None):
+        """
+
+        :param rename_columns: (optional) rename the columns 'family_name', 'given_name', initials, 'gender', 'email'
+        :param female_bias: (optional) a weighted bias between 0 and 1 with 0 being no female and 1 being all female
+        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
+        :param seed: seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a DataFrame
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        _seed = self._seed() if seed is None else seed
+        size = 1 if size is None else size
+        df_rtn = MappedSample.us_forename_mf(female_bias=female_bias, size=size, shuffle=True, seed=_seed)
+        df_rtn.rename(columns={'forename': 'given_name'}, inplace=True)
+        df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=_seed)
+        middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW") + ['  '] * 4, size=int(size * 0.95),
+                                   seed=_seed, save_intent=False)
+        choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
+        middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size - len(middle),
+                                          seed=_seed, save_intent=False)
+        df_rtn['initials'] = middle
+        # set the name
+        action = self.action2dict(method='@header', header='family_name')
+        df_rtn['email'] = self.correlate_join(df_rtn, header='given_name', action=action, sep='.', save_intent=False)
+        # replace duplicates
+        idx = df_rtn[df_rtn['email'].duplicated()].index.to_list()
+        action = self.action2dict(method='get_number', header='family_name', range_value=10, to_value=100000,
+                                  weight_pattern=[10,5,1,1,1,1,1,1,1], at_most=1)
+        df_rtn['email'].iloc[idx] = self.correlate_join(df_rtn.iloc[idx], header='family_name', action=action, sep='',
+                                                        save_intent=False)
+        # add the domain
+        action = self.action2dict(method='@sample', name='global_mail_domains', shuffle=True)
+        df_rtn['email'] = self.correlate_join(df_rtn, header='email', action=action, sep='@', save_intent=False)
         return df_rtn
 
     def model_us_zip(self, rename_columns: dict=None, size: int=None, state_code_filter: list=None, seed: int=None,
@@ -1705,6 +1702,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         With actions there are special keyword 'method' values:
             @header: use a column as the value reference, expects the 'header' key
             @constant: use a value constant, expects the key 'value'
+            @sample: use to get sample values, expected 'name' of the Sample method, optional 'shuffle' boolean
             @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
         An example of a simple action to return a selection from a list:
@@ -1867,6 +1865,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         With actions there are special keyword 'method' values:
             @header: use a column as the value reference, expects the 'header' key
             @constant: use a value constant, expects the key 'value'
+            @sample: use to get sample values, expected 'name' of the Sample method, optional 'shuffle' boolean
             @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
         An example of a simple action to return a selection from a list:
@@ -1904,53 +1903,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
-
-    def correlate_forename_to_gender(self, canonical: Any, header: str, categories: list, quantity: float=None,
-                                     seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
-        """correlate a forename to a gender column so as to matche the gender to an appropriate first name
-
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
-        :param header: the header in the DataFrame to correlate
-        :param categories: a list of length two with the male then female category label to correlate e.g. ['M', 'F']
-        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
-        :param seed: (optional) a seed value for the random function: default to None
-        :param save_intent: (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a list of equal length to the one passed
-        """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # validation
-        canonical = self._get_canonical(canonical, header=header)
-        if not isinstance(categories, list) or not len(categories) == 2:
-            raise ValueError(f"The categories must list the Male and Female label to correlate, e.g. ['M', 'F']")
-        if not isinstance(header, str) or header not in canonical.columns:
-            raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
-        # Code block for intent
-        quantity = self._quantity(quantity)
-        s_values = canonical[header].copy()
-        _seed = seed if isinstance(seed, int) else self._seed()
-        m_index = s_values[s_values == categories[0]].index
-        f_index = s_values[s_values == categories[1]].index
-        m_names = self.get_category(selection=Sample.male_names(seed=_seed), size=m_index.size, seed=_seed,
-                                    save_intent=False)
-        f_names = self.get_category(selection=Sample.female_names(seed=_seed), size=f_index.size, seed=_seed,
-                                    save_intent=False)
-        result = pd.Series(data=[np.nan] * s_values.size)
-        result.loc[m_index] = m_names
-        result.loc[f_index] = f_names
-        return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_sigmoid(self, canonical: Any, header: str, precision: int=None, quantity: float=None, seed: int=None,
                           save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -2171,6 +2123,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         With actions there are special keyword 'method' values:
             @header: use a column as the value reference, expects the 'header' key
             @constant: use a value constant, expects the key 'value'
+            @sample: use to get sample values, expected 'name' of the Sample method, optional 'shuffle' boolean
             @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
         An example of a simple action to return a selection from a list:
@@ -2205,7 +2158,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         s_values = canonical[header].copy().astype(str)
         for i in range(len(corr_list)):
             action = actions.get(i, actions.get(str(i), -1))
-            if action is -1:
+            if action == -1:
                 continue
             corr_idx = s_values[s_values.isin(map(str, corr_list[i]))].index
             rtn_values.update(self._apply_action(canonical, action=action, select_idx=corr_idx, seed=_seed))
@@ -2427,6 +2380,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         Special method values
             @header: use a column as the value reference, expects the 'header' key
             @constant: use a value constant, expects the key 'value'
+            @sample: use to get sample values, expected 'name' of the Sample method, optional 'shuffle' boolean
             @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
         :param canonical: a reference canonical
@@ -2476,6 +2430,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if constant is None:
                     raise ValueError(f"The action '@constant' requires a 'value' key.")
                 return pd.Series(data=([constant] * select_idx.size), index=select_idx)
+            elif str(method).startswith('@sample'):
+                name = action.pop('name', None)
+                shuffle = action.pop('shuffle', True)
+                if name is None:
+                    raise ValueError(f"The action '@sample' requires the 'name' key.")
+                sample = eval(f'Sample.{name}(size={select_idx.size}, shuffle={shuffle}, seed={seed})')
+                return pd.Series(data=sample, index=select_idx)
             else:
                 raise ValueError(f"The 'method' key {method} is not a recognised intent method")
         return pd.Series(data=([action] * select_idx.size), index=select_idx)
