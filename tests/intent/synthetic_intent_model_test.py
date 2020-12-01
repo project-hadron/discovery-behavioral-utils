@@ -41,9 +41,12 @@ class SyntheticIntentModelTest(unittest.TestCase):
 
     def test_model_columns_headers(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
+        tools: SyntheticIntentModel = builder.tools
         builder.set_source_uri(uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
-        result = builder.tools.model_columns(connector_name=builder.CONNECTOR_SOURCE, headers=['survived', 'sex', 'fare'])
+        df = pd.DataFrame(index=range(300))
+        result = tools.model_columns(df, connector_name=builder.CONNECTOR_SOURCE, headers=['survived', 'sex', 'fare'])
         self.assertCountEqual(['survived', 'sex', 'fare'], list(result.columns))
+        self.assertEqual(300, result.shape[0])
 
     def test_remove_unwanted_headers(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
@@ -62,16 +65,18 @@ class SyntheticIntentModelTest(unittest.TestCase):
 
     def test_model_us_zip(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
-        result = builder.tools.model_us_zip(size=1000, state_code_filter=['NY', 'TX', 'FRED'])
+        df = pd.DataFrame(index=range(300))
+        result = builder.tools.model_us_zip(df, state_code_filter=['NY', 'TX', 'FRED'])
         self.assertCountEqual(['NY', 'TX'], result['StateCode'].value_counts().index.to_list())
         self.assertCountEqual(['StateAbbrev', 'Zipcode', 'City', 'State', 'StateCode', 'Phone'], result.columns.to_list())
-        self.assertEqual(1000, result.shape[0])
+        self.assertEqual(300, result.shape[0])
 
     def test_model_us_person(self):
         builder = SyntheticBuilder.from_memory(default_save_intent=False)
-        result = builder.tools.model_person(size=1000)
+        df = pd.DataFrame(index=range(300))
+        result = builder.tools.model_person(df)
         self.assertCountEqual(['given_name', 'gender', 'family_name', 'initials', 'email'], result.columns.to_list())
-        self.assertEqual(1000, result.shape[0])
+        self.assertEqual(300, result.shape[0])
 
     def test_model_iterator(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)

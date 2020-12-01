@@ -61,28 +61,23 @@ class SyntheticIntentModel(AbstractIntentModel):
                 _model = []
                 _get = []
                 _correlate = []
-                _associate = []
                 _frame = []
                 for column in self._pm.get_intent().keys():
                     for order in self._pm.get(self._pm.join(self._pm.KEY.intent_key, column), {}):
                         for method in self._pm.get(self._pm.join(self._pm.KEY.intent_key, column, order), {}).keys():
-                            if str(method).startswith('model_'):
-                                _model.append(column)
-                            elif str(method).startswith('get_'):
+                            if str(method).startswith('get_'):
                                 _get.append(column)
+                            elif str(method).startswith('model_'):
+                                _model.append(column)
                             elif str(method).startswith('correlate_'):
                                 if column in _get:
                                     _get.remove(column)
                                 _correlate.append(column)
-                            elif str(method).startswith('associate_'):
-                                if column in _get:
-                                    _get.remove(column)
-                                _associate.append(column)
                             elif str(method).startswith('frame_'):
                                 if column in _get:
                                     _get.remove(column)
                                 _frame.append(column)
-                column_names = SyntheticCommons.unique_list(_model + _get + _correlate + _associate + _frame)
+                column_names = SyntheticCommons.unique_list(_get + _model + _correlate + _frame)
             for column in column_names:
                 level_key = self._pm.join(self._pm.KEY.intent_key, column)
                 for order in sorted(self._pm.get(level_key, {})):
@@ -1278,10 +1273,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                regex=regex, re_ignore_case=re_ignore_case)
 
     def model_iterator(self, canonical: Any, marker_col: str=None, starting_frame: str=None, selection: list=None,
-                       default_action: dict=None, iteration_actions: dict=None,
-                       iter_start: int=None, iter_stop: int=None, seed: int=None,
-                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                       replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+                       default_action: dict=None, iteration_actions: dict=None, iter_start: int=None,
+                       iter_stop: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ This method allows one to model repeating data subset that has some form of action applied per iteration.
         The optional marker column must be included in order to apply actions or apply an iteration marker
         An example of use might be a recommender generator where a cohort of unique users need to be selected, for
@@ -1373,12 +1367,13 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_frame = pd.concat([rtn_frame, df_count], ignore_index=True)
         return rtn_frame
 
-    def model_columns(self, connector_name: str, headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None,
-                      exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None, shuffle: bool=None,
-                      size: int=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+    def model_columns(self, canonical: Any, connector_name: str, headers: [str, list]=None, drop: bool=None,
+                      dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
+                      shuffle: bool=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param connector_name: a connector_name for a connector to a data source
         :param headers: a list of headers to drop or filter on type
         :param drop: to drop or not drop the headers
@@ -1387,7 +1382,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param regex: a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt' columns
         :param re_ignore_case: true if the regex should ignore case. Default is False
         :param shuffle: (optional) if the rows in the loaded canonical should be shuffled
-        :param size: (optional) the size of the return. default to the size of the return
         :param seed: this is a place holder, here for compatibility across methods
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1406,34 +1400,33 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        canonical = self._get_canonical(canonical)
         if not self._pm.has_connector(connector_name=connector_name):
             raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else False
 
         handler = self._pm.get_connector_handler(connector_name)
-        canonical = handler.load_canonical()
-        if isinstance(canonical, dict):
-            canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
+        df = handler.load_canonical()
+        if isinstance(df, dict):
+            canonical = pd.DataFrame.from_dict(data=df, orient='columns')
         # Filter on the columns
-        df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+        df_rtn = SyntheticCommons.filter_columns(df=df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                  regex=regex, re_ignore_case=re_ignore_case, copy=False)
         if shuffle:
-            df_rtn.sample(frac=1, random_state=_seed)
-        size = size if isinstance(size, int) else df_rtn.shape[0]
-        if size <= df_rtn.shape[0]:
-            return df_rtn.iloc[:size]
-        df_buffer = pd.DataFrame(index=range(size-df_rtn.shape[0]), columns=df_rtn.columns.to_list())
-        return df_rtn.append(df_buffer, ignore_index=True)
+            df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
+        if canonical.shape[0] <= df_rtn.shape[0]:
+            df_rtn = df_rtn.iloc[:canonical.shape[0]]
+        return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_noise(self, num_columns: int, inc_targets: bool=None, size: int=None, seed: int=None,
+    def model_noise(self, canonical: Any, num_columns: int, inc_targets: bool=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                     replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ Generates multiple columns of noise in your dataset
 
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param num_columns: the number of columns of noise
         :param inc_targets: (optional) if a predictor target should be included. default is false
-        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1452,8 +1445,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
-        size = 1 if size is None else size
+        size = canonical.shape[0]
         num_columns = num_columns if isinstance(num_columns, int) else 1
         inc_targets = inc_targets if isinstance(inc_targets, int) else False
         gen = SyntheticCommons.label_gen()
@@ -1468,13 +1462,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             result = df_rtn.mean(axis=1)
             df_rtn['target1'] = result.apply(lambda x: 1 if x > 0.5 else 0)
             df_rtn['target2'] = df_rtn.iloc[:, :5].mean(axis=1).round(2)
-        return df_rtn
+        return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_person(self, rename_columns: dict=None, female_bias: float=None, size: int=None, seed: int=None,
+    def model_person(self, canonical: Any, rename_columns: dict=None, female_bias: float=None, size: int=None, seed: int=None,
                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                      replace_intent: bool=None, remove_duplicates: bool=None):
-        """
+        """ Models a set of columns that relate to a person: 'family_name', 'given_name', initials, 'gender', 'email'
 
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param rename_columns: (optional) rename the columns 'family_name', 'given_name', initials, 'gender', 'email'
         :param female_bias: (optional) a weighted bias between 0 and 1 with 0 being no female and 1 being all female
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
@@ -1496,8 +1491,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
-        size = 1 if size is None else size
+        size = canonical.shape[0]
         df_rtn = MappedSample.us_forename_mf(female_bias=female_bias, size=size, shuffle=True, seed=_seed)
         df_rtn.rename(columns={'forename': 'given_name'}, inplace=True)
         df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=_seed)
@@ -1519,13 +1515,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         # add the domain
         action = self.action2dict(method='@sample', name='global_mail_domains', shuffle=True)
         df_rtn['email'] = self.correlate_join(df_rtn, header='email', action=action, sep='@', save_intent=False)
-        return df_rtn
+        return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_us_zip(self, rename_columns: dict=None, size: int=None, state_code_filter: list=None, seed: int=None,
-                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+    def model_us_zip(self, canonical: Any, rename_columns: dict=None, size: int=None, state_code_filter: list=None,
+                     seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                      replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
 
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
@@ -1547,9 +1544,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
+        canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
         np.random.seed(_seed)
-        size = 1 if size is None else size
+        size = canonical.shape[0]
         df = MappedSample.us_zipcode_primary(cleaned=True)
         phone_map = MappedSample.us_phone_code()
         if isinstance(state_code_filter, list):
@@ -1577,17 +1575,19 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn.drop(columns=['AreaCode', 'LastSeven'], inplace=True)
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
-        return df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
+        df_rtn = df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
+        return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_analysis(self, analytics_model: dict, size: int=None, seed: int=None, save_intent: bool=None,
-                       column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                       remove_duplicates: bool=None) -> pd.DataFrame:
+    def model_analysis(self, canonical: Any, analytics_model: dict, size: int=None, seed: int=None,
+                       save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                       replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
         if a reference DataFrame is passed then as the analysis is run if the column already exists the row
         value will be taken as the reference to the sub category and not the random value. This allows already
         constructed association to be used as reference for a sub category.
 
-        :param analytics_model: the analytics model from discovery-tranistion-ds discovery model train
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param analytics_model: the analytics model from discovery-transition-ds discovery model train
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -1643,13 +1643,14 @@ class SyntheticIntentModel(AbstractIntentModel):
                         get_level(next_item, section_size, _seed)
             return
 
+        canonical = self._get_canonical(canonical)
         row_dict = dict()
         seed = self._seed() if seed is None else seed
-        size = 1 if not isinstance(size, int) else size
+        size = canonical.shape[0]
         get_level(analytics_model, sample_size=size, _seed=seed)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
-        return pd.DataFrame.from_dict(data=row_dict)
+        return pd.concat([canonical, pd.DataFrame.from_dict(data=row_dict)], axis=1)
 
     def correlate_selection(self, canonical: Any, selection: list, action: [str, int, float, dict],
                             default_action: [str, int, float, dict]=None, quantity: float=None, seed: int=None,
@@ -1794,14 +1795,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return self._set_quantity(result, quantity=quantity, seed=_seed)
 
-    def correlate_columns(self, canonical: Any, headers: list, action: str, quantity: float=None, seed: int=None,
+    def correlate_columns(self, canonical: Any, headers: list, func: str, quantity: float=None, seed: int=None,
                           save_intent: bool=None, precision: int=None, column_name: [int, str]=None,
                           intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlate two or more columns with each other through a finite set of functions.
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param headers: a list of headers to correlate
-        :param action: the action to take onthe row values. The available functions are:
+        :param func: the action to take onthe row values. The available functions are:
                             'sum', 'prod', 'count', 'min', 'max', 'mean'
         :param precision: the value precision of the return values
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
@@ -1825,14 +1826,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         # validation
         if not isinstance(headers, list) or len(headers) < 2:
             raise ValueError("The headers value must be a list of at least two header str")
-        if action not in ['sum', 'prod', 'count', 'min', 'max', 'mean', 'median']:
+        if func not in ['sum', 'prod', 'count', 'min', 'max', 'mean', 'median']:
             raise ValueError("The only allowed func values are 'sum', 'prod', 'count', 'min', 'max', 'mean'")
         canonical = self._get_canonical(canonical)
         # Code block for intent
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         precision = precision if isinstance(precision, int) else 3
-        result = eval(f"canonical.loc[:, headers].{action}(axis=1)", globals(), locals()).round(precision)
+        result = eval(f"canonical.loc[:, headers].{func}(axis=1)", globals(), locals()).round(precision)
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None, quantity: float=None,

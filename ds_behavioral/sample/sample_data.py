@@ -32,7 +32,7 @@ class AbstractSample(ABC):
         return rtn_df
 
     @staticmethod
-    def _get_dataset(filename: str, size: int=None, shuffle: bool=True, seed: int=None, header: bool=None) -> list:
+    def _get_dataset(filename: str, size: int=None, shuffle: bool=True, seed: int=None, header: bool=True):
         """private method to retrieve a dataset"""
         header = 'infer' if header else None
         _path = Path(AbstractSample._full_path(filename))
@@ -65,7 +65,7 @@ class MappedSample(AbstractSample):
         return rtn_list
 
     @staticmethod
-    def companies_fortune1000(size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def companies_fortune1000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -77,7 +77,7 @@ class MappedSample(AbstractSample):
                                             shuffle=shuffle)
 
     @staticmethod
-    def companies_inc5000(size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def companies_inc5000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -88,7 +88,7 @@ class MappedSample(AbstractSample):
         return AbstractSample._get_constant(reference='map_companies_inc5000', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_profession_rank(size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def us_profession_rank(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -100,7 +100,7 @@ class MappedSample(AbstractSample):
                                             shuffle=shuffle)
 
     @staticmethod
-    def uk_postcodes_primary(size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def uk_postcodes_primary(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -109,6 +109,29 @@ class MappedSample(AbstractSample):
         :return: the mapping DataFrame
         """
         return AbstractSample._get_constant(reference='map_uk_postcodes_primary', size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
+    def us_city_area_code(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: the mapping DataFrame
+        """
+        # return AbstractSample._get_constant(reference='map_us_city_area_code', size=size, seed=seed, shuffle=shuffle)
+        return AbstractSample._get_dataset(filename='map_us_city_area_code.csv', size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
+    def us_city_zipcodes_rank(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: the mapping DataFrame
+        """
+        return AbstractSample._get_constant(reference='map_us_city_zipcodes_rank', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def us_zipcode_primary(size: int=None, cleaned: bool=False, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
@@ -128,7 +151,7 @@ class MappedSample(AbstractSample):
         return df
 
     @staticmethod
-    def us_phone_code(size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def us_phone_code(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -139,7 +162,7 @@ class MappedSample(AbstractSample):
         return AbstractSample._get_constant(reference='map_us_phone_code', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_surname_rank(size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def us_surname_rank(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
