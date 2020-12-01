@@ -1515,16 +1515,17 @@ class SyntheticIntentModel(AbstractIntentModel):
         # add the domain
         action = self.action2dict(method='@sample', name='global_mail_domains', shuffle=True)
         df_rtn['email'] = self.correlate_join(df_rtn, header='email', action=action, sep='@', save_intent=False)
+        if isinstance(rename_columns, dict):
+            df_rtn = df_rtn.rename(columns=rename_columns)
         return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_us_zip(self, canonical: Any, rename_columns: dict=None, size: int=None, state_code_filter: list=None,
+    def model_us_zip(self, canonical: Any, rename_columns: dict=None, state_code_filter: list=None,
                      seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                      replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
-        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param state_code_filter: (optional) a list of state code's to filter on, returning only these states
         :param save_intent (optional) if the intent contract should be saved to the property manager
