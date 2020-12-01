@@ -95,10 +95,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 result = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                               globals(), locals())
                             elif str(method).startswith('model_'):
-                                result = eval(f"self.{method}(size=size, save_intent=False, **params)",
+                                df = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
                                               globals(), locals())
-                                result = pd.DataFrame(result)
-                                df = pd.concat([df, result], axis=1, sort=False, copy=False)
                                 continue
                             elif str(method).startswith('frame_'):
                                 df = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
@@ -460,7 +458,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #     :return: a date or size of dates in the format given.
     #      """
     #     # intent persist options
-    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #    self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
     #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
     #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
     #     # Code block for intent
@@ -529,7 +527,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #     :return: a date or size of dates in the format given.
     #      """
     #     # intent persist options
-    #     self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+    #    self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
     #                                column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
     #                                remove_duplicates=remove_duplicates, save_intent=save_intent)
     #     # Code block for intent
@@ -557,7 +555,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #             _min_date = (pd.Timestamp.min + pd.DateOffset(years=1)).replace(month=1, day=1, hour=0, minute=0,
     #                                                                             second=0, microsecond=0, nanosecond=0)
     #             _max_date = (pd.Timestamp.max + pd.DateOffset(years=-1)).replace(month=12, day=31, hour=23, minute=59,
-    #                                                                              second=59, microsecond=0, nanosecond=0)
+    #                                                                            second=59, microsecond=0, nanosecond=0)
     #             # reset the starting base
     #         _dt_default = _dt_base
     #         if not isinstance(_dt_default, pd.Timestamp):
@@ -1464,7 +1462,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn['target2'] = df_rtn.iloc[:, :5].mean(axis=1).round(2)
         return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_person(self, canonical: Any, rename_columns: dict=None, female_bias: float=None, size: int=None, seed: int=None,
+    def model_person(self, canonical: Any, rename_columns: dict=None, female_bias: float=None, seed: int=None,
                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                      replace_intent: bool=None, remove_duplicates: bool=None):
         """ Models a set of columns that relate to a person: 'family_name', 'given_name', initials, 'gender', 'email'
@@ -1472,7 +1470,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param rename_columns: (optional) rename the columns 'family_name', 'given_name', initials, 'gender', 'email'
         :param female_bias: (optional) a weighted bias between 0 and 1 with 0 being no female and 1 being all female
-        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1509,7 +1506,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # replace duplicates
         idx = df_rtn[df_rtn['email'].duplicated()].index.to_list()
         action = self.action2dict(method='get_number', header='family_name', range_value=10, to_value=100000,
-                                  weight_pattern=[10,5,1,1,1,1,1,1,1], at_most=1)
+                                  weight_pattern=[10, 5, 1, 1, 1, 1, 1, 1, 1], at_most=1)
         df_rtn['email'].iloc[idx] = self.correlate_join(df_rtn.iloc[idx], header='family_name', action=action, sep='',
                                                         save_intent=False)
         # add the domain
@@ -1570,7 +1567,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn = df_rtn.merge(phone_map, how='left', on='State')
         df_rtn['AreaCode'] = [f"({np.random.choice(x)})" for x in df_rtn['AreaCode']]
         df_rtn['LastSeven'] = self.get_string_pattern(pattern="ddd-dddd", choices={'d': list("0123456789")},
-                                                       size=df_rtn.shape[0], choice_only=False, save_intent=False)
+                                                      size=df_rtn.shape[0], choice_only=False, save_intent=False)
         action = self.action2dict(method='@header', header='LastSeven')
         df_rtn['Phone'] = self.correlate_join(df_rtn, header='AreaCode', action=action, sep=' ', save_intent=False)
         df_rtn.drop(columns=['AreaCode', 'LastSeven'], inplace=True)
