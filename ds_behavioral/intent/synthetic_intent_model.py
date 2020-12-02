@@ -2,6 +2,7 @@ import inspect
 import random
 import re
 import string
+from uuid import UUID, uuid1, uuid3, uuid4, uuid5
 from copy import deepcopy
 from typing import Any
 from matplotlib import dates as mdates
@@ -1104,16 +1105,26 @@ class SyntheticIntentModel(AbstractIntentModel):
         selection = eval(f"Sample.{sample_name}(size={size}, shuffle={shuffle}, seed={_seed})")
         return self._set_quantity(selection, quantity=quantity, seed=_seed)
 
-    def get_identifiers(self, from_value: int, to_value: int=None, size: int=None, prefix: str=None, suffix: str=None,
-                        quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                        intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
-        """ returns a list of unique identifiers randomly selected between the from_value and to_value
+    def get_uuid(self, version: int=None, as_hex: bool=None, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
+                 column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                 remove_duplicates: bool=None, **kwargs) -> list:
+        """ returns a list of UUID's based on the version presented. By default the uuid version is 4. optional
+        parameters for the version number UUID generator can be passed as kwargs.
+        Version 1: Generate a UUID from a host ID, sequence number, and the current time. Note as uuid1 contains the
+                   computers network address it may compromise privacy
+                param node: (optional) used instead of getnode() which returns a hardware address
+                param clock_seq: (optional) used as a sequence number alternative
+        Version 3: Generate a UUID based on the MD5 hash of a namespace identifier and a name
+                param namespace: an alternative namespace as a UUID e.g. uuid.NAMESPACE_DNS
+                param name: a string name
+        Version 4: Generate a random UUID
+        Version 5: Generate a UUID based on the SHA-1 hash of a namespace identifier and name
+                param namespace: an alternative namespace as a UUID e.g. uuid.NAMESPACE_DNS
+                param name: a string name
 
-        :param from_value: range from_value to_value if to_value is used else from 0 to from_value if to_value is None
-        :param to_value: optional, (signed) integer to end from.
+        :param version: The version of the UUID to use. 1, 3, 4 or 5
+        :param as_hex: if the return value is in hex format, else as a string
         :param size: the size of the sample. Must be smaller than the range
-        :param prefix: a prefix to the number . Default to nothing
-        :param suffix: a suffix to the number. default to nothing
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param seed: a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -1133,18 +1144,14 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        _seed = self._seed() if seed is None else seed
-        (from_value, to_value) = (0, from_value) if not isinstance(to_value, (float, int)) else (from_value, to_value)
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
-        if prefix is None:
-            prefix = ''
-        if suffix is None:
-            suffix = ''
-        rtn_list = []
-        for i in self.get_number(range_value=from_value, to_value=to_value, at_most=1, size=size, precision=0,
-                                 seed=_seed, save_intent=False):
-            rtn_list.append("{}{}{}".format(prefix, i, suffix))
+        _seed = self._seed() if seed is None else seed
+        as_hex = as_hex if isinstance(as_hex, bool) else False
+        version = version if isinstance(version, int) and version in [1, 3, 4, 5] else 4
+        kwargs = kwargs if isinstance(kwargs, dict) else {}
+        rtn_list = [eval(f'uuid{version}(**{kwargs})', globals(), locals()) for x in range(size)]
+        rtn_list = [x.hex if as_hex else str(x) for x in rtn_list]
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, size: int=None,

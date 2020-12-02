@@ -1,6 +1,8 @@
 import unittest
 import os
 import shutil
+import uuid
+
 import pandas as pd
 import numpy as np
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
@@ -148,6 +150,18 @@ class SyntheticIntentGetTest(unittest.TestCase):
         tools = self.tools
         result = tools.get_sample(sample_name='us_states', size=1000)
         self.assertEqual(1000, len(result))
+
+    def test_get_uuid(self):
+        tools = self.tools
+        result = tools.get_uuid(size=10, as_hex=False)
+        self.assertEqual(10, len(result))
+        self.assertTrue(sum([(len(x.split('-'))) for x in result])/10 == 5)
+        result = tools.get_uuid(size=10, as_hex=True)
+        self.assertTrue(sum([(len(x.split('-'))) for x in result])/10 == 1)
+        result = tools.get_uuid(version=3, size=10, namespace=uuid.NAMESPACE_DNS, name='python.org')
+        self.assertTrue(sum([(len(x.split('-'))) for x in result])/10 == 5)
+        result = tools.get_uuid(version=1, size=10)
+        self.assertTrue(sum([(len(x.split('-'))) for x in result])/10 == 5)
 
 
 if __name__ == '__main__':
