@@ -30,7 +30,7 @@ class SyntheticBuilderTest(unittest.TestCase):
 
     def test_run_synthetic_pipeline_seed(self):
         builder = SyntheticBuilder.from_env('tester', has_contract=False)
-        builder.set_outcome()
+        builder.set_persist()
         tools: SyntheticIntentModel = builder.tools
         _ = tools.get_category(selection=['M', 'F'], weight_pattern=[4, 3], column_name='gender')
         _ = tools.get_number(range_value=18, to_value=80,  column_name='age')

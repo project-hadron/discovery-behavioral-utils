@@ -109,8 +109,7 @@ class SyntheticBuilder(AbstractComponent):
                 self.set_persist()
         self.persist_canonical(connector_name=self.CONNECTOR_PERSIST, canonical=canonical, **kwargs)
 
-    def set_report_persist(self, connector_name: [str, list] = None, uri_file: str = None, save: bool = None,
-                           **kwargs):
+    def set_report_persist(self, connector_name: [str, list]=None, uri_file: str=None, save: bool=None, **kwargs):
         """sets the report persist using the TEMPLATE_PERSIST connector contract, there are preset constants that
         should be used. These constance can be found using Transition.REPORT_<NAME> or <instance>.REPORT_<NAME>
         where <name> is the name of the report. if no report connector name is given then all the report connectors
