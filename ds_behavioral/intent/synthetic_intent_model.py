@@ -1372,20 +1372,87 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_frame = pd.concat([rtn_frame, df_count], ignore_index=True)
         return rtn_frame
 
-    def model_columns(self, canonical: Any, connector_name: str, headers: [str, list]=None, drop: bool=None,
-                      dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
-                      shuffle: bool=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                      intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+    def model_merge(self, canonical: Any, connector_name: str, left_on: str, right_on: str, how: str=None,
+                    headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None, exclude: bool=None,
+                    regex: [str, list]=None, re_ignore_case: bool=None, suffixes: tuple=None, indicator: bool=None,
+                    validate: str=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                    intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param connector_name: a connector_name for a connector to a data source
-        :param headers: a list of headers to drop or filter on type
-        :param drop: to drop or not drop the headers
-        :param dtype: the column types to include or excluse. Default None else int, float, bool, object, 'number'
-        :param exclude: to exclude or include the dtypes
-        :param regex: a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt' columns
-        :param re_ignore_case: true if the regex should ignore case. Default is False
+        :param left_on: the canonical key column(s) to join on
+        :param right_on: the merging dataset key column(s) to join on
+        :param how: (optional) One of 'left', 'right', 'outer', 'inner'. Defaults to inner. See below for more detailed
+                    description of each method.
+        :param headers: (optional) a list of headers to drop or filter on type
+        :param drop: (optional) to drop or not drop the headers
+        :param dtype: (optional) the column types to include or excluse. Default None else int, float, bool, object
+        :param exclude: (optional) to exclude or include the dtypes
+        :param regex: (optional) a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt'
+        :param re_ignore_case: (optional) true if the regex should ignore case. Default is False
+        :param suffixes: (optional) A tuple of string suffixes to apply to overlapping columns. Defaults ('', '_dup').
+        :param indicator: (optional) Add a column to the output DataFrame called _merge with information on the source
+                    of each row. _merge is Categorical-type and takes on a value of left_only for observations whose
+                    merge key only appears in 'left' DataFrame or Series, right_only for observations whose merge key
+                    only appears in 'right' DataFrame or Series, and both if the observation’s merge key is found
+                    in both.
+        :param validate: (optional) validate : string, default None. If specified, checks if merge is of specified type.
+                            “one_to_one” or “1:1”: checks if merge keys are unique in both left and right datasets.
+                            “one_to_many” or “1:m”: checks if merge keys are unique in left dataset.
+                            “many_to_one” or “m:1”: checks if merge keys are unique in right dataset.
+                            “many_to_many” or “m:m”: allowed, but does not result in checks.
+        :param seed: this is a place holder, here for compatibility across methods
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a pd.DataFrame
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        canonical = self._get_canonical(canonical)
+        if not self._pm.has_connector(connector_name=connector_name):
+            raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
+        _seed = self._seed() if seed is None else seed
+        how = how if isinstance(how, str) and how in ['left', 'right', 'outer', 'inner'] else 'inner'
+        indicator = indicator if isinstance(indicator, bool) else False
+        suffixes = suffixes if isinstance(suffixes, tuple) and len(suffixes) == 2 else ('', '_dup')
+        handler = self._pm.get_connector_handler(connector_name)
+        df = handler.load_canonical()
+        if isinstance(df, dict):
+            canonical = pd.DataFrame.from_dict(data=df, orient='columns')
+        # Filter on the columns
+        df = SyntheticCommons.filter_columns(df=df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+                                             regex=regex, re_ignore_case=re_ignore_case, copy=False)
+        df_rtn = pd.merge(left=canonical, right=df, how=how, left_on=left_on, right_on=right_on,
+                          suffixes=suffixes, indicator=indicator, validate=validate)
+        return df_rtn
+
+    def model_concat(self, canonical: Any, connector_name: str, as_rows: str, headers: [str, list]=None, drop: bool=None,
+                     dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
+                     shuffle: bool=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+        """ returns the full column values directly from another connector data source.
+
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param connector_name: a connector_name for a connector to a data source
+        :param as_rows: (optional) how to concatenate, True adds the connector dataset as rows, False as columns
+        :param headers: (optional) a list of headers to drop or filter on type
+        :param drop: (optional) to drop or not drop the headers
+        :param dtype: (optional) the column types to include or excluse. Default None else int, float, bool, object
+        :param exclude: (optional) to exclude or include the dtypes
+        :param regex: (optional) a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt'
+        :param re_ignore_case: (optional) true if the regex should ignore case. Default is False
         :param shuffle: (optional) if the rows in the loaded canonical should be shuffled
         :param seed: this is a place holder, here for compatibility across methods
         :param save_intent (optional) if the intent contract should be saved to the property manager
@@ -1410,7 +1477,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else False
-
+        as_rows = as_rows if isinstance(as_rows, bool) else False
         handler = self._pm.get_connector_handler(connector_name)
         df = handler.load_canonical()
         if isinstance(df, dict):
@@ -1422,7 +1489,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
         if canonical.shape[0] <= df_rtn.shape[0]:
             df_rtn = df_rtn.iloc[:canonical.shape[0]]
-        return pd.concat([canonical, df_rtn], axis=1)
+        axis = 'index' if as_rows else 'columns'
+        return pd.concat([canonical, df_rtn], axis=axis)
 
     def model_noise(self, canonical: Any, num_columns: int, inc_targets: bool=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1800,15 +1868,17 @@ class SyntheticIntentModel(AbstractIntentModel):
             return canonical
         return self._set_quantity(result, quantity=quantity, seed=_seed)
 
-    def correlate_columns(self, canonical: Any, headers: list, func: str, quantity: float=None, seed: int=None,
-                          save_intent: bool=None, precision: int=None, column_name: [int, str]=None,
-                          intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
-        """ correlate two or more columns with each other through a finite set of functions.
+    def correlate_aggregate(self, canonical: Any, headers: list, agg: str, quantity: float=None, seed: int=None,
+                            save_intent: bool=None, precision: int=None, column_name: [int, str]=None,
+                            intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
+        """ correlate two or more columns with each other through a finite set of aggregation functions. The
+        aggregation function names are limited to 'sum', 'prod', 'count', 'min', 'max' and 'mean' for numeric columns
+        and a special 'list' function name to combine the columns as a list
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param headers: a list of headers to correlate
-        :param func: the action to take onthe row values. The available functions are:
-                            'sum', 'prod', 'count', 'min', 'max', 'mean'
+        :param agg: the aggregation function name enact. The available functions are:
+                        'sum', 'prod', 'count', 'min', 'max', 'mean' and 'list' which combines the columns as a list
         :param precision: the value precision of the return values
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
         :param seed: (optional) a seed value for the random function: default to None
@@ -1831,14 +1901,17 @@ class SyntheticIntentModel(AbstractIntentModel):
         # validation
         if not isinstance(headers, list) or len(headers) < 2:
             raise ValueError("The headers value must be a list of at least two header str")
-        if func not in ['sum', 'prod', 'count', 'min', 'max', 'mean', 'median']:
-            raise ValueError("The only allowed func values are 'sum', 'prod', 'count', 'min', 'max', 'mean'")
+        if agg not in ['sum', 'prod', 'count', 'min', 'max', 'mean', 'list']:
+            raise ValueError("The only allowed func values are 'sum', 'prod', 'count', 'min', 'max', 'mean', 'list'")
         canonical = self._get_canonical(canonical)
         # Code block for intent
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         precision = precision if isinstance(precision, int) else 3
-        result = eval(f"canonical.loc[:, headers].{func}(axis=1)", globals(), locals()).round(precision)
+        if agg == 'list':
+            result = canonical.loc[:, headers].values.tolist()
+        else:
+            result = eval(f"canonical.loc[:, headers].{agg}(axis=1)", globals(), locals()).round(precision)
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
     def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None, quantity: float=None,

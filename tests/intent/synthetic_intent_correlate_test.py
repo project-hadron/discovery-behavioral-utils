@@ -61,12 +61,12 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
     def test_correlate_columns(self):
         tools = self.tools
         df = pd.DataFrame({'A': [1,1,1,1,None], 'B': [1,None,2,3,None], 'C': [2,2,2,2,None], 'D': [5,5,5,5,None]})
-        result = tools.correlate_columns(df, headers=list('ABC'), func='sum')
+        result = tools.correlate_aggregate(df, headers=list('ABC'), agg='sum')
         control = [4.0, 3.0, 5.0, 6.0, 0.0]
         self.assertEqual(result, control)
         for action in ['sum', 'prod', 'count', 'min', 'max', 'mean']:
             print(action)
-            result = tools.correlate_columns(df, headers=list('ABC'), func=action)
+            result = tools.correlate_aggregate(df, headers=list('ABC'), agg=action)
             self.assertEqual(5, len(result))
 
     def test_correlate_number(self):
