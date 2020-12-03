@@ -12,7 +12,8 @@ __author__ = 'Darryl Oatridge'
 
 class SyntheticBuilder(AbstractComponent):
 
-    CONNECTOR_OUTCOME = 'outcome'
+    CONNECTOR_SOURCE = 'primary_source'
+    CONNECTOR_PERSIST = 'primary_persist'
     REPORT_CATALOG = 'catalog'
 
     DEFAULT_MODULE = 'ds_discovery.handlers.pandas_handlers'
@@ -88,29 +89,26 @@ class SyntheticBuilder(AbstractComponent):
     def tools(self) -> SyntheticIntentModel:
         return self._intent_model
 
-    def get_outcome_contract(self):
-        """ gets the outcome connector contract that can be used as the next chain source"""
-        return self.pm.get_connector_contract(self.CONNECTOR_OUTCOME)
+    def load_synthetic_canonical(self, **kwargs) -> pd.DataFrame:
+        """loads the generated synthetic pandas.DataFrame from the folder for this contract"""
+        return self.load_canonical(self.CONNECTOR_PERSIST, **kwargs)
 
-    def set_outcome_contract(self, outcome_contract: ConnectorContract, save: bool=None):
-        """ Sets the outcome persist contract
+    def load_canonical(self, connector_name: str, **kwargs) -> pd.DataFrame:
+        """returns the canonical of the referenced connector
 
-        :param outcome_contract: the connector contract for the synthetic outcome
-        :param save: (optional) if True, save to file. Default is True
+        :param connector_name: the name or label to identify and reference the connector
         """
-        self.add_connector_contract(self.CONNECTOR_OUTCOME, connector_contract=outcome_contract, save=save)
-        return
+        canonical = super().load_canonical(connector_name=connector_name, **kwargs)
+        if isinstance(canonical, dict):
+            canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
+        return canonical
 
-    def set_outcome(self, uri_file: str=None, save: bool=None, **kwargs):
-        """sets the outcome contract CONNECTOR_OUTCOME using the TEMPLATE_PERSIST connector contract
-
-        :param uri_file: the uri_file is appended to the template path
-        :param save: (optional) if True, save to file. Default is True
-        """
-        file_pattern = self.pm.file_pattern(name=self.CONNECTOR_OUTCOME)
-        uri_file = uri_file if isinstance(uri_file, str) else file_pattern
-        self.add_connector_from_template(connector_name=self.CONNECTOR_OUTCOME, uri_file=uri_file,
-                                         template_name=self.TEMPLATE_PERSIST, save=save, **kwargs)
+    def save_synthetic_canonical(self, canonical, auto_connectors: bool=None, **kwargs):
+        """Saves the synthetic canonical , auto creating the connector from template if not set"""
+        if auto_connectors if isinstance(auto_connectors, bool) else True:
+            if not self.pm.has_connector(self.CONNECTOR_PERSIST):
+                self.set_persist()
+        self.persist_canonical(connector_name=self.CONNECTOR_PERSIST, canonical=canonical, **kwargs)
 
     def set_report_persist(self, connector_name: [str, list] = None, uri_file: str = None, save: bool = None,
                            **kwargs):
@@ -138,20 +136,6 @@ class SyntheticBuilder(AbstractComponent):
                                              template_name=self.TEMPLATE_PERSIST, save=save, **kwargs)
         return
 
-    def load_synthetic_canonical(self) -> pd.DataFrame:
-        """loads the clean pandas.DataFrame from the clean folder for this contract"""
-        return self.load_canonical(self.CONNECTOR_OUTCOME)
-
-    def load_canonical(self, connector_name: str, **kwargs) -> pd.DataFrame:
-        """returns the canonical of the referenced connector
-
-        :param connector_name: the name or label to identify and reference the connector
-        """
-        canonical = super().load_canonical(connector_name=connector_name, **kwargs)
-        if isinstance(canonical, dict):
-            canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
-        return canonical
-
     def save_report_canonical(self, report_connector_name: str, report: [dict, pd.DataFrame],
                               auto_connectors: bool=None, **kwargs):
         """Saves the canonical to the data quality folder, auto creating the connector from template if not set"""
@@ -176,10 +160,6 @@ class SyntheticBuilder(AbstractComponent):
         self.pm.set_canonical_schema(name=schema_name, canonical_report=report)
         self.pm_persist(save=save)
         return
-
-    def save_synthetic_canonical(self, canonical):
-        """Saves the pandas.DataFrame to the clean files folder"""
-        self.persist_canonical(connector_name=self.CONNECTOR_OUTCOME, canonical=canonical)
 
     def add_column_description(self, column_name: str, description: str, save: bool=None):
         """ adds a description note that is included in with the 'report_column_catalog'"""
