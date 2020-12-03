@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-from aistac.handlers.abstract_handlers import ConnectorContract
 from ds_behavioral.components.commons import SyntheticCommons
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.components.abstract_component import AbstractComponent
@@ -305,7 +304,7 @@ class SyntheticBuilder(AbstractComponent):
         project_name = project_name if isinstance(project_name, str) else 'hadron'
         file_name = self.pm.file_pattern(name='complete', project=project_name.lower(), path=path, file_type=file_type,
                                          versioned=True)
-        self.set_outcome(uri_file=file_name)
+        self.set_persist(uri_file=file_name)
         self.set_report_persist(report_names=[self.REPORT_INTENT])
         self.set_report_persist(report_names=[self.REPORT_CATALOG])
         self.set_description(f"A domain specific {domain} simulated {project_name} dataset for {self.pm.task_name}")
