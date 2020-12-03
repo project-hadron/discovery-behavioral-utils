@@ -65,6 +65,18 @@ class MappedSample(AbstractSample):
         return rtn_list
 
     @staticmethod
+    def us_healthcare_organisations(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: the mapping DataFrame
+        """
+        return AbstractSample._get_constant(reference='map_us_healthcare_organisations', size=size, seed=seed,
+                                            shuffle=shuffle)
+
+    @staticmethod
     def companies_fortune1000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
