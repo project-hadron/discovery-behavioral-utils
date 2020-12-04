@@ -97,7 +97,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                               globals(), locals())
                             elif str(method).startswith('model_'):
                                 df = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
-                                              globals(), locals())
+                                          globals(), locals())
                                 continue
                             elif str(method).startswith('frame_'):
                                 df = eval(f"self.{method}(canonical=df, save_intent=False, **params)",
@@ -1074,6 +1074,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                    quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                    intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None):
         """ returns a sample set based on sector and name
+        To see the sample sets available use the Sample class __dir__() method:
+
+            > from ds_behavioral.sample.sample_data import Sample
+            > Sample().__dir__()
 
         :param sample_name: The name of the Sample method to be used.
         :param sample_size: (optional) the size of the sample to take from the reference file
@@ -1105,9 +1109,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         selection = eval(f"Sample.{sample_name}(size={size}, shuffle={shuffle}, seed={_seed})")
         return self._set_quantity(selection, quantity=quantity, seed=_seed)
 
-    def get_uuid(self, version: int=None, as_hex: bool=None, size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                 column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                 remove_duplicates: bool=None, **kwargs) -> list:
+    def get_uuid(self, version: int=None, as_hex: bool=None, size: int=None, quantity: float=None, seed: int=None,
+                 save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                 replace_intent: bool=None, remove_duplicates: bool=None, **kwargs) -> list:
         """ returns a list of UUID's based on the version presented. By default the uuid version is 4. optional
         parameters for the version number UUID generator can be passed as kwargs.
         Version 1: Generate a UUID from a host ID, sequence number, and the current time. Note as uuid1 contains the
@@ -1438,10 +1442,11 @@ class SyntheticIntentModel(AbstractIntentModel):
                           suffixes=suffixes, indicator=indicator, validate=validate)
         return df_rtn
 
-    def model_concat(self, canonical: Any, connector_name: str, as_rows: str, headers: [str, list]=None, drop: bool=None,
-                     dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None, re_ignore_case: bool=None,
-                     shuffle: bool=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+    def model_concat(self, canonical: Any, connector_name: str, as_rows: str, headers: [str, list]=None,
+                     drop: bool=None, dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
+                     re_ignore_case: bool=None, shuffle: bool=None, seed: int=None, save_intent: bool=None,
+                     column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                     remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
@@ -1591,6 +1596,46 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn = df_rtn.rename(columns=rename_columns)
         return pd.concat([canonical, df_rtn], axis=1)
 
+    def model_sample_map(self, canonical: Any, selection: list=None, headers: [str, list]=None,
+                         rename_columns: dict=None, seed: int=None, save_intent: bool=None,
+                         column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                         remove_duplicates: bool=None) -> pd.DataFrame:
+        """ builds a model of a Sample Mapped distribution.
+        To see the sample maps available use the MappedSample class __dir__() method:
+
+            > from ds_behavioral.sample.sample_data import MappedSample
+            > MappedSample().__dir__()
+
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
+        :param selection: (optional) a list of selections where conditions are filtered on, executed in list order
+                An example of a selection with the minimum requirements is: (see 'select2dict(...)')
+                [{'column': 'state', 'condition': "isin(['NY', 'TX']"}]
+        :param headers: a header or list of headers to filter on
+        :param seed: seed: (optional) a seed value for the random function: default to None
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a DataFrame
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        canonical = self._get_canonical(canonical)
+        _seed = self._seed() if seed is None else seed
+        np.random.seed(_seed)
+        size = canonical.shape[0]
+        pass
+
     def model_us_zip(self, canonical: Any, rename_columns: dict=None, state_code_filter: list=None,
                      seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                      replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
@@ -1599,7 +1644,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
         :param seed: seed: (optional) a seed value for the random function: default to None
-        :param state_code_filter: (optional) a list of state code's to filter on, returning only these states
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.

@@ -143,7 +143,8 @@ class MappedSample(AbstractSample):
         :param seed: (optional) a seed value
         :return: the mapping DataFrame
         """
-        return AbstractSample._get_constant(reference='map_us_city_zipcodes_rank', size=size, seed=seed, shuffle=shuffle)
+        return AbstractSample._get_constant(reference='map_us_city_zipcodes_rank', size=size, seed=seed,
+                                            shuffle=shuffle)
 
     @staticmethod
     def us_zipcode_primary(size: int=None, cleaned: bool=False, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
@@ -183,6 +184,17 @@ class MappedSample(AbstractSample):
         :return: the mapping DataFrame
         """
         return AbstractSample._get_constant(reference='map_us_surname_rank', size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
+    def us_forename_unisex_dist(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: the mapping DataFrame
+        """
+        return AbstractSample._get_constant(reference='map_us_forename_unisex', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def us_forename_mf(female_bias: float=None, size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
