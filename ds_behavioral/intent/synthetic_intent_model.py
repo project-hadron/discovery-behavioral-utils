@@ -1596,8 +1596,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn = df_rtn.rename(columns=rename_columns)
         return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_sample_map(self, canonical: Any, selection: list=None, headers: [str, list]=None,
-                         rename_columns: dict=None, seed: int=None, save_intent: bool=None,
+    def model_sample_map(self, canonical: Any, sample_map: str, selection: list=None, headers: [str, list]=None,
+                         shuffle: bool=None, rename_columns: dict=None, seed: int=None, save_intent: bool=None,
                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                          remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a model of a Sample Mapped distribution.
@@ -1607,11 +1607,13 @@ class SyntheticIntentModel(AbstractIntentModel):
             > MappedSample().__dir__()
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param sample_map: the sample map name. use MappedSample().__dir__() to get a list of available samples
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
         :param selection: (optional) a list of selections where conditions are filtered on, executed in list order
                 An example of a selection with the minimum requirements is: (see 'select2dict(...)')
                 [{'column': 'state', 'condition': "isin(['NY', 'TX']"}]
         :param headers: a header or list of headers to filter on
+        :param shuffle: (optional) if the selection should be shuffled before selection. Default is true
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1633,8 +1635,21 @@ class SyntheticIntentModel(AbstractIntentModel):
         canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
         np.random.seed(_seed)
+        shuffle = shuffle if isinstance(shuffle, bool) else True
         size = canonical.shape[0]
-        pass
+        df_rtn = eval(f"MappedSample.{sample_map}(size={size}, shuffle={shuffle}, seed={_seed})")
+        if isinstance(headers, (list, str)):
+            df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=headers, copy=False)
+        if isinstance(selection, list):
+            selection = deepcopy(selection)
+            # run the select logic
+            select_idx = None
+            for _where in selection:
+                select_idx = self._condition_index(canonical=df_rtn, condition=_where, select_idx=select_idx)
+            df_rtn = df_rtn.iloc[select_idx]
+        if isinstance(rename_columns, dict):
+            df_rtn = df_rtn.rename(columns=rename_columns)
+        return pd.concat([canonical, df_rtn], axis=1)
 
     def model_us_zip(self, canonical: Any, rename_columns: dict=None, state_code_filter: list=None,
                      seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
