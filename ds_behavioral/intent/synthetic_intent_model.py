@@ -2037,7 +2037,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         null_idx = s_values[s_values.isna()].index
         s_values.to_string()
         result = self._apply_action(canonical, action=action, seed=_seed)
-        s_values = s_values.combine(result, func=(lambda a, b: f"{a}{sep}{b}"))
+        s_values = pd.Series([f"{a}{sep}{b}" for (a, b) in zip(s_values, result)])
         if null_idx.size > 0:
             s_values.iloc[null_idx] = np.nan
         return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
