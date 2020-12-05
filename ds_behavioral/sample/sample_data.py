@@ -77,6 +77,18 @@ class MappedSample(AbstractSample):
                                             shuffle=shuffle)
 
     @staticmethod
+    def us_healthcare_practitioner(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: the mapping DataFrame
+        """
+        return AbstractSample._get_constant(reference='map_us_healthcare_practitioner', size=size, seed=seed,
+                                            shuffle=shuffle)
+
+    @staticmethod
     def companies_fortune1000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
@@ -186,7 +198,7 @@ class MappedSample(AbstractSample):
         return AbstractSample._get_constant(reference='map_us_surname_rank', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_forename_unisex_dist(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+    def us_forename_unisex(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
