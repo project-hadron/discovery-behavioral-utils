@@ -29,6 +29,15 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
     def tools(self) -> SyntheticIntentModel:
         return SyntheticBuilder.scratch_pad()
 
+    def test_selection_function(self):
+        tools = self.tools
+        df = pd.DataFrame()
+        df['letters'] = ['A', 'B', None, 'B', None, 'C']
+        df['value'] = [1,4,2,1,6,1]
+        selection = [tools.select2dict(column='letters', condition=".isna()")]
+        result = tools.correlate_selection(df, selection=selection, action='N/A')
+        self.assertEqual([None, None, 'N/A', None, 'N/A', None], result)
+
     def test_action_value(self):
         tools = self.tools
         df = pd.DataFrame()

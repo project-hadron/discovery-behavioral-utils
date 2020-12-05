@@ -2600,7 +2600,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         s_values = canonical[_column]
         if _expect:
             s_values = s_values.astype(_expect)
-        idx = eval(f"s_values.where(s_values{_operator}{_condition}).dropna().index", globals(), locals())
+        idx = eval(f"canonical[s_values{_operator}{_condition}].index", globals(), locals())
         if select_idx is None:
             select_idx = idx
         else:
