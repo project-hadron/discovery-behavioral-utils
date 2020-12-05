@@ -47,11 +47,12 @@ class AbstractSample(ABC):
         :param shuffle:
         """
         size = size if isinstance(size, int) else len(selection)
-        selection *= int(((size-1)/len(selection))+1)
+        seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
+        np.random.seed(seed)
+        selection *= int(((size - 1) / len(selection)) + 1)
         if shuffle:
-            seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
-            np.random.seed(seed)
-            np.random.shuffle(selection)
+            idx = np.random.randint(0, len(selection), size=size)
+            return pd.Series(selection).iloc[idx].values.tolist()[:size]
         return selection[:size]
 
 

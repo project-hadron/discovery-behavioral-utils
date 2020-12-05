@@ -16,7 +16,6 @@ class MyTestCase(unittest.TestCase):
         # no params
         result = Sample._select_list(selection=original.copy())
         self.assertEqual(len(original), len(result))
-        self.assertCountEqual(original, result)
         self.assertNotEqual(original, result)
         # no shuffle
         result = Sample._select_list(selection=original.copy(), shuffle=False)
@@ -30,13 +29,12 @@ class MyTestCase(unittest.TestCase):
         # no_seed
         no_seed = Sample._select_list(selection=original.copy())
         result = Sample._select_list(selection=original.copy())
-        self.assertCountEqual(no_seed, result)
         self.assertNotEqual(no_seed, result)
         # seed
         seed = Sample._select_list(selection=original.copy(), seed=31)
         result = Sample._select_list(selection=original.copy(), seed=31)
-        self.assertCountEqual(seed, result)
         self.assertEqual(seed, result)
+
 
     def test_get_constant(self):
         # map

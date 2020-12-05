@@ -163,6 +163,10 @@ class SyntheticIntentGetTest(unittest.TestCase):
         result = tools.get_uuid(version=1, size=10)
         self.assertTrue(sum([(len(x.split('-'))) for x in result])/10 == 5)
 
+    def test_distributions(self):
+        tools = self.tools
+        tools.get_binomial(trials=3, probability=0.5)
+
 
 if __name__ == '__main__':
     unittest.main()
