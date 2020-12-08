@@ -155,7 +155,7 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
     def test_correlate_categories_builder(self):
         builder = SyntheticBuilder.from_env('test', has_contract=False)
         from ds_engines.handlers.event_handlers import EventPersistHandler
-        builder.set_outcome_contract(ConnectorContract(uri="eb://synthetic_members", module_name='ds_engines.handlers.event_handlers', handler='EventPersistHandler'))
+        builder.set_persist_contract(ConnectorContract(uri="eb://synthetic_members", module_name='ds_engines.handlers.event_handlers', handler='EventPersistHandler'))
         sample_size = 10
         df = pd.DataFrame()
         df['pcp_tax_id'] = builder.tools.get_category(selection=[993406113, 133757370, 260089066, 448512481, 546434723],

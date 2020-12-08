@@ -53,7 +53,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # test if there is any intent to run
         if self._pm.has_intent():
             # size
-            size = size if isinstance(size, int) else 1000
+            size = size if isinstance(size, int) else 10
             # get the list of levels to run
             if isinstance(columns, (str, list)):
                 column_names = self._pm.list_formatter(columns)
@@ -1274,7 +1274,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             select_idx = None
             for _where in selection:
                 select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
-            canonical = canonical.iloc[select_idx]
+            canonical = canonical.iloc[select_idx].reset_index(drop=True)
         drop = drop if isinstance(drop, bool) else False
         exclude = exclude if isinstance(exclude, bool) else False
         re_ignore_case = re_ignore_case if isinstance(re_ignore_case, bool) else False
@@ -1376,25 +1376,18 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_frame = pd.concat([rtn_frame, df_count], ignore_index=True)
         return rtn_frame
 
-    def model_merge(self, canonical: Any, connector_name: str, left_on: str, right_on: str, how: str=None,
-                    headers: [str, list]=None, drop: bool=None, dtype: [str, list]=None, exclude: bool=None,
-                    regex: [str, list]=None, re_ignore_case: bool=None, suffixes: tuple=None, indicator: bool=None,
-                    validate: str=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
-                    intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+    def model_merge(self, canonical: Any, other: [str, dict], left_on: str, right_on: str, how: str=None,
+                    suffixes: tuple=None, indicator: bool=None, validate: str=None, seed: int=None,
+                    save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                    replace_intent: bool=None,  remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
-        :param connector_name: a connector_name for a connector to a data source
+        :param other: a connector_name or action dict for the other canonical
         :param left_on: the canonical key column(s) to join on
         :param right_on: the merging dataset key column(s) to join on
         :param how: (optional) One of 'left', 'right', 'outer', 'inner'. Defaults to inner. See below for more detailed
                     description of each method.
-        :param headers: (optional) a list of headers to drop or filter on type
-        :param drop: (optional) to drop or not drop the headers
-        :param dtype: (optional) the column types to include or excluse. Default None else int, float, bool, object
-        :param exclude: (optional) to exclude or include the dtypes
-        :param regex: (optional) a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt'
-        :param re_ignore_case: (optional) true if the regex should ignore case. Default is False
         :param suffixes: (optional) A tuple of string suffixes to apply to overlapping columns. Defaults ('', '_dup').
         :param indicator: (optional) Add a column to the output DataFrame called _merge with information on the source
                     of each row. _merge is Categorical-type and takes on a value of left_only for observations whose
@@ -1425,24 +1418,22 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
-        if not self._pm.has_connector(connector_name=connector_name):
-            raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
+        if not self._pm.has_connector(connector_name=other):
+            raise ValueError(f"The connector name '{other}' is not in the connectors catalog")
         _seed = self._seed() if seed is None else seed
         how = how if isinstance(how, str) and how in ['left', 'right', 'outer', 'inner'] else 'inner'
         indicator = indicator if isinstance(indicator, bool) else False
         suffixes = suffixes if isinstance(suffixes, tuple) and len(suffixes) == 2 else ('', '_dup')
-        handler = self._pm.get_connector_handler(connector_name)
+        handler = self._pm.get_connector_handler(other)
         df = handler.load_canonical()
         if isinstance(df, dict):
             canonical = pd.DataFrame.from_dict(data=df, orient='columns')
         # Filter on the columns
-        df = SyntheticCommons.filter_columns(df=df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
-                                             regex=regex, re_ignore_case=re_ignore_case, copy=False)
         df_rtn = pd.merge(left=canonical, right=df, how=how, left_on=left_on, right_on=right_on,
                           suffixes=suffixes, indicator=indicator, validate=validate)
         return df_rtn
 
-    def model_concat(self, canonical: Any, connector_name: str, as_rows: str, headers: [str, list]=None,
+    def model_concat(self, canonical: Any, connector_name: str, as_rows: bool=None, headers: [str, list]=None,
                      drop: bool=None, dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
                      re_ignore_case: bool=None, shuffle: bool=None, seed: int=None, save_intent: bool=None,
                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -2766,16 +2757,30 @@ class SyntheticIntentModel(AbstractIntentModel):
         if isinstance(data, pd.DataFrame):
             return deepcopy(data)
         if isinstance(data, dict):
-            domain_contract = data.get('domain_contract', None)
-            if not self._pm.has_connector(connector_name=domain_contract):
-                raise ValueError(f"The domain contract '{domain_contract}' is not in the connectors catalog")
-            local_pm = SyntheticPropertyManager(task_name='_temporary_pm', username='_process')
-            local_pm.set_property_connector(connector_contract=self._pm.get_connector_contract(domain_contract))
-            local_intent = SyntheticIntentModel(property_manager=local_pm, default_save_intent=False)
-            size = data.get('size', None)
-            seed = data.get('seed', None)
-            run_book = data.get('run_book', None)
-            return local_intent.run_intent_pipeline(size=size, columns=run_book, seed=seed)
+            method = data.pop('method', None)
+            if method is None:
+                raise ValueError(f"The data dictionary has no 'method' key.")
+            if method in self.__dir__():
+                if str(method).startswith('model_') or str(method).startswith('frame_'):
+                    data.update({'save_intent': False})
+                    return eval(f"self.{method}(**data)", globals(), locals())
+            elif str(method).startswith('@generate'):
+                task_name = data.pop('task_name', None)
+                if task_name is None:
+                    raise ValueError(f"The data method '@generate' requires a 'repo_uri' key.")
+                repo_uri = data.pop('repo_uri', None)
+                module = HandlerFactory.get_module(module_name='ds_behavioral')
+                inst = module.SyntheticBuilder.from_env(task_name=task_name, uri_pm_repo=repo_uri, default_save=False)
+                size = data.pop('size', None)
+                seed = data.get('seed', None)
+                run_book = data.pop('run_book', None)
+                result = inst.tools.run_intent_pipeline(size=size, columns=run_book, seed=seed)
+                return self.frame_selection(canonical=result, save_intent=False, **data)
+            elif str(method).startswith('@empty'):
+                size = data.pop('size', None)
+                return pd.DataFrame(index=range(size))
+            else:
+                raise ValueError(f"The data 'method' key {method} is not a recognised intent method")
         elif isinstance(data, (list, pd.Series)):
             header = header if isinstance(header, str) else 'default'
             return pd.DataFrame(data=deepcopy(data), columns=[header])
@@ -2787,5 +2792,5 @@ class SyntheticIntentModel(AbstractIntentModel):
             if isinstance(canonical, dict):
                 canonical = pd.DataFrame.from_dict(data=canonical, orient='columns')
             return canonical
-        raise ValueError(f"The canonical format is not recognised, pd.DataFrame, "
-                         f"ConnectorContract expected, {type(data)} passed")
+        raise ValueError(f"The canonical format is not recognised, pd.DataFrame, pd.Series"
+                         f"str, list or dict expected, {type(data)} passed")

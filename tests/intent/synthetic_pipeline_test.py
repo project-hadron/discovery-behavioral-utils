@@ -39,7 +39,7 @@ class SyntheticPipelineTest(unittest.TestCase):
         tools = self.builder.intent_model
         tools.get_number(1, 2, size=size, column_name='numbers')
         tools.get_category(selection=['M'], column_name='gender')
-        sb.set_outcome()
+        sb.set_persist()
         sb.run_synthetic_pipeline(size=size)
         result = sb.load_synthetic_canonical()
         self.assertEqual((size, 2), result.shape)

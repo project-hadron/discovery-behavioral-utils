@@ -7,6 +7,8 @@ from tests.intent.synthetic_intent_correlate_test import SyntheticIntentCorrelat
 from tests.intent.synthetic_intent_get_test import SyntheticIntentGetTest
 from tests.intent.synthetic_pipeline_test import SyntheticPipelineTest
 from tests.intent.synthetic_weighting_test import SyntheticWeightingTest
+from tests.intent.synthetic_get_canonical_test import SyntheticGetCanonicalTest
+
 
 # initialize the test suite
 loader = unittest.TestLoader()
@@ -19,7 +21,7 @@ suite.addTests(loader.loadTestsFromTestCase(SyntheticIntentCorrelateTest))
 suite.addTests(loader.loadTestsFromTestCase(SyntheticIntentGetTest))
 suite.addTests(loader.loadTestsFromTestCase(SyntheticPipelineTest))
 suite.addTests(loader.loadTestsFromTestCase(SyntheticWeightingTest))
-
+suite.addTests(loader.loadTestsFromTestCase(SyntheticGetCanonicalTest))
 suite.addTests(loader.loadTestsFromTestCase(SyntheticBuilderTest))
 
 

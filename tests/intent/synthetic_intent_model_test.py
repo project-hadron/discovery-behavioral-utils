@@ -44,7 +44,7 @@ class SyntheticIntentModelTest(unittest.TestCase):
         tools: SyntheticIntentModel = builder.tools
         builder.set_source_uri(uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
         df = pd.DataFrame(index=range(300))
-        result = tools.model_concat(df, connector_name=builder.CONNECTOR_SOURCE, headers=['survived', 'sex', 'fare'])
+        result = tools.model_concat(df, connector_name=builder.CONNECTOR_SOURCE, as_rows=False, headers=['survived', 'sex', 'fare'])
         self.assertCountEqual(['survived', 'sex', 'fare'], list(result.columns))
         self.assertEqual(300, result.shape[0])
 
