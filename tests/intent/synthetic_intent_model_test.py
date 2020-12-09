@@ -71,6 +71,15 @@ class SyntheticIntentModelTest(unittest.TestCase):
         self.assertCountEqual(['StateAbbrev', 'Zipcode', 'City', 'State', 'StateCode', 'Phone'], result.columns.to_list())
         self.assertEqual(300, result.shape[0])
 
+    def test_model_sample_map(self):
+        builder = SyntheticBuilder.from_memory(default_save_intent=False)
+        result = builder.tools.model_sample_map(pd.DataFrame(), sample_map='us_healthcare_practitioner')
+        self.assertEqual((70655, 10), result.shape)
+        result = builder.tools.model_sample_map(pd.DataFrame(index=range(50)), sample_map='us_healthcare_practitioner')
+        result = builder.tools.model_sample_map(pd.DataFrame(index=range(50)), sample_map='us_healthcare_practitioner',
+                                                headers=['pcp_tax_id'])
+        self.assertEqual((50, 1), result.shape)
+
     def test_model_us_person(self):
         builder = SyntheticBuilder.from_memory(default_save_intent=False)
         df = pd.DataFrame(index=range(300))

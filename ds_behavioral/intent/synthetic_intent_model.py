@@ -1627,7 +1627,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         np.random.seed(_seed)
         shuffle = shuffle if isinstance(shuffle, bool) else True
-        size = canonical.shape[0]
+        size = canonical.shape[0] if canonical.shape[0] > 1 else None
         df_rtn = eval(f"MappedSample.{sample_map}(size={size}, shuffle={shuffle}, seed={_seed})")
         if isinstance(headers, (list, str)):
             df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=headers, copy=False)
@@ -2778,7 +2778,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                 return self.frame_selection(canonical=result, save_intent=False, **data)
             elif str(method).startswith('@empty'):
                 size = data.pop('size', None)
-                return pd.DataFrame(index=range(size))
+                size = range(size) if size else None
+                return pd.DataFrame(index=size)
             else:
                 raise ValueError(f"The data 'method' key {method} is not a recognised intent method")
         elif isinstance(data, (list, pd.Series)):
