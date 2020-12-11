@@ -1383,8 +1383,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source. in addition the the
         standard groupby aggregators there is also 'list' and 'set' that returns an aggregated list or set.
-        These can be using in conjunction with 'list_choice' and 'list_size' allows control of the return values. if
-        either of these values are set to 1 then a value is returned rather than a list.
+        These can be using in conjunction with 'list_choice' and 'list_size' allows control of the return values.
+        if list_max is set to 1 then a single value is returned rather than a list of size 1.
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param headers: the column headers to apply the aggregation too
