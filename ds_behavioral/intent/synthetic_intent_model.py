@@ -734,9 +734,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_normal(self, mean: float, std: float, size: int=None, quantity: float=None, seed: int=None,
-                   save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                   replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+    def get_dist_normal(self, mean: float, std: float, size: int=None, quantity: float=None, seed: int=None,
+                        save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                        replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """A normal (Gaussian) continuous random distribution.
 
         :param mean: The mean (“centre”) of the distribution.
@@ -768,9 +768,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = list(generator.normal(loc=mean, scale=std, size=size))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_binomial(self, trials: int, probability: float, size: int=None, quantity: float=None, seed: int=None,
-                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                     replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+    def get_dist_binomial(self, trials: int, probability: float, size: int=None, quantity: float=None, seed: int=None,
+                          save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                          replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """A binomial discrete random distribution. The Binomial Distribution represents the number of
            successes and failures in n independent Bernoulli trials for some given value of n
 
@@ -803,9 +803,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = list(generator.binomial(n=trials, p=probability, size=size))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_poisson(self, interval: float, size: int=None, quantity: float=None, seed: int=None,
-                    save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                    replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+    def get_dist_poisson(self, interval: float, size: int=None, quantity: float=None, seed: int=None,
+                         save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                         replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """A Poisson discrete random distribution
 
         :param interval: Expectation of interval, must be >= 0.
@@ -836,9 +836,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = list(generator.poisson(lam=interval, size=size))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_bernoulli(self, probability: float, size: int=None, quantity: float=None, seed: int=None,
-                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                      replace_intent: bool=None, remove_duplicates: bool=None) -> list:
+    def get_dist_bernoulli(self, probability: float, size: int=None, quantity: float=None, seed: int=None,
+                           save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                           replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """A Bernoulli discrete random distribution using scipy
 
         :param probability: the probability occurrence
@@ -868,10 +868,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = list(stats.bernoulli.rvs(p=probability, size=size, random_state=_seed))
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_bounded_normal(self, mean: float, std: float, lower: float, upper: float, precision: int=None,
-                           size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                           column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                           remove_duplicates: bool=None) -> list:
+    def get_dist_bounded_normal(self, mean: float, std: float, lower: float, upper: float, precision: int=None,
+                                size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
+                                column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
+                                remove_duplicates: bool=None) -> list:
         """A bounded normal continuous random distribution.
 
         :param mean: the mean of the distribution
@@ -1376,6 +1376,72 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_frame = pd.concat([rtn_frame, df_count], ignore_index=True)
         return rtn_frame
 
+    def model_group(self, canonical: Any, headers: [str, list], group_by: [str, list], aggregator: str=None,
+                    drop_group_by: bool=False, include_weighting: bool=False, weighting_precision: int=None,
+                    remove_weighting_zeros: bool=False, remove_aggregated: bool=False, seed: int=None,
+                    save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                    replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+        """ returns the full column values directly from another connector data source.
+
+        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param headers: the column headers to apply the aggregation too
+        :param group_by: the column headers to group by
+        :param aggregator: (optional) the aggregator as a function of Pandas DataFrame 'groupby'
+        :param drop_group_by: drops the group by headers
+        :param include_weighting: include a percentage weighting column for each
+        :param weighting_precision: a precision for the weighting values
+        :param remove_aggregated: if used in conjunction with the weighting then drops the aggrigator column
+        :param remove_weighting_zeros: removes zero values
+        :param seed: this is a place holder, here for compatibility across methods
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a pd.DataFrame
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # Code block for intent
+        canonical = self._get_canonical(canonical)
+        _seed = self._seed() if seed is None else seed
+        weighting_precision = weighting_precision if isinstance(weighting_precision, int) else 3
+        aggregator = aggregator if isinstance(aggregator, str) else 'sum'
+        headers = self._pm.list_formatter(headers)
+        group_by = self._pm.list_formatter(group_by)
+        df_sub = SyntheticCommons.filter_columns(canonical, headers=headers + group_by).dropna()
+        if aggregator == 'set' or aggregator == 'list':
+            df_tmp = df_sub.groupby(group_by)[headers[0]].apply(eval(aggregator))
+            df_tmp = df_tmp.reset_index()
+            if len(headers) > 1:
+                for idx in range(1, len(headers)):
+                    result = df_sub.groupby(group_by)[headers[idx]].apply(eval(aggregator))
+                    df_tmp = df_tmp.merge(result, how='left', left_on=group_by, right_index=True)
+            df_sub = df_tmp
+        else:
+            df_sub = df_sub.groupby(group_by, as_index=False).agg(aggregator)
+        if include_weighting:
+            df_sub['sum'] = df_sub.sum(axis=1, numeric_only=True)
+            total = df_sub['sum'].sum()
+            df_sub['weighting'] = df_sub['sum'].\
+                apply(lambda x: round((x / total), weighting_precision) if isinstance(x, (int, float)) else 0)
+            df_sub = df_sub.drop(columns='sum')
+            if remove_weighting_zeros:
+                df_sub = df_sub[df_sub['weighting'] > 0]
+            df_sub = df_sub.sort_values(by='weighting', ascending=False)
+        if remove_aggregated:
+            df_sub = df_sub.drop(headers, axis=1)
+        if drop_group_by:
+            df_sub = df_sub.drop(columns=group_by, errors='ignore')
+        return df_sub
+
     def model_merge(self, canonical: Any, other: [str, dict], left_on: str, right_on: str, how: str=None,
                     suffixes: tuple=None, indicator: bool=None, validate: str=None, seed: int=None,
                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -1418,8 +1484,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
-        if not self._pm.has_connector(connector_name=other):
-            raise ValueError(f"The connector name '{other}' is not in the connectors catalog")
         _seed = self._seed() if seed is None else seed
         how = how if isinstance(how, str) and how in ['left', 'right', 'outer', 'inner'] else 'inner'
         indicator = indicator if isinstance(indicator, bool) else False
@@ -1469,8 +1533,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
-        if not self._pm.has_connector(connector_name=connector_name):
-            raise ValueError(f"The connector name '{connector_name}' is not in the connectors catalog")
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else False
         as_rows = as_rows if isinstance(as_rows, bool) else False
@@ -2529,10 +2591,11 @@ class SyntheticIntentModel(AbstractIntentModel):
                     action.update({'seed': seed})
                 if str(method).startswith('get_'):
                     action.update({'size': select_idx.size, 'save_intent': False})
-                    result = eval(f"self.{method}(**action)", globals(), locals())
+                    result = eval(f"self.{method}(**action)", globals(), action)
                 elif str(method).startswith('correlate_'):
                     action.update({'canonical': canonical.iloc[select_idx], 'save_intent': False})
-                    result = eval(f"self.{method}(**action)", globals(), locals())
+                    action.update(locals().get('self'))
+                    result = eval(f"self.{method}(**action)", globals(), action)
                 else:
                     raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
                 dtype = 'object'

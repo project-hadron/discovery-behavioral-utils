@@ -86,8 +86,13 @@ class MappedSample(AbstractSample):
         :param seed: (optional) a seed value
         :return: the mapping DataFrame
         """
-        return AbstractSample._get_constant(reference='map_us_healthcare_practitioner', size=size, seed=seed,
-                                            shuffle=shuffle)
+        # The PCP tax code-
+        seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
+        np.random.seed(seed)
+        df = AbstractSample._get_constant(reference='map_us_real_addresses', shuffle=False)
+        num_choice = np.linspace(100000000, 900000000, num=300000, dtype=int, endpoint=False)
+        num_choice += np.random.randint(100, 999, size=300000)
+        df['pcp_tax_id'] = list(np.random.choice(num_choice, size=df.shape[0], replace=False))
 
     @staticmethod
     def companies_fortune1000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
@@ -208,6 +213,17 @@ class MappedSample(AbstractSample):
         :return: the mapping DataFrame
         """
         return AbstractSample._get_constant(reference='map_us_forename_unisex', size=size, seed=seed, shuffle=shuffle)
+
+    @staticmethod
+    def us_full_address(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns the first 'size' dataframe
+
+        :param size: (optional) the size of the sample. If None then all the names are returned
+        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param seed: (optional) a seed value
+        :return: the mapping DataFrame
+        """
+        return AbstractSample._get_constant(reference='map_us_full_address', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
     def us_forename_mf(female_bias: float=None, size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:

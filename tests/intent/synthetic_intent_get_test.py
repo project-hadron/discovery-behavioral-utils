@@ -165,7 +165,7 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_distributions(self):
         tools = self.tools
-        tools.get_binomial(trials=3, probability=0.5)
+        tools.get_dist_binomial(trials=3, probability=0.5)
 
 
 if __name__ == '__main__':
