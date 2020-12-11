@@ -116,7 +116,9 @@ class SyntheticIntentModelTest(unittest.TestCase):
         builder.add_connector_uri('titanic', uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
         df = tools.model_group('titanic', headers='fare', group_by=['survived', 'sex'], aggregator='sum')
         self.assertEqual((4, 3), df.shape)
-        df = tools.model_group('titanic', headers=['class', 'embark_town'], group_by=['survived', 'sex'], aggregator='set', list_choice=True)
+        df = tools.model_group('titanic', headers=['class', 'embark_town'], group_by=['survived', 'sex'],
+                               aggregator='set', list_choice=2)
+        # print(df.loc[:, ['class', 'embark_town']])
         self.assertEqual((4, 4), df.shape)
         self.assertCountEqual(['class', 'embark_town', 'survived', 'sex'], df.columns.to_list())
         df = tools.model_group('titanic', headers=['fare', 'survived'], group_by='sex', aggregator='sum', include_weighting=True)

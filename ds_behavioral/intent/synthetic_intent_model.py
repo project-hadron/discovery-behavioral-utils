@@ -1377,20 +1377,21 @@ class SyntheticIntentModel(AbstractIntentModel):
         return rtn_frame
 
     def model_group(self, canonical: Any, headers: [str, list], group_by: [str, list], aggregator: str=None,
-                    list_choice: bool=None, list_max: int=None, drop_group_by: bool=False, seed: int=None,
+                    list_choice: int=None, list_max: int=None, drop_group_by: bool=False, seed: int=None,
                     include_weighting: bool=False, weighting_precision: int=None, remove_weighting_zeros: bool=False,
                     remove_aggregated: bool=False, save_intent: bool=None, column_name: [int, str]=None,
                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source. in addition the the
         standard groupby aggregators there is also 'list' and 'set' that returns an aggregated list or set.
-        These can be using in conjunction with 'as_choice' returning a random sample from the set or list
+        These can be using in conjunction with 'list_choice' and 'list_size' allows control of the return values. if
+        either of these values are set to 1 then a value is returned rather than a list.
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param headers: the column headers to apply the aggregation too
         :param group_by: the column headers to group by
         :param aggregator: (optional) the aggregator as a function of Pandas DataFrame 'groupby' or 'list' or 'set'
-        :param list_choice: (optional) used in conjunction with list or set aggregator to return a random single choice
-        :param list_max: (optional) used in conjunction with list or set aggregator restricts the list to a max size
+        :param list_choice: (optional) used in conjunction with list or set aggregator to return a random n choice
+        :param list_max: (optional) used in conjunction with list or set aggregator restricts the list to a n size
         :param drop_group_by: (optional) drops the group by headers
         :param include_weighting: (optional) include a percentage weighting column for each
         :param weighting_precision: (optional) a precision for the weighting values
@@ -1430,10 +1431,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                 df_tmp = df_tmp.merge(result, how='left', left_on=group_by, right_index=True)
             for idx in range(len(headers)):
                 header = headers[idx]
+                if isinstance(list_choice, int):
+                    df_tmp[header] = df_tmp[header].apply(lambda x: np.random.choice(x, size=list_choice))
                 if isinstance(list_max, int):
                     df_tmp[header] = df_tmp[header].apply(lambda x: x[0] if list_max == 1 else x[:list_max])
-                if isinstance(list_choice, bool) and list_choice:
-                    df_tmp[header] = df_tmp[header].apply(lambda x: np.random.choice(x, size=1)[0])
 
             df_sub = df_tmp
         else:
