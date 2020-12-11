@@ -116,12 +116,12 @@ class SyntheticIntentModelTest(unittest.TestCase):
         builder.add_connector_uri('titanic', uri="https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv")
         df = tools.model_group('titanic', headers='fare', group_by=['survived', 'sex'], aggregator='sum')
         self.assertEqual((4, 3), df.shape)
-        df = tools.model_group('titanic', headers=['class', 'embark_town'], group_by=['survived', 'sex'], aggregator='set')
+        df = tools.model_group('titanic', headers=['class', 'embark_town'], group_by=['survived', 'sex'], aggregator='set', list_choice=True)
         self.assertEqual((4, 4), df.shape)
         self.assertCountEqual(['class', 'embark_town', 'survived', 'sex'], df.columns.to_list())
         df = tools.model_group('titanic', headers=['fare', 'survived'], group_by='sex', aggregator='sum', include_weighting=True)
-        print(df)
-
+        self.assertEqual((2, 4), df.shape)
+        self.assertCountEqual(['survived', 'sex', 'fare', 'weighting'], df.columns.to_list())
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:

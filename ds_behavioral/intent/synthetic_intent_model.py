@@ -1377,22 +1377,26 @@ class SyntheticIntentModel(AbstractIntentModel):
         return rtn_frame
 
     def model_group(self, canonical: Any, headers: [str, list], group_by: [str, list], aggregator: str=None,
-                    drop_group_by: bool=False, include_weighting: bool=False, weighting_precision: int=None,
-                    remove_weighting_zeros: bool=False, remove_aggregated: bool=False, seed: int=None,
-                    save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                    replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
-        """ returns the full column values directly from another connector data source.
+                    list_choice: bool=None, list_max: int=None, drop_group_by: bool=False, seed: int=None,
+                    include_weighting: bool=False, weighting_precision: int=None, remove_weighting_zeros: bool=False,
+                    remove_aggregated: bool=False, save_intent: bool=None, column_name: [int, str]=None,
+                    intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
+        """ returns the full column values directly from another connector data source. in addition the the
+        standard groupby aggregators there is also 'list' and 'set' that returns an aggregated list or set.
+        These can be using in conjunction with 'as_choice' returning a random sample from the set or list
 
         :param canonical: a pd.Dataframe or str referencing an existing connector contract name
         :param headers: the column headers to apply the aggregation too
         :param group_by: the column headers to group by
-        :param aggregator: (optional) the aggregator as a function of Pandas DataFrame 'groupby'
-        :param drop_group_by: drops the group by headers
-        :param include_weighting: include a percentage weighting column for each
-        :param weighting_precision: a precision for the weighting values
-        :param remove_aggregated: if used in conjunction with the weighting then drops the aggrigator column
-        :param remove_weighting_zeros: removes zero values
-        :param seed: this is a place holder, here for compatibility across methods
+        :param aggregator: (optional) the aggregator as a function of Pandas DataFrame 'groupby' or 'list' or 'set'
+        :param list_choice: (optional) used in conjunction with list or set aggregator to return a random single choice
+        :param list_max: (optional) used in conjunction with list or set aggregator restricts the list to a max size
+        :param drop_group_by: (optional) drops the group by headers
+        :param include_weighting: (optional) include a percentage weighting column for each
+        :param weighting_precision: (optional) a precision for the weighting values
+        :param remove_aggregated: (optional) if used in conjunction with the weighting then drops the aggrigator column
+        :param remove_weighting_zeros: (optional) removes zero values
+        :param seed: (optional) this is a place holder, here for compatibility across methods
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
         :param intent_order: (optional) the order in which each intent should run.
@@ -1412,18 +1416,25 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
+        np.random.seed(_seed)
         weighting_precision = weighting_precision if isinstance(weighting_precision, int) else 3
         aggregator = aggregator if isinstance(aggregator, str) else 'sum'
         headers = self._pm.list_formatter(headers)
         group_by = self._pm.list_formatter(group_by)
         df_sub = SyntheticCommons.filter_columns(canonical, headers=headers + group_by).dropna()
-        if aggregator == 'set' or aggregator == 'list':
-            df_tmp = df_sub.groupby(group_by)[headers[0]].apply(eval(aggregator))
+        if aggregator.startswith('set') or aggregator.startswith('list'):
+            df_tmp = df_sub.groupby(group_by)[headers[0]].apply(eval(aggregator)).apply(lambda x: list(x))
             df_tmp = df_tmp.reset_index()
-            if len(headers) > 1:
-                for idx in range(1, len(headers)):
-                    result = df_sub.groupby(group_by)[headers[idx]].apply(eval(aggregator))
-                    df_tmp = df_tmp.merge(result, how='left', left_on=group_by, right_index=True)
+            for idx in range(1, len(headers)):
+                result = df_sub.groupby(group_by)[headers[idx]].apply(eval(aggregator)).apply(lambda x: list(x))
+                df_tmp = df_tmp.merge(result, how='left', left_on=group_by, right_index=True)
+            for idx in range(len(headers)):
+                header = headers[idx]
+                if isinstance(list_max, int):
+                    df_tmp[header] = df_tmp[header].apply(lambda x: x[0] if list_max == 1 else x[:list_max])
+                if isinstance(list_choice, bool) and list_choice:
+                    df_tmp[header] = df_tmp[header].apply(lambda x: np.random.choice(x, size=1)[0])
+
             df_sub = df_tmp
         else:
             df_sub = df_sub.groupby(group_by, as_index=False).agg(aggregator)
@@ -2591,11 +2602,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                     action.update({'seed': seed})
                 if str(method).startswith('get_'):
                     action.update({'size': select_idx.size, 'save_intent': False})
-                    result = eval(f"self.{method}(**action)", globals(), action)
+                    result = eval(f"self.{method}(**{action})", globals(), locals())
                 elif str(method).startswith('correlate_'):
                     action.update({'canonical': canonical.iloc[select_idx], 'save_intent': False})
-                    action.update(locals().get('self'))
-                    result = eval(f"self.{method}(**action)", globals(), action)
+                    result = eval(f"self.{method}(**{action})", globals(), locals())
                 else:
                     raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
                 dtype = 'object'
@@ -2615,7 +2625,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 code_str = action.pop('code_str', None)
                 if code_str is None:
                     raise ValueError(f"The action '@eval' requires a 'code_str' key.")
-                e_value = eval(code_str, globals(), action)
+                e_value = eval(code_str, globals(), locals())
                 return pd.Series(data=([e_value] * select_idx.size), index=select_idx)
             elif str(method).startswith('@constant'):
                 constant = action.pop('value', None)
