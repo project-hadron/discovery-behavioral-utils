@@ -2794,6 +2794,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             header = header if isinstance(header, str) else 'default'
             return pd.DataFrame(data=deepcopy(data), columns=[header])
         elif isinstance(data, str):
+            if data == '@empty':
+                return pd.DataFrame()
             if not self._pm.has_connector(connector_name=data):
                 raise ValueError(f"The data connector name '{data}' is not in the connectors catalog")
             handler = self._pm.get_connector_handler(data)
