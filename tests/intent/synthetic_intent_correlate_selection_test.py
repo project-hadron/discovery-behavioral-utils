@@ -34,7 +34,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', None, 'B', None, 'C']
         df['value'] = [1,4,2,1,6,1]
-        selection = [tools.select2dict(column='letters', condition=".isna()")]
+        selection = [tools.select2dict(column='letters', condition="@.isna()")]
         result = tools.correlate_selection(df, selection=selection, action='N/A')
         self.assertEqual([None, None, 'N/A', None, 'N/A', None], result)
 
@@ -66,18 +66,18 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
         df['value'] = [1,4,2,1,6,1]
-        selection = [tools.select2dict(column='letters', condition="== 'A'")]
+        selection = [tools.select2dict(column='letters', condition="@ == 'A'")]
         result = tools.correlate_selection(df, selection=selection, action=9)
         self.assertEqual([9.0, None, 9.0, None, None, None], result)
         # 2 selections
-        selection = [tools.select2dict(column='letters', condition="== 'A'"),
-                     tools.select2dict(column='letters', condition="'B'", operator='==', logic='OR')]
+        selection = [tools.select2dict(column='letters', condition="@ == 'A'"),
+                     tools.select2dict(column='letters', condition="@ == 'B'", logic='OR')]
         result = tools.correlate_selection(df, selection=selection, action=9)
         self.assertEqual([9.0, 9.0, 9.0, 9.0, 9.0, None], result)
         # three selections
-        selection = [tools.select2dict(column='letters', condition="== 'A'"),
-                     tools.select2dict(column='letters', condition="'B'", operator='==', logic='OR'),
-                     tools.select2dict(column='value', condition="==1", logic='AND')]
+        selection = [tools.select2dict(column='letters', condition="@ == 'A'"),
+                     tools.select2dict(column='letters', condition="@ == 'B'", logic='OR'),
+                     tools.select2dict(column='value', condition="@ ==1", logic='AND')]
         result = tools.correlate_selection(df, selection=selection, action=9)
         self.assertEqual([9.0, None, None, 9.0, None, None], result)
 
@@ -86,7 +86,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
         df['value'] = [1,4,2,1,6,1]
-        selection = [tools.select2dict(column='letters', condition="== 'A'")]
+        selection = [tools.select2dict(column='letters', condition="@ == 'A'")]
         action = tools.action2dict(method="@header", header='value')
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
         self.assertEqual([1, -1, 2, -1, -1, -1], result)
@@ -95,7 +95,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        selection = [tools.select2dict(column='letters', condition="== 'A'")]
+        selection = [tools.select2dict(column='letters', condition="@ == 'A'")]
         action = tools.action2dict(method="@sample", name='us_states', shuffle=False)
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
         self.assertEqual(['AA', -1, 'AE', -1, -1, -1], result)
@@ -105,7 +105,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
         df['value'] = [1,4,2,1,6,1]
-        selection = [tools.select2dict(column='value', condition=">1")]
+        selection = [tools.select2dict(column='value', condition="@ >1")]
         action = tools.action2dict(method="get_category", selection=['X'])
         default_action = tools.action2dict(method="get_category", selection=['M'])
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=default_action)
@@ -116,7 +116,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
         df['value'] = [1,4,2,1,6,1]
-        selection = [tools.select2dict(column='value', condition=">1")]
+        selection = [tools.select2dict(column='value', condition="@ >1")]
         action = tools.action2dict(method="@constant", value='14')
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
         self.assertEqual([-1, '14', '14', -1, '14', -1], result)
@@ -126,7 +126,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
         df['value'] = [1,4,2,1,6,1]
-        selection = [tools.select2dict(column='value', condition=">1")]
+        selection = [tools.select2dict(column='value', condition="@ >1")]
         action = tools.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
         self.assertEqual([-1, 8, 8, -1, 8, -1], result)
@@ -136,7 +136,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
         df['value'] = [1, 4, 2, 1, 6, 1]
-        selection = [tools.select2dict(column='value', condition=">1")]
+        selection = [tools.select2dict(column='value', condition="@ >1")]
         action = tools.action2dict(method='correlate_numbers', header='value', offset=0.8, multiply_offset=True)
         default_action = tools.action2dict(method="@header", header='value')
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=default_action)

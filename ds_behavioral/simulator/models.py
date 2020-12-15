@@ -29,7 +29,7 @@ class Models(object):
             return []
         categories = profile.sort_values(ascending=False).iloc[:top]
         choices = SyntheticBuilder.scratch_pad().get_category(selection=categories.index.to_list(),
-                                                              weight_pattern=categories.values.tolist(),
+                                                              relative_freq=categories.values.tolist(),
                                                               size=recommend)
         choices_count = pd.Series(choices).value_counts()
         selection_dict = {}

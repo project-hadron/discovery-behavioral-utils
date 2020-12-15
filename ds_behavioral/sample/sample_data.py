@@ -90,9 +90,12 @@ class MappedSample(AbstractSample):
         seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
         np.random.seed(seed)
         df = AbstractSample._get_constant(reference='map_us_full_address', shuffle=False)
-        num_choice = np.linspace(100000000, 900000000, num=300000, dtype=int, endpoint=False)
-        num_choice += np.random.randint(100, 999, size=300000)
-        df['pcp_tax_id'] = list(np.random.choice(num_choice, size=df.shape[0], replace=False))
+        df['pcp_tax_id'] = np.linspace(100000000, 900000000, num=df.shape[0], dtype=int, endpoint=False)
+        df['pcp_tax_id'] += np.random.randint(100, 999, size=df.shape[0])
+        df_rtnMappedSample.us_forename_mf(female_bias=0.4, size=size, shuffle=True, seed=seed)
+        df_rtn.rename(columns={'forename': 'given_name'}, inplace=True)
+        df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=seed)
+
 
 
 

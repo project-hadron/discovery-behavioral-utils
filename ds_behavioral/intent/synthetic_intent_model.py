@@ -108,7 +108,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                             df[column] = result
         return df
 
-    def get_number(self, from_value: [int, float]=None, to_value: [int, float]=None, weight_pattern: list=None,
+    def get_number(self, from_value: [int, float]=None, to_value: [int, float]=None, relative_freq: list=None,
                    precision: int=None, ordered: str=None, at_most: int=None, size: int=None, quantity: float=None,
                    seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                    replace_intent: bool=None, remove_duplicates: bool=None) -> list:
@@ -116,7 +116,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param from_value: (signed) integer to start from
         :param to_value: optional, (signed) integer the number sequence goes to but not include
-        :param weight_pattern: a weighting pattern or probability that does not have to add to 1
+        :param relative_freq: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param ordered: order the data ascending 'asc' or descending 'dec', values accepted 'asc' or 'des'
         :param at_most: the most times a selection should be chosen
@@ -158,8 +158,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         if is_int:
             precision = 0
         # build the distribution sizes
-        if isinstance(weight_pattern, list) and len(weight_pattern) > 1:
-            freq_dist_size = self._freq_dist_size(relative_freq=weight_pattern, size=size, seed=_seed)
+        if isinstance(relative_freq, list) and len(relative_freq) > 1:
+            freq_dist_size = self._freq_dist_size(relative_freq=relative_freq, size=size, seed=_seed)
         else:
             freq_dist_size = [size]
         # generate the numbers
@@ -194,7 +194,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_category(self, selection: list, weight_pattern: list=None, quantity: float=None, size: int=None,
+    def get_category(self, selection: list, relative_freq: list=None, quantity: float=None, size: int=None,
                      bounded_weighting: bool=None, at_most: int=None, seed: int=None, save_intent: bool=None,
                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                      remove_duplicates: bool=None) -> list:
@@ -202,7 +202,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         control the number of times a selection can be chosen.
 
         :param selection: a list of items to select from
-        :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param relative_freq: a weighting pattern that does not have to add to 1
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param size: an optional size of the return. default to 1
         :param at_most: the most times a selection should be chosen
@@ -230,12 +230,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         bounded_weighting = bounded_weighting if isinstance(bounded_weighting, bool) else False
         _seed = self._seed() if seed is None else seed
         quantity = self._quantity(quantity)
-        select_index = self.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most, size=size,
+        select_index = self.get_number(len(selection), relative_freq=relative_freq, at_most=at_most, size=size,
                                        quantity=1, seed=_seed, save_intent=False)
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
-    def get_datetime(self, start: Any, until: Any, weight_pattern: list=None, at_most: int=None, ordered: str=None,
+    def get_datetime(self, start: Any, until: Any, relative_freq: list=None, at_most: int=None, ordered: str=None,
                      date_format: str=None, as_num: bool=None, ignore_time: bool=None, size: int=None,
                      quantity: float=None, seed: int=None, day_first: bool=None, year_first: bool=None,
                      save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
@@ -250,7 +250,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param start: the start boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp or int
         :param until: up until boundary of the date range can be str, datetime, pd.datetime, pd.Timestamp or int
         :param quantity: the quantity of values that are not null. Number between 0 and 1
-        :param weight_pattern: (optional) A pattern across the whole date range.
+        :param relative_freq: (optional) A pattern across the whole date range.
         :param at_most: the most times a selection should be chosen
         :param ordered: order the data ascending 'asc' or descending 'dec', values accepted 'asc' or 'des'
         :param ignore_time: ignore time elements and only select from Year, Month, Day elements. Default is False
@@ -300,7 +300,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _dt_start = int(_dt_start)
             _dt_until = int(_dt_until)
             precision = 0
-        rtn_list = self.get_number(from_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
+        rtn_list = self.get_number(from_value=_dt_start, to_value=_dt_until, relative_freq=relative_freq,
                                    at_most=at_most, ordered=ordered, precision=precision, size=size, seed=seed,
                                    save_intent=False)
         if not as_num:
@@ -460,7 +460,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #         if date_pattern is not None:
     #             _dp_start = self._convert_date2value(_dt_start)[0]
     #             _dp_until = self._convert_date2value(_dt_until)[0]
-    #             value = self.get_number(_dp_start, _dp_until, weight_pattern=date_pattern, seed=_seed,
+    #             value = self.get_number(_dp_start, _dp_until, relative_freq=date_pattern, seed=_seed,
     #                                     save_intent=False)
     #             _dt_default = self._convert_value2date(value)[0]
     #         # ### years ###
@@ -553,13 +553,13 @@ class SyntheticIntentModel(AbstractIntentModel):
     #         rtn_list = rtn_dates
     #     return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_intervals(self, intervals: list, weight_pattern: list=None, precision: int=None, size: int=None,
+    def get_intervals(self, intervals: list, relative_freq: list=None, precision: int=None, size: int=None,
                       quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
 
         :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
-        :param weight_pattern: a weighting pattern or probability that does not have to add to 1
+        :param relative_freq: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
@@ -588,7 +588,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         if not all(isinstance(value, tuple) for value in intervals):
             raise ValueError("The intervals list must be a list of tuples")
-        interval_list = self.get_category(selection=intervals, weight_pattern=weight_pattern, size=size, seed=_seed,
+        interval_list = self.get_category(selection=intervals, relative_freq=relative_freq, size=size, seed=_seed,
                                           save_intent=False)
         interval_counts = pd.Series(interval_list).value_counts()
         rtn_list = []
@@ -627,7 +627,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """A normal (Gaussian) continuous random distribution.
 
         :param mean: The mean (“centre”) of the distribution.
-        :param std: The standard deviation (spread or “width”) of the distribution. Must be >= 0
+        :param std: The standard deviation (jitter or “width”) of the distribution. Must be >= 0
         :param size: the size of the sample. if a tuple of intervals, size must match the tuple
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
@@ -906,7 +906,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_list = [i + j for i, j in zip(rtn_list, result)] if len(rtn_list) > 0 else result
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_selection(self, connector_name: str, column_header: str, weight_pattern: list=None, sample_size: int=None,
+    def get_selection(self, connector_name: str, column_header: str, relative_freq: list=None, sample_size: int=None,
                       selection_size: int=None, size: int=None, at_most: bool=None, shuffle: bool=None,
                       quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
                       intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
@@ -914,7 +914,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param connector_name: a connector_name for a connector to a data source
         :param column_header: the name of the column header to correlate
-        :param weight_pattern: (optional) a weighting pattern of the final selection
+        :param relative_freq: (optional) a weighting pattern of the final selection
         :param selection_size: (optional) the selection to take from the sample size, normally used with shuffle
         :param sample_size: (optional) the size of the sample to take from the reference file
         :param at_most: (optional) the most times a selection should be chosen
@@ -954,7 +954,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _values = _values.sample(frac=1, random_state=_seed).reset_index(drop=True)
         if isinstance(selection_size, int) and 0 < selection_size < _values.size:
             _values = _values.iloc[:selection_size]
-        return self.get_category(selection=_values.to_list(), weight_pattern=weight_pattern, quantity=quantity,
+        return self.get_category(selection=_values.to_list(), relative_freq=relative_freq, quantity=quantity,
                                  size=size, at_most=at_most, seed=_seed, save_intent=False)
 
     def get_sample(self, sample_name: str, sample_size: int=None, shuffle: bool=None, size: int=None,
@@ -1045,7 +1045,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = [x.hex if as_hex else str(x) for x in rtn_list]
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_tagged_pattern(self, pattern: [str, list], tags: dict, weight_pattern: list=None, size: int=None,
+    def get_tagged_pattern(self, pattern: [str, list], tags: dict, relative_freq: list=None, size: int=None,
                            quantity: [float, int]=None, seed: int=None, save_intent: bool=None,
                            column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                            remove_duplicates: bool=None) -> list:
@@ -1059,7 +1059,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param pattern: a string or list of strings to apply the ta substitution too
         :param tags: a dictionary of tas and actions
-        :param weight_pattern: a weighting pattern that does not have to add to 1
+        :param relative_freq: a weighting pattern that does not have to add to 1
         :param quantity: a number between 0 and 1 representing the percentage quantity of the data
         :param size: an optional size of the return. default to 1
         :param seed: a seed value for the random function: default to None
@@ -1091,7 +1091,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         rtn_list = []
         for _ in range(size):
             _seed = self._next_seed(_seed, seed)
-            choice = self.get_category(pattern, weight_pattern=weight_pattern, seed=_seed, size=1, save_intent=False)[0]
+            choice = self.get_category(pattern, relative_freq=relative_freq, seed=_seed, size=1, save_intent=False)[0]
             for tag, action in tags.items():
                 method = action.get('action')
                 if method in class_methods:
@@ -1265,7 +1265,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
     def model_group(self, canonical: Any, headers: [str, list], group_by: [str, list], aggregator: str=None,
                     list_choice: int=None, list_max: int=None, drop_group_by: bool=False, seed: int=None,
-                    include_weighting: bool=False, weighting_precision: int=None, remove_weighting_zeros: bool=False,
+                    include_weighting: bool=False, freq_precision: int=None, remove_weighting_zeros: bool=False,
                     remove_aggregated: bool=False, save_intent: bool=None, column_name: [int, str]=None,
                     intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source. in addition the the
@@ -1281,7 +1281,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param list_max: (optional) used in conjunction with list or set aggregator restricts the list to a n size
         :param drop_group_by: (optional) drops the group by headers
         :param include_weighting: (optional) include a percentage weighting column for each
-        :param weighting_precision: (optional) a precision for the weighting values
+        :param freq_precision: (optional) a precision for the relative_freq values
         :param remove_aggregated: (optional) if used in conjunction with the weighting then drops the aggrigator column
         :param remove_weighting_zeros: (optional) removes zero values
         :param seed: (optional) this is a place holder, here for compatibility across methods
@@ -1305,7 +1305,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
         np.random.seed(_seed)
-        weighting_precision = weighting_precision if isinstance(weighting_precision, int) else 3
+        freq_precision = freq_precision if isinstance(freq_precision, int) else 3
         aggregator = aggregator if isinstance(aggregator, str) else 'sum'
         headers = self._pm.list_formatter(headers)
         group_by = self._pm.list_formatter(group_by)
@@ -1330,7 +1330,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_sub['sum'] = df_sub.sum(axis=1, numeric_only=True)
             total = df_sub['sum'].sum()
             df_sub['weighting'] = df_sub['sum'].\
-                apply(lambda x: round((x / total), weighting_precision) if isinstance(x, (int, float)) else 0)
+                apply(lambda x: round((x / total), freq_precision) if isinstance(x, (int, float)) else 0)
             df_sub = df_sub.drop(columns='sum')
             if remove_weighting_zeros:
                 df_sub = df_sub[df_sub['weighting'] > 0]
@@ -1538,7 +1538,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # replace duplicates
         idx = df_rtn[df_rtn['email'].duplicated()].index.to_list()
         action = self.action2dict(method='get_number', range_value=10, to_value=100000,
-                                  weight_pattern=[10, 5, 1, 1, 1, 1, 1, 1, 1], at_most=1)
+                                  relative_freq=[10, 5, 1, 1, 1, 1, 1, 1, 1], at_most=1)
         df_rtn['email'].iloc[idx] = self.correlate_join(df_rtn.iloc[idx], header='family_name', action=action, sep='',
                                                         save_intent=False)
         # add the domain
@@ -1641,7 +1641,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df = df.sort_values(by='EstimatedPopulation', ascending=False)
         low_size = int(0.001 * size)
         high_size = size - low_size
-        idx = self.get_number(df_high.shape[0], weight_pattern=[10, 7, 6, 5, 4, 3, 2, 0.9] + [0.6]*50 + [0.3]*50,
+        idx = self.get_number(df_high.shape[0], relative_freq=[10, 7, 6, 5, 4, 3, 2, 0.9] + [0.6]*50 + [0.3]*50,
                               seed=_seed, size=high_size, save_intent=False)
         df_rtn = df_high.iloc[idx]
         idx = self.get_number(df_low.shape[0], size=low_size, seed=_seed, save_intent=False)
@@ -1698,28 +1698,28 @@ class SyntheticIntentModel(AbstractIntentModel):
                 _analysis = DataAnalytics(label=name, analysis=values.get('analysis', {}))
                 if str(_analysis.intent.dtype).startswith('cat'):
                     row_dict[name] += self.get_category(selection=_analysis.intent.selection,
-                                                        weight_pattern=_analysis.patterns.weight_pattern,
+                                                        relative_freq=_analysis.patterns.relative_freq,
                                                         quantity=1-_analysis.stats.nulls_percent, seed=_seed,
                                                         size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.intent.selection,
-                                                         weight_pattern=_analysis.patterns.weight_pattern,
+                                                         relative_freq=_analysis.patterns.relative_freq,
                                                          precision=_analysis.intent.precision,
                                                          quantity=1 - _analysis.stats.nulls_percent,
                                                          seed=_seed, size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('date'):
                     row_dict[name] += self.get_datetime(start=_analysis.intent.lower, until=_analysis.intent.upper,
-                                                        weight_pattern=_analysis.patterns.weight_pattern,
+                                                        relative_freq=_analysis.patterns.relative_freq,
                                                         date_format=_analysis.intent.data_format,
                                                         day_first=_analysis.intent.day_first,
                                                         year_first=_analysis.intent.year_first,
                                                         quantity=1 - _analysis.stats.nulls_percent,
                                                         seed=_seed, size=sample_size, save_intent=False)
-                unit = sample_size / sum(_analysis.patterns.weight_pattern)
+                unit = sample_size / sum(_analysis.patterns.relative_freq)
                 if values.get('sub_category'):
-                    section_map = _analysis.weight_map
+                    section_map = _analysis.relative_freq_map
                     for i in section_map.index:
-                        section_size = int(round(_analysis.weight_map.loc[i] * unit, 0))+1
+                        section_size = int(round(_analysis.relative_freq_map.loc[i] * unit, 0)) + 1
                         next_item = values.get('sub_category').get(i)
                         get_level(next_item, section_size, _seed)
             return
@@ -2084,20 +2084,20 @@ class SyntheticIntentModel(AbstractIntentModel):
         result = s_values.apply(lambda x: _calc_polynomial(x, coefficient))
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_numbers(self, canonical: Any, header: str, spread: float=None, offset: float=None,
-                          weighting_pattern: list=None, multiply_offset: bool=None, precision: int=None,
+    def correlate_numbers(self, canonical: Any, header: str, jitter: float=None, offset: float=None,
+                          jitter_freq: list=None, multiply_offset: bool=None, precision: int=None,
                           fill_nulls: bool=None, quantity: float=None, seed: int=None, keep_zero: bool=None,
                           min_value: [int, float]=None, max_value: [int, float]=None, save_intent: bool=None,
                           column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                           remove_duplicates: bool=None):
-        """ returns a number that correlates to the value given. The spread is based on a normal distribution
-        with the value being the mean and the spread its standard deviation from that mean
+        """ returns a number that correlates to the value given. The jitter is based on a normal distribution
+        with the correlated value being the mean and the jitter its standard deviation from that mean
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
-        :param spread: (optional) the random spread or deviation from the value. defaults to 0
+        :param jitter: (optional) a perturbation of the value where the jitter is a std. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
-        :param weighting_pattern: a weighting pattern with the pattern mid point the mid point of the spread
+        :param jitter_freq: (optional)  a relative freq with the pattern mid point the mid point of the jitter
         :param multiply_offset: (optional) if true then the offset is multiplied else added
         :param precision: (optional) how many decimal places. default to 3
         :param fill_nulls: (optional) if True then fills nulls with the most common values
@@ -2142,8 +2142,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         zero_idx = s_values.where(s_values == 0).dropna().index if keep_zero else []
         if isinstance(offset, (int, float)) and offset != 0:
             s_values = s_values.mul(offset) if action == 'multiply' else s_values.add(offset)
-        if isinstance(spread, (int, float)) and spread != 0:
-            sample = self.get_number(-abs(spread) / 2, abs(spread) / 2, weight_pattern=weighting_pattern,
+        if isinstance(jitter, (int, float)) and jitter != 0:
+            sample = self.get_number(-abs(jitter) / 2, abs(jitter) / 2, relative_freq=jitter_freq,
                                      size=s_values.size, save_intent=False, seed=_seed)
             s_values = s_values.add(sample)
         if isinstance(min_value, (int, float)):
@@ -2251,8 +2251,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             rtn_values.update(self._apply_action(canonical, action=action, select_idx=corr_idx, seed=_seed))
         return self._set_quantity(rtn_values.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, spread: int=None,
-                        spread_units: str=None, spread_pattern: list=None, now_delta: str=None, date_format: str=None,
+    def correlate_dates(self, canonical: Any, header: str, offset: [int, dict]=None, jitter: int=None,
+                        jitter_units: str=None, jitter_freq: list=None, now_delta: str=None, date_format: str=None,
                         min_date: str=None, max_date: str=None, fill_nulls: bool=None, day_first: bool=None,
                         year_first: bool=None, quantity: float=None, seed: int=None, save_intent: bool=None,
                         column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -2263,9 +2263,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param header: the header in the DataFrame to correlate
         :param offset: (optional) and offset to the date. if int then assumed a 'days' offset
                 int or dictionary associated with pd. eg {'days': 1}
-        :param spread: (optional) the random spread or deviation in days
-        :param spread_units: (optional) the units of the spread, Options: 'W', 'D', 'h', 'm', 's'. default 'D'
-        :param spread_pattern: (optional) a weighting pattern with the pattern mid point the mid point of the spread
+        :param jitter: (optional) the random jitter or deviation in days
+        :param jitter_units: (optional) the units of the jitter, Options: 'W', 'D', 'h', 'm', 's'. default 'D'
+        :param jitter_freq: (optional) a relative freq with the pattern mid point the mid point of the jitter
         :param now_delta: (optional) returns a delta from now as an int list, Options: 'Y', 'M', 'W', 'D', 'h', 'm', 's'
         :param min_date: (optional)a minimum date not to go below
         :param max_date: (optional)a max date not to go above
@@ -2318,8 +2318,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError(f"the now_delta offset unit '{now_delta}' is not recognised "
                              f"use of of ['Y', 'M', 'W', 'D', 'h', 'm', 's']")
         units_allowed = ['W', 'D', 'h', 'm', 's']
-        spread_units = spread_units if isinstance(spread_units, str) and spread_units in units_allowed else 'D'
-        spread = pd.Timedelta(value=spread, unit=spread_units) if isinstance(spread, int) else None
+        jitter_units = jitter_units if isinstance(jitter_units, str) and jitter_units in units_allowed else 'D'
+        jitter = pd.Timedelta(value=jitter, unit=jitter_units) if isinstance(jitter, int) else None
         # set minimum date
         _min_date = pd.to_datetime(min_date, errors='coerce', infer_datetime_format=True, utc=True)
         if _min_date is None or _min_date is pd.NaT:
@@ -2333,14 +2333,14 @@ class SyntheticIntentModel(AbstractIntentModel):
         # convert values into datetime
         s_values = pd.Series(pd.to_datetime(values.copy(), errors='coerce', infer_datetime_format=True,
                                             dayfirst=day_first, yearfirst=year_first, utc=True))
-        if spread is not None:
-            if spread_units in ['W', 'D']:
-                value = spread.days
+        if jitter is not None:
+            if jitter_units in ['W', 'D']:
+                value = jitter.days
                 zip_units = 'D'
             else:
-                value = int(spread.to_timedelta64().astype(int)/1000000000)
+                value = int(jitter.to_timedelta64().astype(int) / 1000000000)
                 zip_units = 's'
-            zip_spread = self.get_number(-abs(value) / 2, (abs(value+1) / 2), weight_pattern=spread_pattern,
+            zip_spread = self.get_number(-abs(value) / 2, (abs(value+1) / 2), relative_freq=jitter_freq,
                                          precision=0, size=s_values.size, save_intent=False, seed=_seed)
             zipped_dt = list(zip(zip_spread, [zip_units]*s_values.size))
             s_values = s_values + np.array([pd.Timedelta(x, y).to_timedelta64() for x, y in zipped_dt])
@@ -2586,13 +2586,13 @@ class SyntheticIntentModel(AbstractIntentModel):
             dates.append(date)
         return dates
 
-    # def _date_choice(self, start, until, weight_pattern: list, limits: str=None,
+    # def _date_choice(self, start, until, relative_freq: list, limits: str=None,
     #                  seed: int=None):
     #     """ Utility method to choose a random date between two dates based on a pattern.
     #
     #     :param start: the start boundary
     #     :param until: the boundary to go up to
-    #     :param weight_pattern: The weight pattern to apply to the range selection
+    #     :param relative_freq: The weight pattern to apply to the range selection
     #     :param limits: (optional) time units that have pattern limits
     #     :param seed: (optional) a seed value for the random function: default to None
     #     :return: a choice from the range
@@ -2602,7 +2602,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     #     diff = (until-start).days
     #     freq = 'Y' if diff > 4000 else 'M' if diff > 500 else 'D' if diff > 100 else 'H' if diff > 2 else 'T'
     #     date_range = pd.date_range(start, until, freq=freq)
-    #     _pattern = weight_pattern
+    #     _pattern = relative_freq
     #     if limits in ['month', 'hour']:
     #         units = {'month': [11, start.month-1, until.month-1], 'hour': [23, start.hour, until.hour]}
     #         start_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[1]), 2))

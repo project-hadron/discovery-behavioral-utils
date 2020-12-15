@@ -78,7 +78,7 @@ class SyntheticGetCanonicalTest(unittest.TestCase):
         result = tools._get_canonical(data=target)
         self.assertCountEqual(['age', 'gender'], result.columns.to_list())
         self.assertEqual(100, result.shape[0])
-        selection = [tools.select2dict(column='gender', condition="=='M'")]
+        selection = [tools.select2dict(column='gender', condition="@=='M'")]
         target = {'method': '@generate', 'task_name': 'generator', 'size': 100, 'selection': selection}
         result = tools._get_canonical(data=target)
         self.assertGreater(result.shape[0], 0)

@@ -381,8 +381,8 @@ class SyntheticCommons(AistacCommons):
 class DataAnalytics(AnalyticsCommons):
 
     @property
-    def weight_map(self):
-        return pd.Series(data=self.patterns.weight_pattern, index=self.intent.selection, copy=True, dtype=float)
+    def relative_freq_map(self):
+        return pd.Series(data=self.patterns.relative_freq, index=self.intent.selection, copy=True, dtype=float)
 
     @property
     def sample_map(self):

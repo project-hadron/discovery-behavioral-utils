@@ -81,9 +81,9 @@ class SyntheticIntentGetTest(unittest.TestCase):
     def test_get_number_at_most(self):
         tools = self.tools
         sample_size = 10000
-        result = tools.get_number(100000, 200000, precision=0, at_most=1, weight_pattern=[2,3], size=sample_size)
+        result = tools.get_number(100000, 200000, precision=0, at_most=1, relative_freq=[2,3], size=sample_size)
         self.assertEqual(sample_size, pd.Series(result).nunique())
-        result = tools.get_number(100000.0, 200000.0, precision=2, at_most=1, weight_pattern=[2,3], size=sample_size)
+        result = tools.get_number(100000.0, 200000.0, precision=2, at_most=1, relative_freq=[2,3], size=sample_size)
         self.assertEqual(sample_size, pd.Series(result).nunique())
         tools = self.tools
         sample_size = 19
@@ -113,11 +113,11 @@ class SyntheticIntentGetTest(unittest.TestCase):
     def test_get_number_weighting(self):
         tools = self.tools
         sample_size = 100000
-        result = tools.get_number(10, 20, weight_pattern=[0,1], size=sample_size)
+        result = tools.get_number(10, 20, relative_freq=[0,1], size=sample_size)
         result = pd.Series(result)
         self.assertGreaterEqual(result.min(), 15)
         self.assertLess(result.max(), 20)
-        result = tools.get_number(10.0, 20.0, weight_pattern=[0,1], size=sample_size)
+        result = tools.get_number(10.0, 20.0, relative_freq=[0,1], size=sample_size)
         result = pd.Series(result)
         self.assertGreaterEqual(result.min(), 15)
         self.assertLess(result.max(), 20)

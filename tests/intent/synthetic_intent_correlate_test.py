@@ -82,20 +82,20 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         df = pd.DataFrame(data=[1, 2, 3, 4], columns=['numbers'])
         result = tools.correlate_numbers(df, 'numbers', offset=2, multiply_offset=True, precision=0)
         self.assertEqual([2,4,6,8], result)
-        # spread
+        # jitter
         df = pd.DataFrame(data=[2] * 1000, columns=['numbers'])
-        result = tools.correlate_numbers(df, 'numbers', spread=5, precision=0)
+        result = tools.correlate_numbers(df, 'numbers', jitter=5, precision=0)
         self.assertLessEqual(max(result), 4)
         self.assertGreaterEqual(min(result), 0)
         df = pd.DataFrame(data=tools.get_number(99999, size=5000), columns=['numbers'])
-        result = tools.correlate_numbers(df, 'numbers', spread=5, precision=1)
+        result = tools.correlate_numbers(df, 'numbers', jitter=5, precision=1)
         self.assertNotEqual(df['numbers'].to_list(), result)
         self.assertEqual(5000, len(result))
         for index in range(len(result)):
             loss = abs(df['numbers'][index] - result[index])
             self.assertLessEqual(loss, 5)
         df = pd.DataFrame(data=tools.get_number(99999, size=5000), columns=['numbers'])
-        result = tools.correlate_numbers(df, 'numbers', spread=1, precision=1)
+        result = tools.correlate_numbers(df, 'numbers', jitter=1, precision=1)
         self.assertNotEqual(df['numbers'].to_list(), result)
         self.assertEqual(5000, len(result))
         for index in range(len(result)):
@@ -106,34 +106,34 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         tools = self.tools
         # weighting
         df = pd.DataFrame(columns=['numbers'], data=[2] * 1000)
-        result = tools.correlate_numbers(df, 'numbers', spread=5, precision=0, weighting_pattern=[0, 0, 1, 1])
+        result = tools.correlate_numbers(df, 'numbers', jitter=5, precision=0, jitter_freq=[0, 0, 1, 1])
         self.assertCountEqual([2,3,4], list(pd.Series(result).value_counts().index))
-        result = tools.correlate_numbers(df, 'numbers', spread=5, precision=0, weighting_pattern=[1, 1, 0, 0])
+        result = tools.correlate_numbers(df, 'numbers', jitter=5, precision=0, jitter_freq=[1, 1, 0, 0])
         self.assertCountEqual([0,1,2], list(pd.Series(result).value_counts().index))
         # fill nan
         df = pd.DataFrame(columns=['numbers'], data=[1,1,2,np.nan,3,1,np.nan,3,5,np.nan,7])
         result = tools.correlate_numbers(df, 'numbers', fill_nulls=True, precision=0)
         self.assertEqual([1,1,2,1,3,1,1,3,5,1,7], result)
         df = pd.DataFrame(columns=['numbers'], data=[2] * 1000)
-        # spread, offset and fillna
-        result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, fill_nulls=True, precision=0)
+        # jitter, offset and fillna
+        result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, fill_nulls=True, precision=0)
         self.assertCountEqual([2,3,4,5,6], list(pd.Series(result).value_counts().index))
         # min
         df = pd.DataFrame(columns=['numbers'], data=[2] * 100)
-        result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, min_value=4, precision=0)
+        result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, min_value=4, precision=0)
         self.assertCountEqual([4, 5, 6], list(pd.Series(result).value_counts().index))
-        result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, min_value=6, precision=0)
+        result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, min_value=6, precision=0)
         self.assertCountEqual([6], list(pd.Series(result).value_counts().index))
         with self.assertRaises(ValueError) as context:
-            result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, min_value=7, precision=0)
+            result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, min_value=7, precision=0)
         self.assertTrue("The min value 7 is greater than the max result value" in str(context.exception))
         # max
-        result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, max_value=4, precision=0)
+        result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, max_value=4, precision=0)
         self.assertCountEqual([2, 3, 4], list(pd.Series(result).value_counts().index))
-        result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, max_value=2, precision=0)
+        result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, max_value=2, precision=0)
         self.assertCountEqual([2], list(pd.Series(result).value_counts().index))
         with self.assertRaises(ValueError) as context:
-            result = tools.correlate_numbers(df, 'numbers', offset=2, spread=5, max_value=1, precision=0)
+            result = tools.correlate_numbers(df, 'numbers', offset=2, jitter=5, max_value=1, precision=0)
         self.assertTrue("The max value 1 is less than the min result value" in str(context.exception))
 
     def test_correlate_categories(self):
@@ -209,16 +209,16 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         self.assertEqual(['2020/03/30', '2020/04/12', '2020/05/07', '2020/05/07'], result)
         result = tools.correlate_dates(df, 'dates', offset={'years': -1, 'months': 2}, date_format='%Y/%m/%d')
         self.assertEqual(['2018/03/30', '2018/04/12', '2018/05/07', '2018/05/07'], result)
-        # spread
+        # jitter
         df = pd.DataFrame(columns=['dates'], data=tools.get_datetime("2018/01/01,", '2018/01/02', size=1000))
-        result = tools.correlate_dates(df, 'dates', spread=5, spread_units='D')
+        result = tools.correlate_dates(df, 'dates', jitter=5, jitter_units='D')
         loss = pd.Series(result) - df['dates']
         self.assertEqual(5, loss.value_counts().size)
-        result = tools.correlate_dates(df, 'dates', spread=5, spread_units='s')
+        result = tools.correlate_dates(df, 'dates', jitter=5, jitter_units='s')
         loss = pd.Series(result) - df['dates']
         self.assertEqual(5, loss.value_counts().size)
-        # spread weighting
-        result = tools.correlate_dates(df, 'dates', spread=5, spread_units='D', spread_pattern=[0,0,1,1,1])
+        # jitter weighting
+        result = tools.correlate_dates(df, 'dates', jitter=5, jitter_units='D', jitter_freq=[0, 0, 1, 1, 1])
         loss = pd.Series(result) - df['dates']
         self.assertEqual(3, loss.value_counts().size)
         self.assertEqual(0, loss.loc[loss.apply(lambda x: x.days < 0)].size)
@@ -232,14 +232,14 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
         tools = self.tools
         # control
         df = pd.DataFrame(columns=['dates'], data=tools.get_datetime("2018/01/01", '2018/01/02', size=1000))
-        result = tools.correlate_dates(df, 'dates', spread=5, date_format='%Y/%m/%d')
+        result = tools.correlate_dates(df, 'dates', jitter=5, date_format='%Y/%m/%d')
         self.assertEqual("2017/12/30", pd.Series(result).min())
         # min
-        result = tools.correlate_dates(df, 'dates', spread=5, min_date="2018/01/01", date_format='%Y/%m/%d')
+        result = tools.correlate_dates(df, 'dates', jitter=5, min_date="2018/01/01", date_format='%Y/%m/%d')
         self.assertEqual("2018/01/01", pd.Series(result).min())
         self.assertEqual("2018/01/03", pd.Series(result).max())
         # max
-        result = tools.correlate_dates(df, 'dates', spread=5, max_date="2018/01/01", date_format='%Y/%m/%d')
+        result = tools.correlate_dates(df, 'dates', jitter=5, max_date="2018/01/01", date_format='%Y/%m/%d')
         self.assertEqual("2018/01/01", pd.Series(result).max())
         self.assertEqual("2017/12/30", pd.Series(result).min())
 
