@@ -89,10 +89,12 @@ class MappedSample(AbstractSample):
         # The PCP tax code-
         seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
         np.random.seed(seed)
-        df = AbstractSample._get_constant(reference='map_us_real_addresses', shuffle=False)
+        df = AbstractSample._get_constant(reference='map_us_full_address', shuffle=False)
         num_choice = np.linspace(100000000, 900000000, num=300000, dtype=int, endpoint=False)
         num_choice += np.random.randint(100, 999, size=300000)
         df['pcp_tax_id'] = list(np.random.choice(num_choice, size=df.shape[0], replace=False))
+
+
 
     @staticmethod
     def companies_fortune1000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:

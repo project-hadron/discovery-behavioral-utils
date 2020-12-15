@@ -29,15 +29,19 @@ class SyntheticWeightingTest(unittest.TestCase):
     def tools(self) -> SyntheticIntentModel:
         return SyntheticBuilder.scratch_pad()
 
-    def test_weighting(self):
-        size = 1000
-        selection = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        for i in range(len(selection)):
-            pattern = [0]*len(selection)
-            pattern[i] = 1
-            result = pd.Series(self.tools.get_category(selection=selection, weight_pattern=pattern, size=size))
-            self.assertEqual(1, result.nunique())
-            self.assertEqual(selection[i], result.unique())
+    def test_relative(self):
+        size = 125117 # prime
+        freq = [1.,3.,.4]
+        result = self.tools._freq_dist_size(relative_freq=freq, size=size)
+        self.assertEqual(3, len(result))
+        self.assertEqual(size, sum(result))
+        result = self.tools._freq_dist_size(relative_freq=freq, size=size, seed=31)
+        other = self.tools._freq_dist_size(relative_freq=freq, size=size, seed=31)
+        self.assertEqual(size, sum(result))
+        self.assertEqual(other, result)
+
+
+
 
 
 

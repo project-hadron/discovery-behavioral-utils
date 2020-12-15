@@ -33,7 +33,7 @@ class SyntheticBuilderTest(unittest.TestCase):
         builder.set_persist()
         tools: SyntheticIntentModel = builder.tools
         _ = tools.get_category(selection=['M', 'F'], weight_pattern=[4, 3], column_name='gender')
-        _ = tools.get_number(range_value=18, to_value=80,  column_name='age')
+        _ = tools.get_number(from_value=18, to_value=80, column_name='age')
         builder.run_synthetic_pipeline(size=1000, seed=23)
         df = builder.load_synthetic_canonical()
         dist = df['gender'].value_counts().values

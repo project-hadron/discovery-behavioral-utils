@@ -5,7 +5,7 @@ import pandas as pd
 from ds_behavioral import SyntheticBuilder
 from aistac.properties.property_manager import PropertyManager
 
-from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
+from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel, MappedSample
 
 
 class SyntheticIntentModelTest(unittest.TestCase):
@@ -86,6 +86,9 @@ class SyntheticIntentModelTest(unittest.TestCase):
         result = builder.tools.model_person(df)
         self.assertCountEqual(['given_name', 'gender', 'family_name', 'initials', 'email'], result.columns.to_list())
         self.assertEqual(300, result.shape[0])
+        df = MappedSample.us_full_address(shuffle=False)
+        df = builder.tools.model_person(canonical=df, female_bias=0.35)
+        self.assertEqual((192865, 9), df.shape)
 
     def test_model_iterator(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)

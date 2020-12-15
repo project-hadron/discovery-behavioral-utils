@@ -70,7 +70,7 @@ class SyntheticGetCanonicalTest(unittest.TestCase):
         tools: SyntheticIntentModel = builder.tools
         df = pd.DataFrame()
         df['gender'] = tools.get_category(selection=['M', 'F'], column_name='gender')
-        df['age'] = tools.get_number(range_value=18, to_value=90, column_name='age')
+        df['age'] = tools.get_number(from_value=18, to_value=90, column_name='age')
         target = {'method': '@generate', 'task_name': 'generator'}
         result = tools._get_canonical(data=target)
         self.assertCountEqual(['age', 'gender'], result.columns.to_list())

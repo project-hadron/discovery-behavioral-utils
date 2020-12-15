@@ -38,6 +38,29 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         result = tools.correlate_selection(df, selection=selection, action='N/A')
         self.assertEqual([None, None, 'N/A', None, 'N/A', None], result)
 
+    def test_selection_complex(self):
+        df = pd.DataFrame()
+        df['s1'] = pd.Series(list('AAAABBBBCCCCDDDD'))
+        df['s2'] = pd.Series(list('ABCDABCDABCDABCD'))
+        df['s3'] = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8])
+        # single column
+        selection = [self.tools.select2dict(column='s3', condition="(@ != 2) & ([x not in [4,5,6,7] for x in @])")]
+        action = self.tools.action2dict(method='@constant', value=1)
+        default = self.tools.action2dict(method='@constant', value=0)
+        df['l1'] = self.tools.correlate_selection(df, selection=selection, action=action, default_action=default)
+        result = df[df['l1'] == 1].loc[:, 's3']
+        self.assertEqual([1, 3, 8, 1, 3, 8], list(result.values))
+        # multiple column
+        selection = [self.tools.select2dict(column='s1', condition="@ != 'A'"),
+                     self.tools.select2dict(column='s2', condition="@ == 'B'", logic='AND')]
+        action = self.tools.action2dict(method='@constant', value=1)
+        default = self.tools.action2dict(method='@constant', value=0)
+        df['l2'] = self.tools.correlate_selection(df, selection=selection, action=action, default_action=default)
+        result = df[df['l2'] == 1].loc[:,['s1']]
+        self.assertEqual(['B', 'C', 'D'], list(result.values))
+        result = df[df['l2'] == 1].loc[:,['s2']]
+        self.assertEqual(['B', 'B', 'B'], list(result.values))
+
     def test_action_value(self):
         tools = self.tools
         df = pd.DataFrame()

@@ -108,26 +108,18 @@ class SyntheticIntentModel(AbstractIntentModel):
                             df[column] = result
         return df
 
-    def get_number(self, range_value: [int, float]=None, to_value: [int, float]=None, weight_pattern: list=None,
-                   offset: int=None, precision: int=None, ordered: str=None, currency: str=None,
-                   bounded_weighting: bool=None, at_most: int=None, dominant_values: [float, list]=None,
-                   dominant_percent: float=None, dominance_weighting: list=None, size: int=None, quantity: float=None,
+    def get_number(self, from_value: [int, float]=None, to_value: [int, float]=None, weight_pattern: list=None,
+                   precision: int=None, ordered: str=None, at_most: int=None, size: int=None, quantity: float=None,
                    seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                    replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """ returns a number in the range from_value to to_value. if only to_value given from_value is zero
 
-        :param range_value: range value to_value if to_value is used else from 0 to value if to_value is None
-        :param to_value: optional, (signed) integer to end from.
+        :param from_value: (signed) integer to start from
+        :param to_value: optional, (signed) integer the number sequence goes to but not include
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
         :param ordered: order the data ascending 'asc' or descending 'dec', values accepted 'asc' or 'des'
-        :param offset: an offset multiplier, if None then assume 1
-        :param currency: a currency symbol to prefix the value with. returns string with commas
-        :param bounded_weighting: if the weighting pattern should have a soft or hard boundary constraint
         :param at_most: the most times a selection should be chosen
-        :param dominant_values: a value or list of values with dominant_percent. if used MUST provide a dominant_percent
-        :param dominant_percent: a value between 0 and 1 representing the dominant_percent of the dominant value(s)
-        :param dominance_weighting: a weighting of the dominant values
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
@@ -148,151 +140,54 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
-        if not isinstance(range_value, (int, float)) and not isinstance(to_value, (int, float)):
+        if not isinstance(from_value, (int, float)) and not isinstance(to_value, (int, float)):
             raise ValueError(f"either a 'range_value' or a 'range_value' and 'to_value' must be provided")
-        if not isinstance(range_value, (float, int)):
-            range_value = 0
+        if not isinstance(from_value, (float, int)):
+            from_value = 0
         if not isinstance(to_value, (float, int)):
-            (range_value, to_value) = (0, range_value)
-        bounded_weighting = bounded_weighting if isinstance(bounded_weighting, bool) else True
+            (from_value, to_value) = (0, from_value)
         at_most = 0 if not isinstance(at_most, int) else at_most
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
-        offset = 1 if offset is None else offset
-        dominant_percent = 0 if not isinstance(dominant_percent, (int, float)) else dominant_percent
-        dominant_percent = dominant_percent / 100 if 1 < dominant_percent <= 100 else dominant_percent
         _seed = self._seed() if seed is None else seed
-        _limit = 10000
         precision = 3 if not isinstance(precision, int) else precision
         if precision == 0:
-            range_value = int(round(range_value, 0))
+            from_value = int(round(from_value, 0))
             to_value = int(round(to_value, 0))
-        is_int = True if (isinstance(to_value, int) and isinstance(range_value, int)) else False
+        is_int = True if (isinstance(to_value, int) and isinstance(from_value, int)) else False
         if is_int:
             precision = 0
-        dominant_list = []
-        if isinstance(dominant_values, (int, float, list)):
-            sample_count = int(round(size * dominant_percent, 1)) if size > 1 else 0
-            dominance_weighting = [1] if not isinstance(dominance_weighting, list) else dominance_weighting
-            if sample_count > 0:
-                if isinstance(dominant_values, list):
-                    dominant_list = self.get_category(selection=dominant_values, weight_pattern=dominance_weighting,
-                                                      size=sample_count, bounded_weighting=True, seed=_seed,
-                                                      save_intent=False)
-                else:
-                    dominant_list = [dominant_values] * sample_count
-            size -= sample_count
-        if weight_pattern is not None:
-            counter = [0] * len(weight_pattern)
-            if bounded_weighting:
-                unit = size/sum(weight_pattern)
-                for i in range(len(weight_pattern)):
-                    counter[i] = int(round(weight_pattern[i] * unit, 0))
-                    if 0 < at_most < counter[i]:
-                        counter[i] = at_most
-                    if counter[i] == 0 and weight_pattern[i] > 0:
-                        _seed = self._next_seed(seed=_seed, default=seed)
-                        if counter[self._weighted_choice(weight_pattern, seed=_seed)] == i:
-                            counter[i] = 1
-            else:
-                for _ in range(size):
-                    _seed = self._next_seed(seed=_seed, default=seed)
-                    counter[self._weighted_choice(weight_pattern, seed=_seed)] += 1
-                for i in range(len(counter)):
-                    if 0 < at_most < counter[i]:
-                        counter[i] = at_most
-            while sum(counter) != size:
-                if at_most > 0:
-                    for index in range(len(counter)):
-                        if counter[index] >= at_most:
-                            counter[index] = at_most
-                            weight_pattern[index] = 0
-                _seed = self._next_seed(seed=_seed, default=seed)
-                if sum(counter) < size:
-                    counter[self._weighted_choice(weight_pattern, seed=_seed)] += 1
-                else:
-                    weight_idx = self._weighted_choice(weight_pattern, seed=_seed)
-                    if counter[weight_idx] > 0:
-                        counter[weight_idx] -= 1
-
+        # build the distribution sizes
+        if isinstance(weight_pattern, list) and len(weight_pattern) > 1:
+            freq_dist_size = self._freq_dist_size(relative_freq=weight_pattern, size=size, seed=_seed)
         else:
-            counter = [size]
+            freq_dist_size = [size]
+        # generate the numbers
         rtn_list = []
-        if is_int:
-            value_bins = []
-            ref = range_value
-            counter_len = len(counter)
-            select_len = to_value - range_value
-            for index in range(1, counter_len):
-                position = int(round(select_len / counter_len * index, 1)) + range_value
-                value_bins.append((ref, position))
-                ref = position
-            value_bins.append((ref, to_value))
-            for index in range(counter_len):
-                _seed = self._next_seed(seed=_seed, default=seed)
-                np.random.seed(_seed)
-                low, high = value_bins[index]
-                # check our range is not also the dominants
-                if high - low <= 1:
-                    rtn_list += [low] * counter[index]
-                elif at_most == 1:
-                    multiplier = np.random.randint(1000, 50000)
-                    num = (high - low) if (high - low - counter[index]) < 100000 else counter[index] + multiplier
-                    num_choice = np.linspace(low, high, num=num, dtype=int, endpoint=False)
-                    rtn_list = list(np.random.choice(num_choice, size=counter[index], replace=False))
-                elif at_most > 1:
-                    section_size = int(counter[index]/at_most) if size % at_most == 0 else int(counter[index]/at_most)+1
-                    for _ in range(at_most):
-                        multiplier = np.random.randint(1000, 50000)
-                        num = (high - low) if (high - low - counter[index]) < 100000 else counter[index] + multiplier
-                        num_choice = np.linspace(low, high, num=num, dtype=int, endpoint=False)
-                        rtn_list += list(np.random.choice(num_choice, size=section_size, replace=False))
-                    rtn_list = rtn_list[:counter[index]]
-                    np.random.shuffle(rtn_list)
+        generator = np.random.default_rng(seed=_seed)
+        dtype = int if is_int else float
+        bins = np.linspace(from_value, to_value, len(freq_dist_size) + 1, dtype=dtype, endpoint=True)
+        for idx in np.arange(1, len(bins)):
+            low = bins[idx - 1]
+            high = bins[idx]
+            if at_most > 0:
+                sample = []
+                for count in np.arange(at_most, dtype=dtype):
+                    count_size = freq_dist_size[idx - 1] * generator.integers(2, 4, size=1)[0]
+                    sample += list(set(np.linspace(bins[idx - 1], bins[idx], num=count_size, dtype=dtype,
+                                                   endpoint=False)))
+                if len(sample) < freq_dist_size[idx - 1]:
+                    raise ValueError(f"The value range has insufficient samples to choose from when using at_most."
+                                     f"Try increasing the range of values to sample.")
+                rtn_list += list(generator.choice(sample, size=freq_dist_size[idx - 1], replace=False))
+            else:
+                if dtype == int:
+                    rtn_list += generator.integers(low=low, high=high, size=freq_dist_size[idx - 1]).tolist()
                 else:
-                    _remaining = counter[index]
-                    while _remaining > 0:
-                        _size = _limit if _remaining > _limit else _remaining
-                        choice = list(np.random.randint(low=low, high=high, size=_size))
-                        choice = [i for i in choice if i not in SyntheticCommons.list_formatter(dominant_values)]
-                        rtn_list += choice
-                        _remaining -= len(choice)
-        else:
-            value_bins = pd.interval_range(start=range_value, end=to_value, periods=len(counter), closed='both')
-            for index in range(len(counter)):
-                _seed = self._next_seed(seed=_seed, default=seed)
-                np.random.seed(_seed)
-                low = value_bins[index].left
-                high = value_bins[index].right
-                if low >= high:
-                    rtn_list += [low] * counter[index]
-                elif at_most == 1:
-                    multiplier = np.random.randint(1000, 50000)
-                    num_choice = np.linspace(low, high, num=counter[index]+multiplier, dtype=float, endpoint=False)
-                    rtn_list = list(np.random.choice(num_choice, size=counter[index], replace=False))
-                elif at_most > 1:
-                    section_size = int(counter[index] / at_most) if size % at_most == 0 else int(
-                        counter[index] / at_most) + 1
-                    for _ in range(at_most):
-                        multiplier = np.random.randint(1000, 50000)
-                        num_choice = np.linspace(low, high, num=counter[index]+multiplier, dtype=float, endpoint=False)
-                        rtn_list += list(np.random.choice(num_choice, size=section_size,  replace=False))
-                    rtn_list = rtn_list[:counter[index]]
-                    np.random.shuffle(rtn_list)
-                else:
-                    _remaining = counter[index]
-                    while _remaining > 0:
-                        _size = _limit if _remaining > _limit else _remaining
-                        choice = np.round((np.random.random(size=_size)*(high-low)+low), precision).tolist()
-                        choice = [i for i in choice if i not in self._pm.list_formatter(dominant_values) + [high]]
-                        rtn_list += choice
-                        _remaining -= len(choice)
-        if isinstance(currency, str):
-            rtn_list = ['{}{:0,.{}f}'.format(currency, value, precision) for value in rtn_list]
-        if offset != 1:
-            rtn_list = [value*offset for value in rtn_list]
-        # add in the dominant values
-        rtn_list += dominant_list
+                    choice = generator.random(size=freq_dist_size[idx - 1], dtype=float)
+                    choice = np.round(choice * (high-low)+low, precision).tolist()
+                    rtn_list += choice
+        # order or shuffle the return list
         if isinstance(ordered, str) and ordered.lower() in ['asc', 'des']:
             rtn_list.sort(reverse=True if ordered.lower() == 'asc' else False)
         else:
@@ -336,7 +231,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         _seed = self._seed() if seed is None else seed
         quantity = self._quantity(quantity)
         select_index = self.get_number(len(selection), weight_pattern=weight_pattern, at_most=at_most, size=size,
-                                       bounded_weighting=bounded_weighting, quantity=1, seed=_seed, save_intent=False)
+                                       quantity=1, seed=_seed, save_intent=False)
         rtn_list = [selection[i] for i in select_index]
         return list(self._set_quantity(rtn_list, quantity=quantity, seed=_seed))
 
@@ -405,7 +300,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             _dt_start = int(_dt_start)
             _dt_until = int(_dt_until)
             precision = 0
-        rtn_list = self.get_number(range_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
+        rtn_list = self.get_number(from_value=_dt_start, to_value=_dt_until, weight_pattern=weight_pattern,
                                    at_most=at_most, ordered=ordered, precision=precision, size=size, seed=seed,
                                    save_intent=False)
         if not as_num:
@@ -658,20 +553,14 @@ class SyntheticIntentModel(AbstractIntentModel):
     #         rtn_list = rtn_dates
     #     return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
-    def get_intervals(self, intervals: list, weight_pattern: list=None, precision: int=None, currency: str=None,
-                      dominant_values: [float, list]=None, dominant_percent: float=None, dominance_weighting: list=None,
-                      size: int=None, quantity: float=None, seed: int=None, save_intent: bool=None,
-                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                      remove_duplicates: bool=None) -> list:
+    def get_intervals(self, intervals: list, weight_pattern: list=None, precision: int=None, size: int=None,
+                      quantity: float=None, seed: int=None, save_intent: bool=None, column_name: [int, str]=None,
+                      intent_order: int=None, replace_intent: bool=None, remove_duplicates: bool=None) -> list:
         """ returns a number based on a list selection of tuple(lower, upper) interval
 
         :param intervals: a list of unique tuple pairs representing the interval lower and upper boundaries
         :param weight_pattern: a weighting pattern or probability that does not have to add to 1
         :param precision: the precision of the returned number. if None then assumes int value else float
-        :param dominant_values: a value or list of values with dominant_percent. if used MUST provide a dominant_percent
-        :param dominant_percent: a value between 0 and 1 representing the dominant_percent of the dominant value(s)
-        :param dominance_weighting: a weighting of the dominant values
-        :param currency: a currency symbol to prefix the value with. returns string with commas
         :param size: the size of the sample
         :param quantity: a number between 0 and 1 representing data that isn't null
         :param seed: a seed value for the random function: default to None
@@ -726,10 +615,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                 lower += margin
             elif str.lower(closed) == 'both':
                 upper += margin
-            rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, currency=currency, size=size,
-                                                  dominant_values=dominant_values,
-                                                  dominance_weighting=dominance_weighting,
-                                                  dominant_percent=dominant_percent, seed=_seed, save_intent=False)
+            rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, size=size, seed=_seed,
+                                                  save_intent=False)
         np.random.seed(_seed)
         np.random.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
@@ -1650,7 +1537,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         df_rtn['email'] = self.correlate_join(df_rtn, header='given_name', action=action, sep='.', save_intent=False)
         # replace duplicates
         idx = df_rtn[df_rtn['email'].duplicated()].index.to_list()
-        action = self.action2dict(method='get_number', header='family_name', range_value=10, to_value=100000,
+        action = self.action2dict(method='get_number', range_value=10, to_value=100000,
                                   weight_pattern=[10, 5, 1, 1, 1, 1, 1, 1, 1], at_most=1)
         df_rtn['email'].iloc[idx] = self.correlate_join(df_rtn.iloc[idx], header='family_name', action=action, sep='',
                                                         save_intent=False)
@@ -1817,9 +1704,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if str(_analysis.intent.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.intent.selection,
                                                          weight_pattern=_analysis.patterns.weight_pattern,
-                                                         dominant_values=_analysis.patterns.dominant_values,
-                                                         dominant_percent=_analysis.patterns.dominant_percent,
-                                                         dominance_weighting=_analysis.patterns.dominance_weighting,
                                                          precision=_analysis.intent.precision,
                                                          quantity=1 - _analysis.stats.nulls_percent,
                                                          seed=_seed, size=sample_size, save_intent=False)
@@ -2603,10 +2487,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                     action.update({'seed': seed})
                 if str(method).startswith('get_'):
                     action.update({'size': select_idx.size, 'save_intent': False})
-                    result = eval(f"self.{method}(**{action})", globals(), locals())
+                    result = eval(f"self.{method}(**action)", globals(), locals())
                 elif str(method).startswith('correlate_'):
                     action.update({'canonical': canonical.iloc[select_idx], 'save_intent': False})
-                    result = eval(f"self.{method}(**{action})", globals(), locals())
+                    result = eval(f"self.{method}(**action)", globals(), locals())
                 else:
                     raise NotImplementedError(f"The method {method} is not implemented as part of the actions")
                 dtype = 'object'
@@ -2662,10 +2546,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             _date_format = condition.get('date_format', "%Y-%m-%dT%H:%M:%S")
             _offset = condition.get('offset', 0)
             _condition = f"'{(pd.Timestamp.now() + pd.Timedelta(days=_offset)).strftime(_date_format)}'"
-        s_values = canonical[_column]
-        if _expect:
-            s_values = s_values.astype(_expect)
-        idx = eval(f"canonical[s_values{_operator}{_condition}].index", globals(), locals())
+        if _column == '@':
+            _condition = str(_condition).replace("@", "canonical")
+        elif _column not in canonical.columns:
+            raise ValueError(f"The column name '{_column}' can not be found in the canonical headers.")
+        else:
+            _condition = str(_condition).replace("@", f"canonical['{_column}']")
+        # find the selection index
+        idx = eval(f"canonical[{_condition}].index", globals(), locals())
         if select_idx is None:
             select_idx = idx
         else:
@@ -2698,51 +2586,95 @@ class SyntheticIntentModel(AbstractIntentModel):
             dates.append(date)
         return dates
 
-    def _date_choice(self, start, until, weight_pattern: list, limits: str=None,
-                     seed: int=None):
-        """ Utility method to choose a random date between two dates based on a pattern.
+    # def _date_choice(self, start, until, weight_pattern: list, limits: str=None,
+    #                  seed: int=None):
+    #     """ Utility method to choose a random date between two dates based on a pattern.
+    #
+    #     :param start: the start boundary
+    #     :param until: the boundary to go up to
+    #     :param weight_pattern: The weight pattern to apply to the range selection
+    #     :param limits: (optional) time units that have pattern limits
+    #     :param seed: (optional) a seed value for the random function: default to None
+    #     :return: a choice from the range
+    #     """
+    #     seed = self._seed() if seed is None else seed
+    #     np.random.seed(seed)
+    #     diff = (until-start).days
+    #     freq = 'Y' if diff > 4000 else 'M' if diff > 500 else 'D' if diff > 100 else 'H' if diff > 2 else 'T'
+    #     date_range = pd.date_range(start, until, freq=freq)
+    #     _pattern = weight_pattern
+    #     if limits in ['month', 'hour']:
+    #         units = {'month': [11, start.month-1, until.month-1], 'hour': [23, start.hour, until.hour]}
+    #         start_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[1]), 2))
+    #         end_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[2]), 2))
+    #         _pattern = _pattern[start_idx:end_idx+1]
+    #     date_bins = pd.cut(date_range, bins=len(_pattern))
+    #     index = self._weighted_choice(_pattern, seed=seed)
+    #     if index is None:
+    #         return pd.NaT
+    #     index_date = date_bins.categories[index]
+    #     return pd.Timestamp(np.random.choice(pd.date_range(index_date.left, index_date.right, freq=freq)))
 
-        :param start: the start boundary
-        :param until: the boundary to go up to
-        :param weight_pattern: The weight pattern to apply to the range selection
-        :param limits: (optional) time units that have pattern limits
+    @staticmethod
+    def _freq_dist_size(relative_freq: list, size: int, seed: int=None):
+        """ utility method taking a list of relative frequencies and based on size returns the size distribution
+        of element based on the frequency. The distribution is based upon binomial distributions
+
+        :param relative_freq: a list of int or float values representing a relative distribution frequency
+        :param size: the size to be distributed
         :param seed: (optional) a seed value for the random function: default to None
-        :return: a choice from the range
+        :return: an integer list of the distrubution that sum to the size
         """
-        seed = self._seed() if seed is None else seed
+        if not isinstance(relative_freq, list) or not all(isinstance(x, (int, float)) for x in relative_freq):
+            raise ValueError("The weighted pattern must be an list of numbers")
+        seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
         np.random.seed(seed)
-        diff = (until-start).days
-        freq = 'Y' if diff > 4000 else 'M' if diff > 500 else 'D' if diff > 100 else 'H' if diff > 2 else 'T'
-        date_range = pd.date_range(start, until, freq=freq)
-        _pattern = weight_pattern
-        if limits in ['month', 'hour']:
-            units = {'month': [11, start.month-1, until.month-1], 'hour': [23, start.hour, until.hour]}
-            start_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[1]), 2))
-            end_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[2]), 2))
-            _pattern = _pattern[start_idx:end_idx+1]
-        date_bins = pd.cut(date_range, bins=len(_pattern))
-        index = self._weighted_choice(_pattern, seed=seed)
-        if index is None:
-            return pd.NaT
-        index_date = date_bins.categories[index]
-        return pd.Timestamp(np.random.choice(pd.date_range(index_date.left, index_date.right, freq=freq)))
 
-    def _weighted_choice(self, weights: list, seed: int=None):
-        """ a probability weighting based on the values in the integer list
+        def _freq_choice(p: list):
+            """returns a single index of the choice of the relative frequency"""
+            rnd = np.random.random() * sum(p)
+            for i, w in enumerate(p):
+                rnd -= w
+                if rnd < 0:
+                    return i
 
-        :param weights: a list of integers representing a pattern of weighting
-        :param seed: a seed value for the random function: default to None
-        :return: an index of which weight was randomly chosen
-        """
-        if not isinstance(weights, list) or not all(isinstance(x, (int, float, list)) for x in weights):
-            raise ValueError("The weighted pattern must be an list of integers")
-        seed = self._seed() if seed is None else seed
-        np.random.seed(seed)
-        rnd = np.random.random() * sum(weights)
-        for i, w in enumerate(weights):
-            rnd -= w
-            if rnd < 0:
-                return i
+        if sum(relative_freq) != 1:
+            relative_freq = np.round(relative_freq / np.sum(relative_freq), 5)
+        generator = np.random.default_rng(seed=seed)
+        result = list(generator.binomial(n=size, p=relative_freq, size=len(relative_freq)))
+        diff = size - sum(result)
+        adjust = [0] * len(relative_freq)
+        if diff != 0:
+            unit = diff / sum(relative_freq)
+            for idx in range(len(relative_freq)):
+                adjust[idx] = int(round(relative_freq[idx] * unit, 0))
+        result = [a + b for (a, b) in zip(result, adjust)]
+        while sum(result) != size:
+            if sum(result) < size:
+                result[_freq_choice(relative_freq)] += 1
+            else:
+                weight_idx = _freq_choice(relative_freq)
+                if result[weight_idx] > 0:
+                    result[weight_idx] -= 1
+        return result
+
+    # @staticmethod
+    # def _weighted_choice(self, weights: list, seed: int=None):
+    #     """ a probability weighting based on the values in the integer list
+    #
+    #     :param weights: a list of integers representing a pattern of weighting
+    #     :param seed: a seed value for the random function: default to None
+    #     :return: an index of which weight was randomly chosen
+    #     """
+    #     if not isinstance(weights, list) or not all(isinstance(x, (int, float)) for x in weights):
+    #         raise ValueError("The weighted pattern must be an list of numbers")
+    #     seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
+    #     np.random.seed(seed)
+    #     rnd = np.random.random() * sum(weights)
+    #     for i, w in enumerate(weights):
+    #         rnd -= w
+    #         if rnd < 0:
+    #             return i
 
     def _normailse_weights(self, weights: list, size: int=None, count: int=None, length: int=None):
         """normalises a complex weight pattern and returns the appropriate weight pattern

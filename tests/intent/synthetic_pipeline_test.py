@@ -56,7 +56,7 @@ class SyntheticPipelineTest(unittest.TestCase):
         self.assertEqual(['numbers'], result.get('level'))
         self.assertEqual(['0'], result.get('order'))
         self.assertEqual(['get_number'], result.get('intent'))
-        self.assertEqual([['range_value=1', 'to_value=2', "column_name='numbers'"]], result.get('parameters'))
+        self.assertEqual([['from_value=1', 'to_value=2', "column_name='numbers'"]], result.get('parameters'))
         sb.tools.get_category(selection=['M'], column_name='gender')
         result = sb.tools.run_intent_pipeline(size=10, columns=['numbers', 'gender', 'jim'])
         self.assertEqual((10, 2), result.shape)

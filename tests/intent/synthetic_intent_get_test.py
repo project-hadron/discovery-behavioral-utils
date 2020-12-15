@@ -42,7 +42,7 @@ class SyntheticIntentGetTest(unittest.TestCase):
         tools = self.tools
         sample_size = 10000
         # from to int
-        ref_ids = tools.get_number(range_value=1000, to_value=10000, precision=0, at_most=1, size=10)
+        ref_ids = tools.get_number(from_value=1000, to_value=10000, precision=0, at_most=1, size=10)
         self.assertTrue(all(isinstance(x, np.int64) for x in ref_ids))
         result = tools.get_number(10, 1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
@@ -68,7 +68,7 @@ class SyntheticIntentGetTest(unittest.TestCase):
         self.assertGreaterEqual(min(result), 10)
         self.assertLessEqual(max(result), 1000)
         # set both
-        result = tools.get_number(range_value=10, to_value=1000, size=sample_size)
+        result = tools.get_number(from_value=10, to_value=1000, size=sample_size)
         self.assertEqual(sample_size, len(result))
         self.assertGreaterEqual(min(result), 10)
         self.assertLessEqual(max(result), 1000)
@@ -80,10 +80,10 @@ class SyntheticIntentGetTest(unittest.TestCase):
 
     def test_get_number_at_most(self):
         tools = self.tools
-        sample_size = 100000
-        result = tools.get_number(100000, 200000, precision=0, at_most=1, size=sample_size)
+        sample_size = 10000
+        result = tools.get_number(100000, 200000, precision=0, at_most=1, weight_pattern=[2,3], size=sample_size)
         self.assertEqual(sample_size, pd.Series(result).nunique())
-        result = tools.get_number(100000.0, 200000.0, precision=2, at_most=1, size=sample_size)
+        result = tools.get_number(100000.0, 200000.0, precision=2, at_most=1, weight_pattern=[2,3], size=sample_size)
         self.assertEqual(sample_size, pd.Series(result).nunique())
         tools = self.tools
         sample_size = 19
@@ -103,15 +103,6 @@ class SyntheticIntentGetTest(unittest.TestCase):
         self.assertEqual(sample_size, len(result))
         result = tools.get_number(1000000.0, 9999999999.0, at_most=1, precision=1, size=sample_size)
         self.assertEqual(sample_size, len(result))
-
-    def test_get_number_dominant(self):
-        tools = self.tools
-        sample_size = 5000
-        result = tools.get_number(10, 1000, dominant_values=0, dominant_percent=91.74, precision=2, size=sample_size)
-        self.assertEqual(sample_size, len(result))
-        result = pd.Series(result)
-        count = result.where(result == 0).dropna()
-        self.assertTrue(0.91 <= round(len(count)/sample_size, 2) <= 0.93)
 
     def test_get_number_asc(self):
         tools = self.tools
