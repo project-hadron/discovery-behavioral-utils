@@ -146,6 +146,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             from_value = 0
         if not isinstance(to_value, (float, int)):
             (from_value, to_value) = (0, from_value)
+        if to_value <= from_value:
+            raise ValueError("The number range must be a positive different, found to_value <= from_value")
         at_most = 0 if not isinstance(at_most, int) else at_most
         quantity = self._quantity(quantity)
         size = 1 if size is None else size
