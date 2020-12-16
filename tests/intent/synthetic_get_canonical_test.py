@@ -87,19 +87,25 @@ class SyntheticGetCanonicalTest(unittest.TestCase):
     def test_dict_method(self):
         builder = SyntheticBuilder.from_env('generator', has_contract=False)
         tools: SyntheticIntentModel = builder.tools
-        action = tools.action2dict(method='model_person', canonical=tools.action2dict(method='@empty', size=10))
+        action = tools.canonical2dict(method='model_person', canonical=tools.action2dict(method='@empty', size=10))
         result = tools._get_canonical(data=action)
         self.assertEqual((10, 5), result.shape)
 
     def test_dict_empty(self):
         builder = SyntheticBuilder.from_env('generator', has_contract=False)
         tools: SyntheticIntentModel = builder.tools
-        action = tools.action2dict(method='@empty')
+        action = tools.canonical2dict(method='@empty')
         result = tools._get_canonical(data=action)
         self.assertEqual((0, 0), result.shape)
-        action = tools.action2dict(method='@empty', size=100)
+        action = tools.canonical2dict(method='@empty', size=100)
         result = tools._get_canonical(data=action)
         self.assertEqual((100, 0), result.shape)
+        action = tools.canonical2dict(method='@empty', size=100)
+        result = tools._get_canonical(data=action)
+        self.assertEqual((100, 0), result.shape)
+        action = tools.canonical2dict(method='@empty', size=100, headers=['A', 'B', 'C'])
+        result = tools._get_canonical(data=action)
+        self.assertEqual((100, 3), result.shape)
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:

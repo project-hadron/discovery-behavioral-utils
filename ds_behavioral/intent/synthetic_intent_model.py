@@ -2411,22 +2411,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         return Sample().__dir__()
 
     @staticmethod
-    def remote2dict(domain_contract: str, size: int=None, run_book: str=None, seed: int=None):
-        """ a utility method to help build a remote pipeline. The domain contract is a connector_name pointing to
-        a remote property domain contract with the runnable pipeline of synthetic intent
-
-        :param domain_contract: the name of the domain connector contract
-        :param size: (optional) the number of rows to synthesis
-        :param run_book: (optional) an optional runbook name that must exist in the remote domain contract
-        :param seed: (optional) a seed to apply to the run pipeline
-        :return: dictionary of the parameters
-
-        """
-        return SyntheticCommons.param2dict(**locals())
-
-    @staticmethod
     def select2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,
-                    date_format: str=None, offset: int=None):
+                    date_format: str=None, offset: int=None) -> dict:
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
         :param column: the column name to apply the condition to
@@ -2448,19 +2434,40 @@ class SyntheticIntentModel(AbstractIntentModel):
         return SyntheticCommons.param2dict(**locals())
 
     @staticmethod
-    def action2dict(method: Any, **kwargs):
+    def action2dict(method: Any, **kwargs) -> dict:
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
         :param method: the method to execute
         :param kwargs: name value pairs associated with the method
         :return: dictionary of the parameters
 
-        logic:
-            and: the intersect of the left and the right (common to both)
-            or: the union of the left and the right (everything in both)
-            diff: the left minus the intersect of the right (only things in the left excluding common to both)
+        Special method values
+            @header: use a column as the value reference, expects the 'header' key
+            @constant: use a value constant, expects the key 'value'
+            @sample: use to get sample values, expected 'name' of the Sample method, optional 'shuffle' boolean
+            @eval: evaluate a code string, expects the key 'code_str' and any locals() required
 
 
+        """
+        return SyntheticCommons.param2dict(method=method, **kwargs)
+
+    @staticmethod
+    def canonical2dict(method: Any, **kwargs) -> dict:
+        """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
+        The method parameter can be wither a 'model_*' or 'frame_*' method with two special reserved options
+
+        Special reserved method values
+            @empty: returns an empty dataframe, optionally the key values size: int and headers: list
+            @generate: generates a dataframe either from_env(task_name) o from a remote repo uri. params are
+                task_name: the task name of the generator
+                repo_uri: (optional) a remote repo to retrieve the the domain contract
+                size: (optional) the generated sample size
+                seed: (optional) if seeding should be applied the seed value
+                run_book: (optional) a domain contract runbook to execute as part of the pipeline
+
+        :param method: the method to execute
+        :param kwargs: name value pairs associated with the method
+        :return: dictionary of the parameters
         """
         return SyntheticCommons.param2dict(method=method, **kwargs)
 
@@ -2775,7 +2782,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             elif str(method).startswith('@generate'):
                 task_name = data.pop('task_name', None)
                 if task_name is None:
-                    raise ValueError(f"The data method '@generate' requires a 'repo_uri' key.")
+                    raise ValueError(f"The data method '@generate' requires a 'task_name' key.")
                 repo_uri = data.pop('repo_uri', None)
                 module = HandlerFactory.get_module(module_name='ds_behavioral')
                 inst = module.SyntheticBuilder.from_env(task_name=task_name, uri_pm_repo=repo_uri, default_save=False)
@@ -2786,8 +2793,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                 return self.frame_selection(canonical=result, save_intent=False, **data)
             elif str(method).startswith('@empty'):
                 size = data.pop('size', None)
+                headers = data.pop('headers', None)
                 size = range(size) if size else None
-                return pd.DataFrame(index=size)
+                return pd.DataFrame(index=size, columns=headers)
             else:
                 raise ValueError(f"The data 'method' key {method} is not a recognised intent method")
         elif isinstance(data, (list, pd.Series)):
