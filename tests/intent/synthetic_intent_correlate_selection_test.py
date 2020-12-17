@@ -33,7 +33,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', None, 'B', None, 'C']
-        df['value'] = [1,4,2,1,6,1]
+        df['value'] = [1, 4, 2, 1, 6, 1]
         selection = [tools.select2dict(column='letters', condition="@.isna()")]
         result = tools.correlate_selection(df, selection=selection, action='N/A')
         self.assertEqual([None, None, 'N/A', None, 'N/A', None], result)
@@ -56,16 +56,16 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         action = self.tools.action2dict(method='@constant', value=1)
         default = self.tools.action2dict(method='@constant', value=0)
         df['l2'] = self.tools.correlate_selection(df, selection=selection, action=action, default_action=default)
-        result = df[df['l2'] == 1].loc[:,['s1']]
+        result = df[df['l2'] == 1].loc[:, ['s1']]
         self.assertEqual(['B', 'C', 'D'], list(result.values))
-        result = df[df['l2'] == 1].loc[:,['s2']]
+        result = df[df['l2'] == 1].loc[:, ['s2']]
         self.assertEqual(['B', 'B', 'B'], list(result.values))
 
     def test_action_value(self):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        df['value'] = [1,4,2,1,6,1]
+        df['value'] = [1, 4, 2, 1, 6, 1]
         selection = [tools.select2dict(column='letters', condition="@ == 'A'")]
         result = tools.correlate_selection(df, selection=selection, action=9)
         self.assertEqual([9.0, None, 9.0, None, None, None], result)
@@ -85,7 +85,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        df['value'] = [1,4,2,1,6,1]
+        df['value'] = [1, 4, 2, 1, 6, 1]
         selection = [tools.select2dict(column='letters', condition="@ == 'A'")]
         action = tools.action2dict(method="@header", header='value')
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
@@ -104,7 +104,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        df['value'] = [1,4,2,1,6,1]
+        df['value'] = [1, 4, 2, 1, 6, 1]
         selection = [tools.select2dict(column='value', condition="@ >1")]
         action = tools.action2dict(method="get_category", selection=['X'])
         default_action = tools.action2dict(method="get_category", selection=['M'])
@@ -115,7 +115,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        df['value'] = [1,4,2,1,6,1]
+        df['value'] = [1, 4, 2, 1, 6, 1]
         selection = [tools.select2dict(column='value', condition="@ >1")]
         action = tools.action2dict(method="@constant", value='14')
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
@@ -125,9 +125,9 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         tools = self.tools
         df = pd.DataFrame()
         df['letters'] = ['A', 'B', 'A', 'B', 'B', 'C']
-        df['value'] = [1,4,2,1,6,1]
+        df['value'] = [1, 4, 2, 1, 6, 1]
         selection = [tools.select2dict(column='value', condition="@ >1")]
-        action = tools.action2dict(method="@eval", code_str='sum(values)', values=[1,4,2,1])
+        action = tools.action2dict(method="@eval", code_str='sum(values)', values=[1, 4, 2, 1])
         result = tools.correlate_selection(df, selection=selection, action=action, default_action=-1)
         self.assertEqual([-1, 8, 8, -1, 8, -1], result)
 
@@ -146,6 +146,63 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         with self.assertRaises(KeyError) as context:
             env = os.environ['NoEnvValueTest']
         self.assertTrue("'NoEnvValueTest'" in str(context.exception))
+
+    def test_selection_logic(self):
+        df = pd.DataFrame()
+        df['s1'] = pd.Series(list('AAAABBBBCCCCDDDD'))
+        df['s2'] = pd.Series(list('ABCDABCDABCDABCD'))
+        df['s3'] = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8])
+        # A AND B
+
+        c1 = self.tools.select2dict(column='s1', condition="@ == 'A'", logic='NOT')
+        c2 = self.tools.select2dict(column='s2', condition="@ == 'B'", logic='AND')
+        c3 = self.tools.select2dict(column='s3', condition="@ > 5", logic='OR')
+        c4 = self.tools.select2dict(column='s3', condition="@ == 8", logic='AND')
+
+        selection = [[c1, c2], c3, c4]
+
+        result = df.iloc[self.tools._selection_index(df, selection=selection, select_idx=df.index)]
+        print(result)
+
+    @staticmethod
+    def condition_logic(base_idx: pd.Index, condition_idx: pd.Index, logic: str) -> pd.Index:
+        if str(logic).upper() == 'AND':
+            return base_idx.intersection(condition_idx)
+        elif str(logic).upper() == 'OR':
+            return base_idx.union(condition_idx)
+        elif str(logic).upper() == 'NOT':
+            return base_idx.difference(condition_idx)
+        elif str(logic).upper() == 'XOR':
+            return base_idx.union(condition_idx).difference(base_idx.intersection(condition_idx))
+        elif str(logic).upper() == 'IS':
+            return condition_idx
+        raise ValueError(f"The logic '{logic}' must be AND, OR, NOT, XOR or 'ONLY'")
+
+    @staticmethod
+    def condition_index(canonical: pd.DataFrame, condition: dict) -> pd.Index:
+        _column = condition.get('column')
+        _condition = condition.get('condition')
+        if _column == '@':
+            _condition = str(_condition).replace("@", "canonical")
+        elif _column not in canonical.columns:
+            raise ValueError(f"The column name '{_column}' can not be found in the canonical headers.")
+        else:
+            _condition = str(_condition).replace("@", f"canonical['{_column}']")
+        # find the selection index
+        return eval(f"canonical[{_condition}].index", globals(), locals())
+
+    def condition_item(self, canonical: pd.DataFrame, selection: list, select_idx: pd.Index):
+        for condition in selection:
+            if isinstance(condition, dict):
+                condition_idx = self.condition_index(canonical=canonical, condition=condition)
+                logic = condition.get('logic', 'ONLY')
+                select_idx = self.condition_logic(base_idx=select_idx, condition_idx=condition_idx, logic=logic)
+            elif isinstance(condition, list):
+                select_idx = self.condition_item(canonical=canonical, selection=condition, select_idx=select_idx)
+            else:
+                raise ValueError(f"The subsection of the selection list {item} is neither a dict or a list")
+        return select_idx
+
 
 
 if __name__ == '__main__':

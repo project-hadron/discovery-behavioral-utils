@@ -1160,9 +1160,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if isinstance(selection, list):
             selection = deepcopy(selection)
             # run the select logic
-            select_idx = None
-            for _where in selection:
-                select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
+            select_idx = self._selection_index(canonical=canonical, selection=selection)
             canonical = canonical.iloc[select_idx].reset_index(drop=True)
         drop = drop if isinstance(drop, bool) else False
         exclude = exclude if isinstance(exclude, bool) else False
@@ -1598,8 +1596,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             selection = deepcopy(selection)
             # run the select logic
             select_idx = None
-            for _where in selection:
-                select_idx = self._condition_index(canonical=df_rtn, condition=_where, select_idx=select_idx)
+            select_idx = self._selection_index(canonical=df_rtn, selection=selection)
             df_rtn = df_rtn.iloc[select_idx]
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
@@ -1810,7 +1807,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         canonical = self._get_canonical(canonical)
         if len(canonical) == 0:
             raise TypeError("The canonical given is empty")
-        if not isinstance(selection, list) or not all(isinstance(x, dict) for x in selection):
+        if not isinstance(selection, list):
             raise ValueError("The 'selection' parameter must be a 'list' of 'dict' types")
         if not isinstance(action, (str, int, float, dict)) or (isinstance(action, dict) and len(action) == 0):
             raise TypeError("The 'action' parameter is not of an acepted format or is empty")
@@ -1826,9 +1823,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         action = deepcopy(action)
         selection = deepcopy(selection)
         # run the logic
-        select_idx = None
-        for _where in selection:
-            select_idx = self._condition_index(canonical=canonical, condition=_where, select_idx=select_idx)
+        select_idx = self._selection_index(canonical=canonical, selection=selection)
         if not isinstance(default_action, (str, int, float, dict)):
             default_action = None
         rtn_values = self._apply_action(canonical, action=default_action, seed=_seed)
@@ -2537,9 +2532,27 @@ class SyntheticIntentModel(AbstractIntentModel):
                 raise ValueError(f"The 'method' key {method} is not a recognised intent method")
         return pd.Series(data=([action] * select_idx.size), index=select_idx)
 
+    def _selection_index(self, canonical: pd.DataFrame, selection: list, select_idx: pd.Index=None):
+        """ private method to iterate a list of selections and return the resulting index
+
+        :param canonical: a pandas DataFrame to select from
+        :param selection: the selection list of dictionaries
+        :param select_idx: a starting index, if None then canonical index used
+        :return:
+        """
+        select_idx = select_idx if isinstance(select_idx, pd.Index) else canonical.index
+        for condition in selection:
+            if isinstance(condition, dict):
+                select_idx = self._condition_item(canonical=canonical, condition=condition, select_idx=select_idx)
+            elif isinstance(condition, list):
+                select_idx = self._selection_index(canonical=canonical, selection=condition, select_idx=select_idx)
+            else:
+                raise ValueError(f"The subsection of the selection list {condition} is neither a dict or a list")
+        return select_idx
+
     @staticmethod
-    def _condition_index(canonical: pd.DataFrame, condition: dict, select_idx: pd.Int64Index) -> pd.Int64Index:
-        """ private method to select index from the selection conditions
+    def _condition_item(canonical: pd.DataFrame, condition: dict, select_idx: pd.Int64Index) -> pd.Int64Index:
+        """ private method to select index from the condition
 
         :param canonical: a pandas DataFrame to select from
         :param condition: the dict conditions
@@ -2548,9 +2561,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """
         _column = condition.get('column')
         _condition = condition.get('condition')
-        _operator = condition.get('operator', '')
-        _expect = condition.get('expect', None)
-        _logic = condition.get('logic', 'and')
+        _logic = condition.get('logic', 'XOR')
         if _condition == 'date.now':
             _date_format = condition.get('date_format', "%Y-%m-%dT%H:%M:%S")
             _offset = condition.get('offset', 0)
@@ -2563,20 +2574,17 @@ class SyntheticIntentModel(AbstractIntentModel):
             _condition = str(_condition).replace("@", f"canonical['{_column}']")
         # find the selection index
         idx = eval(f"canonical[{_condition}].index", globals(), locals())
-        if select_idx is None:
-            select_idx = idx
+        if str(_logic).upper() == 'AND':
+            select_idx = select_idx.intersection(idx)
+        elif str(_logic).upper() == 'OR':
+            select_idx = select_idx.union(idx)
+        elif str(_logic).upper() == 'NOT':
+            select_idx = select_idx.difference(idx)
+        elif str(_logic).upper() == 'XOR':
+            select_idx = select_idx.union(idx).difference(select_idx.intersection(idx))
         else:
-            if str(_logic).lower() == 'and':
-                select_idx = select_idx.intersection(idx)
-            elif str(_logic).lower() == 'or':
-                select_idx = select_idx.union(idx)
-            elif str(_logic).lower() == 'not':
-                select_idx = select_idx.difference(idx)
-            elif str(_logic).lower() == 'xor':
-                select_idx = select_idx.union(idx).difference(select_idx.intersection(idx))
-            else:
-                raise ValueError(f"The logic '{_logic}' for column '{_column}' is not recognised logic. "
-                                 f"Use 'AND', 'OR', 'NOT', 'XOR'")
+            raise ValueError(f"The logic '{_logic}' for column '{_column}' is not recognised logic. "
+                             f"Use 'AND', 'OR', 'NOT', 'XOR' and special logic 'IS' for is only" )
         return select_idx
 
     @staticmethod
