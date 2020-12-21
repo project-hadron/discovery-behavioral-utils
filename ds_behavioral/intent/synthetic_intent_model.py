@@ -1811,12 +1811,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError("The 'selection' parameter must be a 'list' of 'dict' types")
         if not isinstance(action, (str, int, float, dict)) or (isinstance(action, dict) and len(action) == 0):
             raise TypeError("The 'action' parameter is not of an acepted format or is empty")
-        if not all(isinstance(x, dict) for x in selection):
-            raise ValueError("The 'selection' parameter must be a 'list' of 'dict' types")
-        for _where in selection:
-            if 'column' not in _where or 'condition' not in _where:
-                raise ValueError("all 'dict' in the 'selection' list must have a 'column' and 'condition' key "
-                                 "as a minimum")
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         # prep the values to be a DataFrame if it isn't already
@@ -2514,7 +2508,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                 code_str = action.pop('code_str', None)
                 if code_str is None:
                     raise ValueError(f"The action '@eval' requires a 'code_str' key.")
-                e_value = eval(code_str, globals(), locals())
+
+                e_value = eval(code_str, globals(), action)
                 return pd.Series(data=([e_value] * select_idx.size), index=select_idx)
             elif str(method).startswith('@constant'):
                 constant = action.pop('value', None)
@@ -2532,7 +2527,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 raise ValueError(f"The 'method' key {method} is not a recognised intent method")
         return pd.Series(data=([action] * select_idx.size), index=select_idx)
 
-    def _selection_index(self, canonical: pd.DataFrame, selection: list, select_idx: pd.Index=None):
+    def _selection_index(self, canonical: pd.DataFrame, selection: list, select_idx: pd.Index = None):
         """ private method to iterate a list of selections and return the resulting index
 
         :param canonical: a pandas DataFrame to select from
@@ -2541,51 +2536,64 @@ class SyntheticIntentModel(AbstractIntentModel):
         :return:
         """
         select_idx = select_idx if isinstance(select_idx, pd.Index) else canonical.index
-        for condition in selection:
+        sub_select_idx = select_idx
+        state_idx = None
+        for i in range(len(selection)):
+            condition = selection[i]
+            if isinstance(condition, str):
+                condition = {'logic': condition}
             if isinstance(condition, dict):
-                select_idx = self._condition_item(canonical=canonical, condition=condition, select_idx=select_idx)
+                if len(condition) == 1 and 'logic' in condition.keys():
+                    condition_idx = state_idx
+                else:
+                    condition_idx = self._condition_index(canonical=canonical.iloc[sub_select_idx], condition=condition,
+                                                          select_idx=sub_select_idx)
+                logic = condition.get('logic', None)
+                if not isinstance(state_idx, pd.Index):
+                    state_idx = sub_select_idx
+                state_idx = self._condition_logic(sub_select_idx=sub_select_idx, state_idx=state_idx,
+                                                  condition_idx=condition_idx, logic=logic)
             elif isinstance(condition, list):
-                select_idx = self._selection_index(canonical=canonical, selection=condition, select_idx=select_idx)
+                if not isinstance(state_idx, pd.Index) or len(state_idx) == 0:
+                    state_idx = sub_select_idx
+                sub_select_idx = self._selection_index(canonical=canonical, selection=condition,
+                                                       select_idx=state_idx)
+                state_idx = sub_select_idx
             else:
                 raise ValueError(f"The subsection of the selection list {condition} is neither a dict or a list")
-        return select_idx
+        return state_idx
 
     @staticmethod
-    def _condition_item(canonical: pd.DataFrame, condition: dict, select_idx: pd.Int64Index) -> pd.Int64Index:
-        """ private method to select index from the condition
+    def _condition_logic(sub_select_idx: pd.Index, state_idx: pd.Index, condition_idx: pd.Index, logic: str) -> pd.Index:
+        if not isinstance(logic, str):
+            return state_idx.append(condition_idx).drop_duplicates(keep='first').sort_values()
+        elif str(logic).upper() == 'AND':
+            return state_idx.intersection(condition_idx).sort_values()
+        elif str(logic).upper() == 'NAND':
+            return sub_select_idx.drop(state_idx.intersection(condition_idx)).sort_values()
+        elif str(logic).upper() == 'OR':
+            return state_idx.append(state_idx.union(condition_idx)).drop_duplicates(keep='first').sort_values()
+        elif str(logic).upper() == 'NOR':
+            result = state_idx.append(state_idx.union(condition_idx)).drop_duplicates(keep='first').sort_values()
+            return sub_select_idx.drop(result)
+        elif str(logic).upper() == 'NOT':
+            return state_idx.difference(condition_idx)
+        elif str(logic).upper() == 'XOR':
+            return state_idx.union(condition_idx).difference(state_idx.intersection(condition_idx))
+        raise ValueError(f"The logic '{logic}' must be AND, OR, NOT, XOR or 'ONLY'")
 
-        :param canonical: a pandas DataFrame to select from
-        :param condition: the dict conditions
-        :param select_idx: the current selection index of the canonical
-        :return: returns the current select_idx of the condition
-        """
+    @staticmethod
+    def _condition_index(canonical: pd.DataFrame, condition: dict, select_idx: pd.Index) -> pd.Index:
         _column = condition.get('column')
         _condition = condition.get('condition')
-        _logic = condition.get('logic', 'XOR')
-        if _condition == 'date.now':
-            _date_format = condition.get('date_format', "%Y-%m-%dT%H:%M:%S")
-            _offset = condition.get('offset', 0)
-            _condition = f"'{(pd.Timestamp.now() + pd.Timedelta(days=_offset)).strftime(_date_format)}'"
         if _column == '@':
-            _condition = str(_condition).replace("@", "canonical")
+            _condition = str(_condition).replace("@", "canonical.iloc[select_idx]")
         elif _column not in canonical.columns:
             raise ValueError(f"The column name '{_column}' can not be found in the canonical headers.")
         else:
             _condition = str(_condition).replace("@", f"canonical['{_column}']")
         # find the selection index
-        idx = eval(f"canonical[{_condition}].index", globals(), locals())
-        if str(_logic).upper() == 'AND':
-            select_idx = select_idx.intersection(idx)
-        elif str(_logic).upper() == 'OR':
-            select_idx = select_idx.union(idx)
-        elif str(_logic).upper() == 'NOT':
-            select_idx = select_idx.difference(idx)
-        elif str(_logic).upper() == 'XOR':
-            select_idx = select_idx.union(idx).difference(select_idx.intersection(idx))
-        else:
-            raise ValueError(f"The logic '{_logic}' for column '{_column}' is not recognised logic. "
-                             f"Use 'AND', 'OR', 'NOT', 'XOR' and special logic 'IS' for is only" )
-        return select_idx
+        return eval(f"canonical[{_condition}].index", globals(), locals())
 
     @staticmethod
     def _convert_date2value(dates: Any, day_first: bool = True, year_first: bool = False):
