@@ -56,9 +56,9 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         action = self.tools.action2dict(method='@constant', value=1)
         default = self.tools.action2dict(method='@constant', value=0)
         df['l2'] = self.tools.correlate_selection(df, selection=selection, action=action, default_action=default)
-        result = df[df['l2'] == 1].loc[:, ['s1']]
-        self.assertEqual(['B', 'C', 'D'], result.values)
-        result = df[df['l2'] == 1].loc[:, ['s2']]
+        result = df[df['l2'] == 1].loc[:, 's1']
+        self.assertEqual(['B', 'C', 'D'], list(result.values))
+        result = df[df['l2'] == 1].loc[:, 's2']
         self.assertEqual(['B', 'B', 'B'], list(result.values))
 
     def test_action_value(self):
@@ -73,7 +73,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         selection = [tools.select2dict(column='letters', condition="@ == 'A'"),
                      tools.select2dict(column='letters', condition="@ == 'B'", logic='OR')]
         result = tools.correlate_selection(df, selection=selection, action=9)
-        self.assertEqual([9, 9, 9, 9, 9], result)
+        self.assertEqual([9., 9., 9., 9., 9., None], result)
         # three selections
         selection = [tools.select2dict(column='letters', condition="@ == 'A'"),
                      tools.select2dict(column='letters', condition="@ == 'B'", logic='OR'),
@@ -206,6 +206,12 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         self.assertEqual([0, 1, 2, 9], result.index.to_list())
         result = df.iloc[self.tools._selection_index(df, selection=[c3, [c1, c2]])]
         self.assertEqual([0, 1, 2, 9], result.index.to_list())
+        A = self.tools.select2dict(column='s3', condition="(@ > 2)", logic='AND')
+        B = self.tools.select2dict(column='s3', condition="(@ < 5)", logic='AND')
+        C = self.tools.select2dict(column='s3', condition="@ == 8", logic='OR')
+        selection = [[A, B], C]
+        result = df.iloc[self.tools._selection_index(df, selection=selection)]
+        self.assertEqual([2, 3, 7, 10, 11, 15], result.index.to_list())
 
 
 if __name__ == '__main__':

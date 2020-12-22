@@ -2400,25 +2400,28 @@ class SyntheticIntentModel(AbstractIntentModel):
         return Sample().__dir__()
 
     @staticmethod
-    def select2dict(column: str, condition: str, expect: str=None, operator: str=None, logic: str=None,
-                    date_format: str=None, offset: int=None) -> dict:
+    def select2dict(column: str, condition: str, expect: str=None, logic: str=None, date_format: str=None,
+                    offset: int=None) -> dict:
         """ a utility method to help build feature conditions by aligning method parameters with dictionary format.
 
         :param column: the column name to apply the condition to
         :param condition: the condition string (special conditions are 'date.now' for current date
         :param expect: (optional) the data type to expect. If None then the data type is assumed from the dtype
-        :param operator: (optional) an operator to place before the condition if not included in the condition
-        :param logic: (optional) the logic to provide, options are 'and', 'or', 'not', 'xor'
+        :param logic: (optional) the logic to provide, see below for options
         :param date_format: (optional) a format of the date if only a specific part of the date and time is required
         :param offset: (optional) a time delta in days (+/-) from the current date and time (minutes not supported)
         :return: dictionary of the parameters
 
         logic:
-            and: the intersect of the left and the right (common to both)
-            or: the union of the left and the right (everything in both)
-            diff: the left minus the intersect of the right (only things in the left excluding common to both)
-
-
+            AND: the intersect of the current state with the condition result (common to both)
+            NAND: outside the intersect of the current state with the condition result (not common to both)
+            OR: the union of the current state with the condition result (everything in both)
+            NOR: outside the union of the current state with the condition result (everything not in both)
+            NOT: the difference between the current state and the condition result
+            XOR: the difference between the union and the intersect current state with the condition result
+        extra logic:
+            ALL: the intersect of the whole index with the condition result irrelevant of level or current state index
+            ANY: the intersect of the level index with the condition result irrelevant of current state index
         """
         return SyntheticCommons.param2dict(**locals())
 
@@ -2527,7 +2530,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 raise ValueError(f"The 'method' key {method} is not a recognised intent method")
         return pd.Series(data=([action] * select_idx.size), index=select_idx)
 
-    def _selection_index(self, canonical: pd.DataFrame, selection: list, select_idx: pd.Index = None):
+    def _selection_index(self, canonical: pd.DataFrame, selection: list, select_idx: pd.Index=None):
         """ private method to iterate a list of selections and return the resulting index
 
         :param canonical: a pandas DataFrame to select from
@@ -2543,30 +2546,36 @@ class SyntheticIntentModel(AbstractIntentModel):
             if isinstance(condition, str):
                 condition = {'logic': condition}
             if isinstance(condition, dict):
+                if not isinstance(state_idx, pd.Index):
+                    state_idx = sub_select_idx
                 if len(condition) == 1 and 'logic' in condition.keys():
-                    condition_idx = state_idx
+                    if condition.get('logic') == 'ALL':
+                        condition_idx = canonical.index
+                    elif condition.get('logic') == 'ANY':
+                        condition_idx = sub_select_idx
+                    else:
+                        condition_idx = state_idx
                 else:
                     condition_idx = self._condition_index(canonical=canonical.iloc[sub_select_idx], condition=condition,
                                                           select_idx=sub_select_idx)
-                logic = condition.get('logic', None)
-                if not isinstance(state_idx, pd.Index):
-                    state_idx = sub_select_idx
-                state_idx = self._condition_logic(sub_select_idx=sub_select_idx, state_idx=state_idx,
-                                                  condition_idx=condition_idx, logic=logic)
+                logic = condition.get('logic', 'AND')
+                state_idx = self._condition_logic(base_idx=canonical.index, sub_select_idx=sub_select_idx,
+                                                  state_idx=state_idx,condition_idx=condition_idx, logic=logic)
             elif isinstance(condition, list):
                 if not isinstance(state_idx, pd.Index) or len(state_idx) == 0:
                     state_idx = sub_select_idx
-                sub_select_idx = self._selection_index(canonical=canonical, selection=condition,
-                                                       select_idx=state_idx)
-                state_idx = sub_select_idx
+                state_idx = self._selection_index(canonical=canonical, selection=condition, select_idx=state_idx)
             else:
                 raise ValueError(f"The subsection of the selection list {condition} is neither a dict or a list")
         return state_idx
 
     @staticmethod
-    def _condition_logic(sub_select_idx: pd.Index, state_idx: pd.Index, condition_idx: pd.Index, logic: str) -> pd.Index:
-        if not isinstance(logic, str):
-            return state_idx.append(condition_idx).drop_duplicates(keep='first').sort_values()
+    def _condition_logic(base_idx: pd.Index, sub_select_idx: pd.Index, state_idx: pd.Index, condition_idx: pd.Index,
+                         logic: str) -> pd.Index:
+        if str(logic).upper() == 'ALL':
+            return base_idx.intersection(condition_idx).sort_values()
+        elif str(logic).upper() == 'ANY':
+            return sub_select_idx.intersection(condition_idx).sort_values()
         elif str(logic).upper() == 'AND':
             return state_idx.intersection(condition_idx).sort_values()
         elif str(logic).upper() == 'NAND':
@@ -2580,7 +2589,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             return state_idx.difference(condition_idx)
         elif str(logic).upper() == 'XOR':
             return state_idx.union(condition_idx).difference(state_idx.intersection(condition_idx))
-        raise ValueError(f"The logic '{logic}' must be AND, OR, NOT, XOR or 'ONLY'")
+        raise ValueError(f"The logic '{logic}' must be AND, NAND, OR, NOR, NOT, XOR ANY or ALL")
 
     @staticmethod
     def _condition_index(canonical: pd.DataFrame, condition: dict, select_idx: pd.Index) -> pd.Index:
