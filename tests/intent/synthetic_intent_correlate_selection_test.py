@@ -173,7 +173,7 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         result = df.iloc[self.tools._selection_index(df, selection=[c1, c4])]
         self.assertEqual([4, 5, 8, 9, 12, 13], result.index.to_list())
         # A NOT B
-        c1 = self.tools.select2dict(column='s1', condition="@ == 'A'")
+        c1 = self.tools.select2dict(column='s1', condition="@ == 'A'", logic='AND')
         c2 = self.tools.select2dict(column='s2', condition="@ == 'B'", logic='NOT')
         result = df.iloc[self.tools._selection_index(df, selection=[c1, c2])]
         self.assertEqual([0,2,3], result.index.to_list())
@@ -182,6 +182,11 @@ class SyntheticIntentCorrelateSelectionTest(unittest.TestCase):
         c2 = self.tools.select2dict(column='s2', condition="@ == 'B'", logic='XOR')
         result = df.iloc[self.tools._selection_index(df, selection=[c1, c2])]
         self.assertEqual([0, 2, 3, 5, 9, 13], result.index.to_list())
+        # !(A AND B)
+        c1 = self.tools.select2dict(column='s3', condition="@ < 8")
+        c2 = self.tools.select2dict(column='s3', condition="@ > 5", logic='AND')
+        result = df.iloc[self.tools._selection_index(df, selection=[[c1, c2], 'NOT'])]
+        self.assertEqual([0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 15], result.index.to_list())
 
     def test_selection_logic_three_elements(self):
         df = pd.DataFrame()

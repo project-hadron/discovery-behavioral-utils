@@ -2541,8 +2541,12 @@ class SyntheticIntentModel(AbstractIntentModel):
         select_idx = select_idx if isinstance(select_idx, pd.Index) else canonical.index
         sub_select_idx = select_idx
         state_idx = None
-        for i in range(len(selection)):
-            condition = selection[i]
+        for condition in selection:
+            # print("\nCONDITION")
+            # print(f"  {condition}")
+            # print(f"  select_idx: {select_idx}")
+            # print(f"  sub_select_idx: {sub_select_idx}")
+            # print(f"  state_idx: {state_idx}")
             if isinstance(condition, str):
                 condition = {'logic': condition}
             if isinstance(condition, dict):
@@ -2553,6 +2557,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                         condition_idx = canonical.index
                     elif condition.get('logic') == 'ANY':
                         condition_idx = sub_select_idx
+                    elif condition.get('logic') == 'NOT':
+                        condition_idx = state_idx
+                        state_idx = sub_select_idx
                     else:
                         condition_idx = state_idx
                 else:
@@ -2561,6 +2568,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 logic = condition.get('logic', 'AND')
                 state_idx = self._condition_logic(base_idx=canonical.index, sub_select_idx=sub_select_idx,
                                                   state_idx=state_idx,condition_idx=condition_idx, logic=logic)
+                # print(f"  result: {state_idx}")
             elif isinstance(condition, list):
                 if not isinstance(state_idx, pd.Index) or len(state_idx) == 0:
                     state_idx = sub_select_idx
@@ -2572,6 +2580,10 @@ class SyntheticIntentModel(AbstractIntentModel):
     @staticmethod
     def _condition_logic(base_idx: pd.Index, sub_select_idx: pd.Index, state_idx: pd.Index, condition_idx: pd.Index,
                          logic: str) -> pd.Index:
+        # print("\n  LOGIC")
+        # print(f"    sub_select_idx: {sub_select_idx}")
+        # print(f"    state_idx: {state_idx}")
+        # print(f"    condition_idx: {condition_idx}")
         if str(logic).upper() == 'ALL':
             return base_idx.intersection(condition_idx).sort_values()
         elif str(logic).upper() == 'ANY':
