@@ -86,18 +86,20 @@ class MappedSample(AbstractSample):
         :param seed: (optional) a seed value
         :return: the mapping DataFrame
         """
-        # The PCP tax code-
         seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
-        np.random.seed(seed)
-        df = AbstractSample._get_constant(reference='map_us_full_address', shuffle=False)
+        generator = np.random.default_rng(seed=seed)
+        sample = MappedSample.us_persona(female_bias=0.4, size=size, seed=seed)
+        level = generator.choice(['MD', 'DNP'], size=size, p=[0.8, 0.2])
+        df = pd.DataFrame()
+        df['name'] = [f"{a} {b} {c}" for (a, b, c) in zip(sample['first_name'], sample['family_name'], level)]
         df['pcp_tax_id'] = np.linspace(100000000, 900000000, num=df.shape[0], dtype=int, endpoint=False)
         df['pcp_tax_id'] += np.random.randint(100, 999, size=df.shape[0])
-        df_rtnMappedSample.us_forename_mf(female_bias=0.4, size=size, shuffle=True, seed=seed)
-        df_rtn.rename(columns={'forename': 'given_name'}, inplace=True)
-        df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=seed)
-
-
-
+        df = pd.concat([df, MappedSample.us_full_address(size=size, shuffle=False, seed=seed)], axis='columns')
+        df['address'] = df['address'].str.title()
+        df['city'] = df['city'].str.title()
+        if isinstance(shuffle, bool) and shuffle:
+            df.sample(frac=1, random_state=seed).reset_index(drop=True)
+        return df
 
     @staticmethod
     def companies_fortune1000(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
@@ -170,22 +172,38 @@ class MappedSample(AbstractSample):
                                             shuffle=shuffle)
 
     @staticmethod
-    def us_zipcode_primary(size: int=None, cleaned: bool=False, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
+    def us_zipcode(size: int=None, shuffle: bool=False, state_filter: list=None, inc_military: bool=None,
+                   seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
 
         :param size: (optional) the size of the sample. If None then all the names are returned
-        :param cleaned: (optional) if all decommissioned and nan values should be removed
-        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param shuffle: (optional) by default is shuffle but if false then returned in state abbreviation order.
+        :param state_filter: (optional) a list of state abbreviations to filter on
+        :param inc_military: (optional) if military zip codes should be included. Default to True
         :param seed: (optional) a seed value
         :return: the mapping DataFrame
         """
-        df = AbstractSample._get_constant(reference='map_us_zipcode_primary', size=size, seed=seed, shuffle=shuffle)
-        if cleaned:
-            df = df.dropna(subset=['State'])
-        pop_total = df['EstimatedPopulation'].sum()
-        df['WeightedPopulation'] = df['EstimatedPopulation'].apply(lambda x: np.round((x/pop_total) * 100000, 2))
-        return df
-
+        inc_military = inc_military if isinstance(inc_military, bool) else True
+        sample = AbstractSample._get_constant(reference='map_us_city_zipcodes_rank', shuffle=False)
+        # trim
+        if not inc_military:
+            sample = sample[~sample['military']]
+        if isinstance(state_filter, list):
+            sample = sample[sample['state_id'].isin(state_filter)]
+        sample.drop(columns=['ranking', 'incorporated', 'density', 'military', 'population', 'lat', 'lng', 'city_ascii',
+                             'timezone'], inplace=True)
+        # explode
+        sample = sample.explode(column='zipcodes', ignore_index=True)
+        size = size if isinstance(size, int) else sample.shape[0]
+        rtn_idx = sample.index.to_list() * int(((size - 1) / sample.shape[0]) + 1)
+        df_rtn = sample.iloc[rtn_idx]
+        df_rtn = df_rtn.rename(columns={'zipcodes': 'zipcode', 'state_name': 'state', 'county_name': 'county',
+                                        'state_id': 'state_abbr'})
+        if shuffle:
+            df_rtn = df_rtn.sample(frac=1, random_state=seed).reset_index(drop=True)
+        else:
+            df_rtn.sort_values(by=['state_abbr', 'county'], inplace=True)
+        return df_rtn.iloc[:size]
     @staticmethod
     def us_phone_code(size: int=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
         """returns the first 'size' dataframe
@@ -231,39 +249,57 @@ class MappedSample(AbstractSample):
         return AbstractSample._get_constant(reference='map_us_full_address', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_forename_mf(female_bias: float=None, size: int=None, shuffle: bool=True, seed: int=None) -> pd.DataFrame:
-        """returns the first 'size' dataframe where the female_bias is between zero and 1
+    def us_persona(size: int=None, female_bias: float=None, shuffle: bool=False, seed: int=None) -> pd.DataFrame:
+        """returns a frame of personas of 'size' where the female_bias is between zero and 1
 
-        :param female_bias: a female bias between 0 and 1 where 0 is zero females and 1 is all females
         :param size: (optional) the size of the sample. If None then all the names are returned
-        :param shuffle: (optional) if the list should be shuffled. Default is True
+        :param female_bias: a female bias between 0 and 1 where 0 is zero females and 1 is all females
+        :param shuffle: (optional) if not shuffled then returns in family_name alphabetical order
         :param seed: (optional) a seed value
         :return: the mapping DataFrame
         """
-        female_bias = female_bias if isinstance(female_bias, float) and 0 <= female_bias <= 1 else 0.5
-        shuffle = shuffle if isinstance(shuffle, bool) else True
-        size = size if isinstance(size, int) else 10000
-        df = AbstractSample._get_constant(reference='map_us_forename_mf', shuffle=False)
-        df.columns = ['forename', 'gender']
-        # generate a binomial probability of female_bias
-        generator = np.random.default_rng()
-        female_bias = pd.Series(list(generator.binomial(n=1, p=female_bias, size=1000)))
-        female_bias = np.round(female_bias.value_counts().loc[1]/1000, 2)
-        female_size = int(np.round(female_bias*size, 0))
-        female_idx = df[df['gender'] == 'F'].dropna().index.to_list()
-        female_idx *= int(((female_size - 1) / len(female_idx)) + 1)
+        sample = AbstractSample._get_constant(reference='map_us_forename_mf', shuffle=False)
+        size = size if isinstance(size, int) else sample.shape[0]
+        # generate the random index of the names
+        generator = np.random.default_rng(seed=seed)
+        # set male/female
+        female_idx = sample[sample['Gender'] == 'F'].dropna().index.to_list()
+        male_idx = sample[sample['Gender'] == 'M'].dropna().index.to_list()
+        female_bias = female_bias if isinstance(female_bias, float) and 0 <= female_bias <= 1 else np.round(
+            len(female_idx) / sample.shape[0], 5)
+        female_size = int(np.round(female_bias * size, 0))
         male_size = size - female_size
-        if male_size > 0:
-            male_idx = df[df['gender'] == 'M'].dropna().index.to_list()
-            male_idx *= int(((male_size - 1) / len(male_idx)) + 1)
-        else:
-            male_idx = []
-        idx = female_idx[:female_size] + male_idx[:male_size]
+        female_idx *= int(((female_size - 1) / len(female_idx)) + 1)
+        female_second_idx = female_idx
+        generator.shuffle(female_second_idx)
+        male_idx *= int(((male_size - 1) / len(male_idx)) + 1)
+        male_second_idx = male_idx
+        generator.shuffle(male_second_idx)
+        forename_idx = female_idx[:female_size] + male_idx[:male_size]
+        generator.shuffle(forename_idx)
+        middle_idx = female_second_idx[:female_size] + male_second_idx[:male_size]
+        df_rtn = pd.DataFrame(columns=['first_name', 'middle_name', 'gender'])
+        df_rtn['first_name'] = sample['Name'].iloc[forename_idx].values
+        df_rtn['middle_name'] = sample['Name'].iloc[middle_idx].values
+        df_rtn['gender'] = sample['Gender'].iloc[forename_idx].values
+        df_rtn['middle_name'].iloc[0:int(df_rtn.shape[0] * 0.2)] = ''
+        # set the surname
+        df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=seed)
+        # set the email name
+        df_rtn['email'] = pd.Series(
+            [f"{a.lower()}.{b.lower()}" for (a, b) in zip(df_rtn['first_name'], df_rtn['family_name'])])
+        # replace duplicates
+        dup_email = df_rtn[df_rtn['email'].duplicated()].index.to_list()
+        number = generator.integers(low=10, high=10000, size=len(dup_email))
+        df_rtn['email'].iloc[dup_email] = pd.Series(
+            [f"{a.lower()}{b}" for (a, b) in zip(df_rtn['family_name'], number)])
+        domain = Sample.global_mail_domains(size=size, shuffle=True, seed=seed)
+        df_rtn['email'] = pd.Series([f"{a}@{b}" for (a, b) in zip(df_rtn['email'], domain)])
         if shuffle:
-            seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
-            np.random.seed(seed)
-            np.random.shuffle(idx)
-        return df.iloc[idx].reset_index(drop=True)
+            df_rtn = df_rtn.sample(frac=1, random_state=seed).reset_index(drop=True)
+        else:
+            df_rtn.sort_values(by=['family_name', 'first_name'], inplace=True)
+        return df_rtn
 
 
 class Sample(AbstractSample):
@@ -388,7 +424,7 @@ class Sample(AbstractSample):
         return AbstractSample._get_constant(reference='lookup_us_city', size=size, seed=seed, shuffle=shuffle)
 
     @staticmethod
-    def us_zipcodes(size: int = None, shuffle: bool=True, seed: int = None) -> list:
+    def us_zipcodes(size: int=None, shuffle: bool=True, seed: int = None) -> list:
         """returns a randomly selected list of size
 
         :param size: (optional) the size of the sample. If None then all the names are returned
@@ -396,7 +432,7 @@ class Sample(AbstractSample):
         :param seed: (optional) a seed value
         :return: a list of names
         """
-        return AbstractSample._get_constant(reference='lookup_us_zipcode', size=size, seed=seed, shuffle=shuffle)
+        return MappedSample.us_zipcode(size=size, seed=seed, shuffle=shuffle).loc[:, 'zipcode'].to_list()
 
     @staticmethod
     def us_states(size: int = None, shuffle: bool=True, seed: int = None) -> list:

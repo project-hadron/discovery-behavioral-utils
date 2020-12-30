@@ -35,7 +35,6 @@ class MyTestCase(unittest.TestCase):
         result = Sample._select_list(selection=original.copy(), seed=31)
         self.assertEqual(seed, result)
 
-
     def test_get_constant(self):
         # map
         result = Sample._get_constant(reference='map_us_surname_rank')

@@ -87,7 +87,8 @@ class SyntheticGetCanonicalTest(unittest.TestCase):
     def test_dict_method(self):
         builder = SyntheticBuilder.from_env('generator', has_contract=False)
         tools: SyntheticIntentModel = builder.tools
-        action = tools.canonical2dict(method='model_person', canonical=tools.action2dict(method='@empty', size=10))
+        action = tools.canonical2dict(method='model_sample_map', canonical=tools.action2dict(method='@empty', size=10),
+                                      sample_map='us_persona')
         result = tools._get_canonical(data=action)
         self.assertEqual((10, 5), result.shape)
 

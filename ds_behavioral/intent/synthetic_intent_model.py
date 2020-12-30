@@ -188,6 +188,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                 else:
                     choice = generator.random(size=freq_dist_size[idx - 1], dtype=float)
                     choice = np.round(choice * (high-low)+low, precision).tolist()
+                    # make sure the precision
+                    choice = [high - 10**(-precision) if x >= high else x for x in choice]
                     rtn_list += choice
         # order or shuffle the return list
         if isinstance(ordered, str) and ordered.lower() in ['asc', 'des']:
@@ -1043,6 +1045,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         as_hex = as_hex if isinstance(as_hex, bool) else False
         version = version if isinstance(version, int) and version in [1, 3, 4, 5] else 4
         kwargs = kwargs if isinstance(kwargs, dict) else {}
+
         rtn_list = [eval(f'uuid{version}(**{kwargs})', globals(), locals()) for x in range(size)]
         rtn_list = [x.hex if as_hex else str(x) for x in rtn_list]
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
@@ -1494,60 +1497,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn['target2'] = df_rtn.iloc[:, :5].mean(axis=1).round(2)
         return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_person(self, canonical: Any, rename_columns: dict=None, female_bias: float=None, seed: int=None,
-                     save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                     replace_intent: bool=None, remove_duplicates: bool=None):
-        """ Models a set of columns that relate to a person: 'family_name', 'given_name', initials, 'gender', 'email'
-
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
-        :param rename_columns: (optional) rename the columns 'family_name', 'given_name', initials, 'gender', 'email'
-        :param female_bias: (optional) a weighted bias between 0 and 1 with 0 being no female and 1 being all female
-        :param seed: seed: (optional) a seed value for the random function: default to None
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a DataFrame
-        """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        canonical = self._get_canonical(canonical)
-        _seed = self._seed() if seed is None else seed
-        size = canonical.shape[0]
-        df_rtn = MappedSample.us_forename_mf(female_bias=female_bias, size=size, shuffle=True, seed=_seed)
-        df_rtn.rename(columns={'forename': 'given_name'}, inplace=True)
-        df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=_seed)
-        middle = self.get_category(selection=list("ABCDEFGHIJKLMNOPRSTW") + ['  '] * 4, size=int(size * 0.95),
-                                   seed=_seed, save_intent=False)
-        choices = {'U': list("ABCDEFGHIJKLMNOPRSTW")}
-        middle += self.get_string_pattern(pattern="U U", choices=choices, choice_only=False, size=size - len(middle),
-                                          seed=_seed, save_intent=False)
-        df_rtn['initials'] = middle
-        # set the name
-        action = self.action2dict(method='@header', header='family_name')
-        df_rtn['email'] = self.correlate_join(df_rtn, header='given_name', action=action, sep='.', save_intent=False)
-        # replace duplicates
-        idx = df_rtn[df_rtn['email'].duplicated()].index.to_list()
-        action = self.action2dict(method='get_number', range_value=10, to_value=100000,
-                                  relative_freq=[10, 5, 1, 1, 1, 1, 1, 1, 1], at_most=1)
-        df_rtn['email'].iloc[idx] = self.correlate_join(df_rtn.iloc[idx], header='family_name', action=action, sep='',
-                                                        save_intent=False)
-        # add the domain
-        action = self.action2dict(method='@sample', name='global_mail_domains', shuffle=True)
-        df_rtn['email'] = self.correlate_join(df_rtn, header='email', action=action, sep='@', save_intent=False)
-        if isinstance(rename_columns, dict):
-            df_rtn = df_rtn.rename(columns=rename_columns)
-        return pd.concat([canonical, df_rtn], axis=1)
-
     def model_sample_map(self, canonical: Any, sample_map: str, selection: list=None, headers: [str, list]=None,
                          shuffle: bool=None, rename_columns: dict=None, seed: int=None, save_intent: bool=None,
                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
@@ -1600,65 +1549,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn = df_rtn.iloc[select_idx]
         if isinstance(rename_columns, dict):
             df_rtn = df_rtn.rename(columns=rename_columns)
-        return pd.concat([canonical, df_rtn], axis=1)
-
-    def model_us_zip(self, canonical: Any, rename_columns: dict=None, state_code_filter: list=None,
-                     seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
-                     replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
-        """ builds a model of distributed Zipcode, City and State with weighting towards the more populated zipcodes
-
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
-        :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
-        :param seed: seed: (optional) a seed value for the random function: default to None
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        :return: a DataFrame
-        """
-        # intent persist options
-        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
-                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
-                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
-        # Code block for intent
-        canonical = self._get_canonical(canonical)
-        _seed = self._seed() if seed is None else seed
-        np.random.seed(_seed)
-        size = canonical.shape[0]
-        df = MappedSample.us_zipcode_primary(cleaned=True)
-        phone_map = MappedSample.us_phone_code()
-        if isinstance(state_code_filter, list):
-            df = df[df['StateCode'].isin(state_code_filter)]
-        df_high = df.where(df['EstimatedPopulation'] > 20000).dropna()
-        df_low = df.where(df['EstimatedPopulation'] <= 20000).dropna()
-        df = df.sort_values(by='EstimatedPopulation', ascending=False)
-        low_size = int(0.001 * size)
-        high_size = size - low_size
-        idx = self.get_number(df_high.shape[0], relative_freq=[10, 7, 6, 5, 4, 3, 2, 0.9] + [0.6]*50 + [0.3]*50,
-                              seed=_seed, size=high_size, save_intent=False)
-        df_rtn = df_high.iloc[idx]
-        idx = self.get_number(df_low.shape[0], size=low_size, seed=_seed, save_intent=False)
-        df_rtn = df_rtn.append(df_low.iloc[idx])
-        df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=['City', 'Zipcode', 'State', 'StateCode',
-                                                                  'StateAbbrev'])
-        df_rtn['Zipcode'] = df['Zipcode'].round(0).astype(int)
-        df_rtn['City'] = df_rtn['City'].str.title()
-        df_rtn = df_rtn.merge(phone_map, how='left', on='State')
-        df_rtn['AreaCode'] = [f"({np.random.choice(x)})" for x in df_rtn['AreaCode']]
-        df_rtn['LastSeven'] = self.get_string_pattern(pattern="ddd-dddd", choices={'d': list("0123456789")},
-                                                      size=df_rtn.shape[0], choice_only=False, save_intent=False)
-        action = self.action2dict(method='@header', header='LastSeven')
-        df_rtn['Phone'] = self.correlate_join(df_rtn, header='AreaCode', action=action, sep=' ', save_intent=False)
-        df_rtn.drop(columns=['AreaCode', 'LastSeven'], inplace=True)
-        if isinstance(rename_columns, dict):
-            df_rtn = df_rtn.rename(columns=rename_columns)
-        df_rtn = df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
         return pd.concat([canonical, df_rtn], axis=1)
 
     def model_analysis(self, canonical: Any, analytics_model: dict, size: int=None, seed: int=None,
@@ -2075,7 +1965,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         result = s_values.apply(lambda x: _calc_polynomial(x, coefficient))
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
-    def correlate_numbers(self, canonical: Any, header: str, jitter: float=None, offset: float=None,
+    def correlate_numbers(self, canonical: Any, header: str, offset: float=None, jitter: float=None,
                           jitter_freq: list=None, multiply_offset: bool=None, precision: int=None,
                           fill_nulls: bool=None, quantity: float=None, seed: int=None, keep_zero: bool=None,
                           min_value: [int, float]=None, max_value: [int, float]=None, save_intent: bool=None,
@@ -2086,8 +1976,8 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
         :param header: the header in the DataFrame to correlate
-        :param jitter: (optional) a perturbation of the value where the jitter is a std. defaults to 0
         :param offset: (optional) how far from the value to offset. defaults to zero
+        :param jitter: (optional) a perturbation of the value where the jitter is a std. defaults to 0
         :param jitter_freq: (optional)  a relative freq with the pattern mid point the mid point of the jitter
         :param multiply_offset: (optional) if true then the offset is multiplied else added
         :param precision: (optional) how many decimal places. default to 3
@@ -2366,38 +2256,18 @@ class SyntheticIntentModel(AbstractIntentModel):
         return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
 
     """
-        PRIVATE METHODS SECTION
+        UTILITY METHODS SECTION
     """
 
-    def _set_intend_signature(self, intent_params: dict, column_name: [int, str]=None, intent_order: int=None,
-                              replace_intent: bool=None, remove_duplicates: bool=None, save_intent: bool=None):
-        """ sets the intent section in the configuration file. Note: by default any identical intent, e.g.
-        intent with the same intent (name) and the same parameter values, are removed from any level.
-
-        :param intent_params: a dictionary type set of configuration representing a intent section contract
-        :param save_intent (optional) if the intent contract should be saved to the property manager
-        :param column_name: (optional) the column name that groups intent to create a column
-        :param intent_order: (optional) the order in which each intent should run.
-                        If None: default's to -1
-                        if -1: added to a level above any current instance of the intent section, level 0 if not found
-                        if int: added to the level specified, overwriting any that already exist
-        :param replace_intent: (optional) if the intent method exists at the level, or default level
-                        True - replaces the current intent method with the new
-                        False - leaves it untouched, disregarding the new intent
-        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
-        """
-        if save_intent or (not isinstance(save_intent, bool) and self._default_save_intent):
-            if not isinstance(column_name, (str, int)) or not column_name:
-                raise ValueError(f"if the intent is to be saved then a column name must be provided")
-        super()._set_intend_signature(intent_params=intent_params, intent_level=column_name, intent_order=intent_order,
-                                      replace_intent=replace_intent, remove_duplicates=remove_duplicates,
-                                      save_intent=save_intent)
-        return
-
     @property
-    def samples(self) -> list:
+    def sample_lists(self) -> list:
         """A list of sample options"""
         return Sample().__dir__()
+
+    @property
+    def sample_maps(self) -> list:
+        """A list of sample options"""
+        return MappedSample().__dir__()
 
     @staticmethod
     def select2dict(column: str, condition: str, expect: str=None, logic: str=None, date_format: str=None,
@@ -2462,6 +2332,35 @@ class SyntheticIntentModel(AbstractIntentModel):
         :return: dictionary of the parameters
         """
         return SyntheticCommons.param2dict(method=method, **kwargs)
+
+    """
+        PRIVATE METHODS SECTION
+    """
+
+    def _set_intend_signature(self, intent_params: dict, column_name: [int, str]=None, intent_order: int=None,
+                              replace_intent: bool=None, remove_duplicates: bool=None, save_intent: bool=None):
+        """ sets the intent section in the configuration file. Note: by default any identical intent, e.g.
+        intent with the same intent (name) and the same parameter values, are removed from any level.
+
+        :param intent_params: a dictionary type set of configuration representing a intent section contract
+        :param save_intent (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        """
+        if save_intent or (not isinstance(save_intent, bool) and self._default_save_intent):
+            if not isinstance(column_name, (str, int)) or not column_name:
+                raise ValueError(f"if the intent is to be saved then a column name must be provided")
+        super()._set_intend_signature(intent_params=intent_params, intent_level=column_name, intent_order=intent_order,
+                                      replace_intent=replace_intent, remove_duplicates=remove_duplicates,
+                                      save_intent=save_intent)
+        return
 
     def _apply_action(self, canonical: pd.DataFrame, action: Any, select_idx: pd.Int64Index=None, seed: int=None):
         """ applies an action returning an indexed Series
@@ -2567,7 +2466,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                           select_idx=sub_select_idx)
                 logic = condition.get('logic', 'AND')
                 state_idx = self._condition_logic(base_idx=canonical.index, sub_select_idx=sub_select_idx,
-                                                  state_idx=state_idx,condition_idx=condition_idx, logic=logic)
+                                                  state_idx=state_idx, condition_idx=condition_idx, logic=logic)
                 # print(f"  result: {state_idx}")
             elif isinstance(condition, list):
                 if not isinstance(state_idx, pd.Index) or len(state_idx) == 0:
@@ -2632,35 +2531,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             dates.append(date)
         return dates
 
-    # def _date_choice(self, start, until, relative_freq: list, limits: str=None,
-    #                  seed: int=None):
-    #     """ Utility method to choose a random date between two dates based on a pattern.
-    #
-    #     :param start: the start boundary
-    #     :param until: the boundary to go up to
-    #     :param relative_freq: The weight pattern to apply to the range selection
-    #     :param limits: (optional) time units that have pattern limits
-    #     :param seed: (optional) a seed value for the random function: default to None
-    #     :return: a choice from the range
-    #     """
-    #     seed = self._seed() if seed is None else seed
-    #     np.random.seed(seed)
-    #     diff = (until-start).days
-    #     freq = 'Y' if diff > 4000 else 'M' if diff > 500 else 'D' if diff > 100 else 'H' if diff > 2 else 'T'
-    #     date_range = pd.date_range(start, until, freq=freq)
-    #     _pattern = relative_freq
-    #     if limits in ['month', 'hour']:
-    #         units = {'month': [11, start.month-1, until.month-1], 'hour': [23, start.hour, until.hour]}
-    #         start_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[1]), 2))
-    #         end_idx = int(np.round(((len(_pattern)-1) / units.get(limits)[0]) * (units.get(limits)[2]), 2))
-    #         _pattern = _pattern[start_idx:end_idx+1]
-    #     date_bins = pd.cut(date_range, bins=len(_pattern))
-    #     index = self._weighted_choice(_pattern, seed=seed)
-    #     if index is None:
-    #         return pd.NaT
-    #     index_date = date_bins.categories[index]
-    #     return pd.Timestamp(np.random.choice(pd.date_range(index_date.left, index_date.right, freq=freq)))
-
     @staticmethod
     def _freq_dist_size(relative_freq: list, size: int, seed: int=None):
         """ utility method taking a list of relative frequencies and based on size returns the size distribution
@@ -2675,15 +2545,6 @@ class SyntheticIntentModel(AbstractIntentModel):
             raise ValueError("The weighted pattern must be an list of numbers")
         seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
         np.random.seed(seed)
-
-        def _freq_choice(p: list):
-            """returns a single index of the choice of the relative frequency"""
-            rnd = np.random.random() * sum(p)
-            for i, w in enumerate(p):
-                rnd -= w
-                if rnd < 0:
-                    return i
-
         if sum(relative_freq) != 1:
             relative_freq = np.round(relative_freq / np.sum(relative_freq), 5)
         generator = np.random.default_rng(seed=seed)
@@ -2695,6 +2556,16 @@ class SyntheticIntentModel(AbstractIntentModel):
             for idx in range(len(relative_freq)):
                 adjust[idx] = int(round(relative_freq[idx] * unit, 0))
         result = [a + b for (a, b) in zip(result, adjust)]
+        # There is a possibility the required size is not fulfilled, therefore add or remove elements based on freq
+
+        def _freq_choice(p: list):
+            """returns a single index of the choice of the relative frequency"""
+            rnd = np.random.random() * sum(p)
+            for i, w in enumerate(p):
+                rnd -= w
+                if rnd < 0:
+                    return i
+
         while sum(result) != size:
             if sum(result) < size:
                 result[_freq_choice(relative_freq)] += 1
@@ -2703,58 +2574,6 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if result[weight_idx] > 0:
                     result[weight_idx] -= 1
         return result
-
-    # @staticmethod
-    # def _weighted_choice(self, weights: list, seed: int=None):
-    #     """ a probability weighting based on the values in the integer list
-    #
-    #     :param weights: a list of integers representing a pattern of weighting
-    #     :param seed: a seed value for the random function: default to None
-    #     :return: an index of which weight was randomly chosen
-    #     """
-    #     if not isinstance(weights, list) or not all(isinstance(x, (int, float)) for x in weights):
-    #         raise ValueError("The weighted pattern must be an list of numbers")
-    #     seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
-    #     np.random.seed(seed)
-    #     rnd = np.random.random() * sum(weights)
-    #     for i, w in enumerate(weights):
-    #         rnd -= w
-    #         if rnd < 0:
-    #             return i
-
-    def _normailse_weights(self, weights: list, size: int=None, count: int=None, length: int=None):
-        """normalises a complex weight pattern and returns the appropriate weight pattern
-        based on the size and index.
-
-        Example of a complex weight pattern might be:
-            patten = [[1,2,3,1], 4, 6, [4,1]]
-
-        :param weights: the weight pattern to normalise
-        :param size: (optional) the total size of the selection
-        :param count: (optional) the index in the selection to retrieve
-        :param length: (optional) stretches or cuts the return pattern to the length
-        :return: a list of weights
-        """
-        size = 1 if not isinstance(size, int) else size
-        count = 0 if not isinstance(count, int) else count
-        if not isinstance(weights, list):
-            return [1]
-        if count >= size:
-            raise ValueError("counts can't be greater than or equal to size")
-        pattern = []
-        for i in weights:
-            i = self._pm.list_formatter(i)[:size]
-            pattern.append(i)
-        rtn_weights = []
-        for p in pattern:
-            if size == 1:
-                index = 0
-            else:
-                index = int(np.round(((len(p) - 1) / (size - 1)) * count, 0))
-            rtn_weights.append(p[index])
-        if length is None:
-            return rtn_weights
-        return SyntheticCommons.resize_list(rtn_weights, resize=length)
 
     def _set_quantity(self, selection, quantity, seed=None):
         """Returns the quantity percent of good values in selection with the rest fill"""
