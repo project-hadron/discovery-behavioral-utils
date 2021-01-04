@@ -83,12 +83,13 @@ class SyntheticIntentModelTest(unittest.TestCase):
     def test_model_us_person(self):
         builder = SyntheticBuilder.from_memory(default_save_intent=False)
         df = pd.DataFrame(index=range(300))
-        result = builder.tools.model_person(df)
-        self.assertCountEqual(['given_name', 'gender', 'family_name', 'initials', 'email'], result.columns.to_list())
+        result = builder.tools.model_sample_map(canonical=df, sample_map='us_persona')
+        self.assertCountEqual(['first_name', 'middle_name', 'gender', 'family_name', 'email'], result.columns.to_list())
         self.assertEqual(300, result.shape[0])
-        df = MappedSample.us_full_address(shuffle=False)
-        df = builder.tools.model_person(canonical=df, female_bias=0.35)
-        self.assertEqual((192865, 9), df.shape)
+        df = pd.DataFrame(index=range(1000))
+        df = builder.tools.model_sample_map(canonical=df, sample_map='us_persona', female_bias=0.3)
+        self.assertEqual((1000, 5), df.shape)
+        print(df['gender'].value_counts().loc['F'])
 
     def test_model_iterator(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)

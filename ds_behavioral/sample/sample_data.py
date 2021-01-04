@@ -267,6 +267,7 @@ class MappedSample(AbstractSample):
         male_idx = sample[sample['Gender'] == 'M'].dropna().index.to_list()
         female_bias = female_bias if isinstance(female_bias, float) and 0 <= female_bias <= 1 else np.round(
             len(female_idx) / sample.shape[0], 5)
+        female_bias += np.round(generator.uniform(low=-0.001, high=0.001), 4)
         female_size = int(np.round(female_bias * size, 0))
         male_size = size - female_size
         female_idx *= int(((female_size - 1) / len(female_idx)) + 1)
@@ -282,7 +283,7 @@ class MappedSample(AbstractSample):
         df_rtn['first_name'] = sample['Name'].iloc[forename_idx].values
         df_rtn['middle_name'] = sample['Name'].iloc[middle_idx].values
         df_rtn['gender'] = sample['Gender'].iloc[forename_idx].values
-        df_rtn['middle_name'].iloc[0:int(df_rtn.shape[0] * 0.2)] = ''
+        df_rtn['middle_name'].iloc[0:int(df_rtn.shape[0] * generator.uniform(low=-0.2, high=0.3))] = ''
         # set the surname
         df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=seed)
         # set the email name
