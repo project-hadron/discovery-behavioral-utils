@@ -292,7 +292,7 @@ class MappedSample(AbstractSample):
         dup_email = df_rtn[df_rtn['email'].duplicated()].index.to_list()
         number = generator.integers(low=10, high=10000, size=len(dup_email))
         df_rtn['email'].iloc[dup_email] = pd.Series(
-            [f"{a.lower()}{b}" for (a, b) in zip(df_rtn['family_name'], number)])
+            [f"{a.lower()}{b}" for (a, b) in zip(df_rtn['family_name'], number)], dtype='string')
         domain = Sample.global_mail_domains(size=size, shuffle=True, seed=seed)
         df_rtn['email'] = pd.Series([f"{a}@{b}" for (a, b) in zip(df_rtn['email'], domain)])
         if shuffle:

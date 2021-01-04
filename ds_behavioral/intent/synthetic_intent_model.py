@@ -2,6 +2,9 @@ import inspect
 import random
 import re
 import string
+import time
+import numpy as np
+import pandas as pd
 from uuid import UUID, uuid1, uuid3, uuid4, uuid5
 from copy import deepcopy
 from typing import Any
@@ -9,9 +12,10 @@ from matplotlib import dates as mdates
 from scipy import stats
 
 from aistac.intent.abstract_intent import AbstractIntentModel
+from aistac.handlers.abstract_handlers import HandlerFactory
 from ds_behavioral.components.commons import SyntheticCommons, DataAnalytics
 from ds_behavioral.managers.synthetic_property_manager import SyntheticPropertyManager
-from ds_behavioral.sample.sample_data import *
+from ds_behavioral.sample.sample_data import MappedSample, Sample
 
 __author__ = 'Darryl Oatridge'
 
@@ -1500,7 +1504,7 @@ class SyntheticIntentModel(AbstractIntentModel):
     def model_sample_map(self, canonical: Any, sample_map: str, selection: list=None, headers: [str, list]=None,
                          shuffle: bool=None, rename_columns: dict=None, seed: int=None, save_intent: bool=None,
                          column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
-                         remove_duplicates: bool=None) -> pd.DataFrame:
+                         remove_duplicates: bool=None, **kwargs) -> pd.DataFrame:
         """ builds a model of a Sample Mapped distribution.
         To see the sample maps available use the MappedSample class __dir__() method:
 
@@ -1526,6 +1530,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         True - replaces the current intent method with the new
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :param kwargs: any additional parameters to pass to the sample map
         :return: a DataFrame
         """
         # intent persist options
@@ -1538,7 +1543,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.seed(_seed)
         shuffle = shuffle if isinstance(shuffle, bool) else True
         size = canonical.shape[0] if canonical.shape[0] > 1 else None
-        df_rtn = eval(f"MappedSample.{sample_map}(size={size}, shuffle={shuffle}, seed={_seed})")
+        df_rtn = eval(f"MappedSample.{sample_map}(size={size}, shuffle={shuffle}, seed={_seed}, **{kwargs})")
         if isinstance(headers, (list, str)):
             df_rtn = SyntheticCommons.filter_columns(df_rtn, headers=headers, copy=False)
         if isinstance(selection, list):
