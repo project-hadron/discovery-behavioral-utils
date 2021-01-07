@@ -88,13 +88,15 @@ class MappedSample(AbstractSample):
         """
         seed = int(time.time() * np.random.random()) if not isinstance(seed, int) else seed
         generator = np.random.default_rng(seed=seed)
-        sample = MappedSample.us_persona(female_bias=0.4, size=size, seed=seed)
+        a_sample = MappedSample.us_full_address(size=size, shuffle=False, seed=seed)
+        size = a_sample.shape[0]
+        p_sample = MappedSample.us_persona(female_bias=0.4, size=size, seed=seed)
         level = generator.choice(['MD', 'DNP'], size=size, p=[0.8, 0.2])
         df = pd.DataFrame()
-        df['name'] = [f"{a} {b} {c}" for (a, b, c) in zip(sample['first_name'], sample['family_name'], level)]
+        df['name'] = [f"{a} {b} {c}" for (a, b, c) in zip(p_sample['first_name'], p_sample['family_name'], level)]
         df['pcp_tax_id'] = np.linspace(100000000, 900000000, num=df.shape[0], dtype=int, endpoint=False)
         df['pcp_tax_id'] += np.random.randint(100, 999, size=df.shape[0])
-        df = pd.concat([df, MappedSample.us_full_address(size=size, shuffle=False, seed=seed)], axis='columns')
+        df = pd.concat([df, a_sample], axis='columns')
         df['address'] = df['address'].str.title()
         df['city'] = df['city'].str.title()
         if isinstance(shuffle, bool) and shuffle:

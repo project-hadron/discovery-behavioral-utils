@@ -60,6 +60,5 @@ class MyTestCase(unittest.TestCase):
             self.assertIsInstance(result, list)
             self.assertEqual(len(result), size)
 
-
 if __name__ == '__main__':
     unittest.main()
