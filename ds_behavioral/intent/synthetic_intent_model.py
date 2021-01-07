@@ -1394,8 +1394,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         how = how if isinstance(how, str) and how in ['left', 'right', 'outer', 'inner'] else 'inner'
         indicator = indicator if isinstance(indicator, bool) else False
         suffixes = suffixes if isinstance(suffixes, tuple) and len(suffixes) == 2 else ('', '_dup')
-        handler = self._pm.get_connector_handler(other)
-        df = handler.load_canonical()
+        df = self._get_canonical(other)
         if isinstance(df, dict):
             canonical = pd.DataFrame.from_dict(data=df, orient='columns')
         # Filter on the columns
