@@ -42,14 +42,15 @@ class SyntheticIntentModelTest(unittest.TestCase):
     def test_complex_sample_modelling(self):
         tools = SyntheticBuilder.from_memory().tools
         state_code = ['CA', 'NY', 'LA', 'NJ', 'VA', 'CO', 'NV', 'GA', 'IN', 'OH', 'KY', 'ME', 'MO', 'WI']
-        df = tools.model_sample_map(canonical='@empty', sample_map='us_zipcode', state_filter=state_code,
-                                    column_name='zipcodes')
+        df = tools.model_sample_map(canonical={'method': '@empty', 'size':100}, sample_map='us_zipcode',
+                                    state_filter=state_code, column_name='zipcodes')
         sample_data = tools.action2dict(method='model_sample_map', canonical=tools.action2dict(method='@empty'),
                                         sample_map='us_healthcare_practitioner', headers=['city', 'pcp_tax_id'],
                                         shuffle=False)
         merge_data = tools.action2dict(method='model_group', canonical=sample_data, headers='pcp_tax_id',
                                        group_by='city', aggregator='list')
         df = tools.model_merge(df, merge_data, how='left', left_on='city', right_on='city', column_name='pcp_tax_id')
+        self.assertCountEqual(['city', 'state_abbr', 'state', 'county_fips', 'county', 'zipcode', 'pcp_tax_id'], df.columns.to_list())
 
     def test_model_columns_headers(self):
         builder = SyntheticBuilder.from_env('test', default_save=False, default_save_intent=False, has_contract=False)
