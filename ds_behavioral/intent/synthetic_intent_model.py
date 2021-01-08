@@ -1821,7 +1821,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if 'random' is false then each list will not exceed the 'list_size'
 
         Also if 'random' is true and 'replace' is False then all lists must have more elements than the list_size.
-        By default 'replace' and 'shuffle' are both True.
+        By default 'replace' is True and 'shuffle' is False.
 
         In addition 'convert_str' allows lists that have been formatted as a string can be converted from a string
         to a list using 'ast.literal_eval(x)'
@@ -1860,7 +1860,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         random_choice = random_choice if isinstance(random_choice, bool) else False
         convert_str = convert_str if isinstance(convert_str, bool) else False
         replace = replace if isinstance(replace, bool) else True
-        shuffle = shuffle if isinstance(shuffle, bool) else True
+        shuffle = shuffle if isinstance(shuffle, bool) else False
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         s_values = canonical[header].copy()
