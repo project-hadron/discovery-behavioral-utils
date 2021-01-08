@@ -38,6 +38,16 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
                                        reset_templates=False, has_contract=False).intent_model
         self.assertTrue(SyntheticIntentModel, type(im))
 
+    def test_correlate_choice(self):
+        tools = self.tools
+        df = pd.DataFrame()
+        df['A'] = [[1,2,4,6], [1], [2,4,8,1], [2,4]]
+        result = tools.correlate_choice(df, header='A', list_size=2)
+        control = [[1, 2], [1], [2, 4], [2, 4]]
+        self.assertEqual(control, result)
+        result = tools.correlate_choice(df, header='A', list_size=1)
+        self.assertEqual([1, 1, 2, 2], result)
+
     def test_correlate_coefficient(self):
         tools = self.tools
         df = pd.DataFrame()
@@ -165,8 +175,8 @@ class SyntheticIntentCorrelateTest(unittest.TestCase):
                    3: 'MONARCH HEALTHCARE', 4: 'PRIVIA MEICAL GROUP'}
         df['pcp_name'] = builder.tools.correlate_categories(df, header='pcp_tax_id', correlations=correlations,
                                                             actions=actions, column_name='pcp_name')
-        df = builder.tools.run_intent_pipeline(size=10)
-        print(df)
+        df = builder.tools.run_intent_pipeline(size=100)
+        self.assertEqual((100,2), df.shape)
 
     def test_correlate_categories_multi(self):
         tools = self.tools

@@ -2,6 +2,7 @@ import inspect
 import random
 import re
 import string
+import ast
 import time
 import numpy as np
 import pandas as pd
@@ -199,7 +200,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if isinstance(ordered, str) and ordered.lower() in ['asc', 'des']:
             rtn_list.sort(reverse=True if ordered.lower() == 'asc' else False)
         else:
-            np.random.shuffle(rtn_list)
+            generator.shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_category(self, selection: list, relative_freq: list=None, quantity: float=None, size: int=None,
@@ -625,8 +626,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 upper += margin
             rtn_list = rtn_list + self.get_number(lower, upper, precision=precision, size=size, seed=_seed,
                                                   save_intent=False)
-        np.random.seed(_seed)
-        np.random.shuffle(rtn_list)
+        np.random.default_rng(seed=_seed).shuffle(rtn_list)
         return self._set_quantity(rtn_list, quantity=quantity, seed=_seed)
 
     def get_dist_normal(self, mean: float, std: float, size: int=None, quantity: float=None, seed: int=None,
@@ -902,11 +902,12 @@ class SyntheticIntentModel(AbstractIntentModel):
                     raise ValueError(
                         "The key '{}' must contain a 'list' of replacements opotions. '{}' found".format(k, type(v)))
 
+        _seed = self._next_seed(_seed, seed)
+        generator = np.random.default_rng(seed=_seed)
         rtn_list = []
         for c in list(pattern):
             if c in choices.keys():
-                _seed = self._next_seed(_seed, seed)
-                result = np.random.choice(choices[c], size=size)
+                result = generator.choice(choices[c], size=size)
             elif not choice_only:
                 result = [c]*size
             else:
@@ -1311,7 +1312,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
-        np.random.seed(_seed)
+        generator = np.random.default_rng(seed=_seed)
         freq_precision = freq_precision if isinstance(freq_precision, int) else 3
         aggregator = aggregator if isinstance(aggregator, str) else 'sum'
         headers = self._pm.list_formatter(headers)
@@ -1326,7 +1327,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             for idx in range(len(headers)):
                 header = headers[idx]
                 if isinstance(list_choice, int):
-                    df_tmp[header] = df_tmp[header].apply(lambda x: np.random.choice(x, size=list_choice))
+                    df_tmp[header] = df_tmp[header].apply(lambda x: generator.choice(x, size=list_choice))
                 if isinstance(list_max, int):
                     df_tmp[header] = df_tmp[header].apply(lambda x: x[0] if list_max == 1 else x[:list_max])
 
@@ -1488,10 +1489,11 @@ class SyntheticIntentModel(AbstractIntentModel):
         inc_targets = inc_targets if isinstance(inc_targets, int) else False
         gen = SyntheticCommons.label_gen()
         df_rtn = pd.DataFrame()
+        generator = np.random.default_rng(seed=_seed)
         for _ in range(num_columns):
             _seed = self._next_seed(_seed, seed)
-            a = np.random.choice(range(1, 6))
-            b = np.random.choice(range(1, 6))
+            a = generator.choice(range(1, 6))
+            b = generator.choice(range(1, 6))
             df_rtn[next(gen)] = self.get_distribution(distribution='beta', a=a, b=b, precision=3, size=size, seed=_seed,
                                                       save_intent=False)
         if inc_targets:
@@ -1539,7 +1541,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         # Code block for intent
         canonical = self._get_canonical(canonical)
         _seed = self._seed() if seed is None else seed
-        np.random.seed(_seed)
         shuffle = shuffle if isinstance(shuffle, bool) else True
         size = canonical.shape[0] if canonical.shape[0] > 1 else None
         df_rtn = eval(f"MappedSample.{sample_map}(size={size}, shuffle={shuffle}, seed={_seed}, **{kwargs})")
@@ -1807,6 +1808,80 @@ class SyntheticIntentModel(AbstractIntentModel):
             result = eval(f"canonical.loc[:, headers].{agg}(axis=1)", globals(), locals()).round(precision)
         return self._set_quantity(result.to_list(), quantity=quantity, seed=_seed)
 
+    def correlate_choice(self, canonical: Any, header: str, list_size: int=None, random_choice: bool=None,
+                         replace: bool=None, shuffle: bool=None, convert_str: bool=None, quantity: float=None,
+                         seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
+                         replace_intent: bool=None, remove_duplicates: bool=None):
+        """ correlate a column where the elements of the columns contains a list, and a choice is taken from that list.
+        if the list_size == 1 then a single value is correlated otherwise a list is correlated
+
+        Null values are passed through but all other elements must be a list with at least 1 value in.
+
+        if 'random' is true then all returned values will be a random selection from the list and of equal length.
+        if 'random' is false then each list will not exceed the 'list_size'
+
+        Also if 'random' is true and 'replace' is False then all lists must have more elements than the list_size.
+        By default 'replace' and 'shuffle' are both True.
+
+        In addition 'convert_str' allows lists that have been formatted as a string can be converted from a string
+        to a list using 'ast.literal_eval(x)'
+
+        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param header: The header containing a list to chose from.
+        :param list_size: (optional) the number of elements to return, if more than 1 then list
+        :param random_choice: (optional) if the choice should be a random choice.
+        :param replace: (optional) if the choice selection should be replaced or selected only once
+        :param shuffle: (optional) if the final list should be shuffled
+        :param convert_str: if the header has the list as a string convert to list using ast.literal_eval()
+        :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
+        :param seed: (optional) a seed value for the random function: default to None
+        :param save_intent: (optional) if the intent contract should be saved to the property manager
+        :param column_name: (optional) the column name that groups intent to create a column
+        :param intent_order: (optional) the order in which each intent should run.
+                        If None: default's to -1
+                        if -1: added to a level above any current instance of the intent section, level 0 if not found
+                        if int: added to the level specified, overwriting any that already exist
+        :param replace_intent: (optional) if the intent method exists at the level, or default level
+                        True - replaces the current intent method with the new
+                        False - leaves it untouched, disregarding the new intent
+        :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
+        :return: a list of equal length to the one passed
+        """
+        # intent persist options
+        self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
+                                   column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
+                                   remove_duplicates=remove_duplicates, save_intent=save_intent)
+        # validation
+        canonical = self._get_canonical(canonical, header=header)
+        if not isinstance(header, str) or header not in canonical.columns:
+            raise ValueError(f"The header '{header}' can't be found in the canonical DataFrame")
+        # Code block for intent
+        list_size = list_size if isinstance(list_size, int) else 1
+        random_choice = random_choice if isinstance(random_choice, bool) else False
+        convert_str = convert_str if isinstance(convert_str, bool) else False
+        replace = replace if isinstance(replace, bool) else True
+        shuffle = shuffle if isinstance(shuffle, bool) else True
+        quantity = self._quantity(quantity)
+        _seed = seed if isinstance(seed, int) else self._seed()
+        s_values = canonical[header].copy()
+        if s_values.empty:
+            return list()
+        s_idx = s_values.where(~s_values.isna()).dropna().index
+        if convert_str:
+            s_values.iloc[s_idx] = [ast.literal_eval(x) if isinstance(x, str) else x for x in s_values.iloc[s_idx]]
+        s_values.iloc[s_idx] = SyntheticCommons.list_formatter(s_values.iloc[s_idx])
+        generator = np.random.default_rng(seed=_seed)
+        if random_choice:
+            try:
+                s_values.iloc[s_idx] = [generator.choice(x, size=list_size, replace=replace, shuffle=shuffle)
+                                        for x in s_values.iloc[s_idx]]
+            except ValueError:
+                raise ValueError(f"Unable to make a choice. Ensure {header} has all appropriate values for the method")
+            s_values.iloc[s_idx] = [x[0] if list_size == 1 else list(x) for x in s_values.iloc[s_idx]]
+        else:
+            s_values.iloc[s_idx] = [x[:list_size] if list_size > 1 else x[0] for x in s_values.iloc[s_idx]]
+        return self._set_quantity(s_values.to_list(), quantity=quantity, seed=_seed)
+
     def correlate_join(self, canonical: Any, header: str, action: [str, dict], sep: str=None, quantity: float=None,
                        seed: int=None, save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                        replace_intent: bool=None, remove_duplicates: bool=None):
@@ -2021,8 +2096,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         quantity = self._quantity(quantity)
         _seed = seed if isinstance(seed, int) else self._seed()
         if fill_nulls:
-            np.random.seed(_seed)
-            s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
+            generator = np.random.default_rng(seed=_seed)
+            s_values = s_values.fillna(generator.choice(s_values.mode(dropna=True)))
         null_idx = s_values[s_values.isna()].index
         zero_idx = s_values.where(s_values == 0).dropna().index if keep_zero else []
         if isinstance(offset, (int, float)) and offset != 0:
@@ -2230,7 +2305,8 @@ class SyntheticIntentModel(AbstractIntentModel):
             zipped_dt = list(zip(zip_spread, [zip_units]*s_values.size))
             s_values = s_values + np.array([pd.Timedelta(x, y).to_timedelta64() for x, y in zipped_dt])
         if fill_nulls:
-            s_values = s_values.fillna(np.random.choice(s_values.mode(dropna=True)))
+            generator = np.random.default_rng(seed=_seed)
+            s_values = s_values.fillna(generator.choice(s_values.mode(dropna=True)))
         null_idx = s_values[s_values.isna()].index
         if isinstance(offset, dict) and offset:
             s_values = s_values.add(pd.DateOffset(**offset))
@@ -2410,11 +2486,20 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if header not in canonical.columns:
                     raise ValueError(f"When executing the action '@header', the header {header} was not found")
                 return canonical[header].iloc[select_idx]
+            elif str(method).startswith('@choice'):
+                header = action.pop('header', None)
+                size = action.pop('size', 1)
+                size = action.pop('seed', 1)
+                if header is None:
+                    raise ValueError(f"The action '@choice' requires a 'header' key")
+                if header not in canonical.columns:
+                    raise ValueError(f"When executing the action '@choice', the header {header} was not found")
+                generator = np.random.default_rng(seed=seed)
+                return pd.Series([np.random.choice(x) for x in canonical[header]]).iloc[select_idx]
             elif str(method).startswith('@eval'):
                 code_str = action.pop('code_str', None)
                 if code_str is None:
                     raise ValueError(f"The action '@eval' requires a 'code_str' key.")
-
                 e_value = eval(code_str, globals(), action)
                 return pd.Series(data=([e_value] * select_idx.size), index=select_idx)
             elif str(method).startswith('@constant'):
@@ -2548,7 +2633,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         if not isinstance(relative_freq, list) or not all(isinstance(x, (int, float)) for x in relative_freq):
             raise ValueError("The weighted pattern must be an list of numbers")
         seed = seed if isinstance(seed, int) else int(time.time() * np.random.random())
-        np.random.seed(seed)
         if sum(relative_freq) != 1:
             relative_freq = np.round(relative_freq / np.sum(relative_freq), 5)
         generator = np.random.default_rng(seed=seed)
@@ -2564,7 +2648,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         def _freq_choice(p: list):
             """returns a single index of the choice of the relative frequency"""
-            rnd = np.random.random() * sum(p)
+            rnd = generator.random() * sum(p)
             for i, w in enumerate(p):
                 rnd -= w
                 if rnd < 0:
@@ -2584,8 +2668,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         if quantity == 1:
             return selection
         seed = self._seed() if seed is None else seed
-        np.random.seed(seed)
-        random.seed(seed)
+        generator = np.random.default_rng(seed=seed)
 
         def replace_fill():
             """Used to run through all the possible fill options for the list type"""
@@ -2599,7 +2682,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         if len(selection) < 100:
             for i in range(len(selection)):
-                if np.random.random() > quantity:
+                if generator.random() > quantity:
                     replace_fill()
         else:
             sample_count = int(round(len(selection) * (1 - quantity), 0))
