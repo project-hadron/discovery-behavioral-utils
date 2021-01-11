@@ -29,7 +29,7 @@ class SyntheticCommons(AistacCommons):
 
     @staticmethod
     def report(canonical: pd.DataFrame, index_header: [str, list], bold: [str, list]=None,
-               large_font: [str, list]=None, align_center: [str, list]=None, align_right: [str, list]=None):
+               large_font: [str, list]=None):
         """ Generate style report
 
         :param canonical:
@@ -40,8 +40,9 @@ class SyntheticCommons(AistacCommons):
         :param align_right:
         :return:
         """
-        bold = SyntheticCommons.list_formatter(bold).append(index_header)
-        large_font = SyntheticCommons.list_formatter(large_font).append(index_header)
+        index_header = SyntheticCommons.list_formatter(index_header)
+        bold = SyntheticCommons.list_formatter(bold) + index_header
+        large_font = SyntheticCommons.list_formatter(large_font) + index_header
         style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
                  {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
         index = canonical[canonical[index_header].duplicated()].index.to_list()
@@ -49,10 +50,10 @@ class SyntheticCommons(AistacCommons):
         canonical = canonical.reset_index(drop=True)
         df_style = canonical.style.set_table_styles(style)
         _ = df_style.set_properties(**{'text-align': 'left'})
-        _ = df_style.set_properties(subset=align_right, **{'text-align': 'right'})
-        _ = df_style.set_properties(subset=align_center, **{'text-align': 'center'})
-        _ = df_style.set_properties(subset=bold, **{'font-weight': 'bold'})
-        _ = df_style.set_properties(subset=large_font, **{'font-size': "120%"})
+        if len(bold) > 0:
+            _ = df_style.set_properties(subset=bold, **{'font-weight': 'bold'})
+        if len(large_font) > 0:
+            _ = df_style.set_properties(subset=large_font, **{'font-size': "120%"})
         return df_style
 
     @staticmethod

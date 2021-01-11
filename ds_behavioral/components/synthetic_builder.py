@@ -268,24 +268,6 @@ class SyntheticBuilder(AbstractComponent):
             return SyntheticCommons.report(df, index_header='section', bold='label')
         return df
 
-    def report_attr_desc(self, canonical, stylise: bool=True):
-        """ generates a report on the attributes and any description provided
-
-        :param canonical: the canonical to report on
-        :param stylise: if True present the report stylised.
-        :return: pd.DataFrame
-        """
-        labels = [f'Attributes ({len(canonical.columns)})', 'dType', 'Description']
-        file = []
-        for c in canonical.columns.sort_values().values:
-            line = [c, str(canonical[c].dtype),
-                    ". ".join(self.pm.report_notes(catalog='intent', labels=c, drop_dates=True).get('text', []))]
-            file.append(line)
-        df = pd.DataFrame(file, columns=labels)
-        if stylise:
-            SyntheticCommons.report(df, index_header='Attributes')
-        return df
-
     def report_column_catalog(self, column_name: [str, list]=None, stylise: bool=True):
         """ generates a report on the source contract
 
