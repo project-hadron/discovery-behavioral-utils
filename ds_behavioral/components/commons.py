@@ -28,14 +28,17 @@ class SyntheticCommons(AistacCommons):
         return list(np.flip(result))
 
     @staticmethod
-    def report(canonical: pd.DataFrame, index_header: [str, list], bold: [str, list]=None, large_font: [str, list]=None):
-        """ generates a stylised report
+    def report(canonical: pd.DataFrame, index_header: [str, list], bold: [str, list]=None,
+               large_font: [str, list]=None, align_center: [str, list]=None, align_right: [str, list]=None):
+        """ Generate style report
 
-        :param canonical
+        :param canonical:
         :param index_header:
         :param bold:
-        :param large_font
-        :return: stylised report DataFrame
+        :param large_font:
+        :param align_center:
+        :param align_right:
+        :return:
         """
         bold = SyntheticCommons.list_formatter(bold).append(index_header)
         large_font = SyntheticCommons.list_formatter(large_font).append(index_header)
@@ -46,6 +49,8 @@ class SyntheticCommons(AistacCommons):
         canonical = canonical.reset_index(drop=True)
         df_style = canonical.style.set_table_styles(style)
         _ = df_style.set_properties(**{'text-align': 'left'})
+        _ = df_style.set_properties(subset=align_right, **{'text-align': 'right'})
+        _ = df_style.set_properties(subset=align_center, **{'text-align': 'center'})
         _ = df_style.set_properties(subset=bold, **{'font-weight': 'bold'})
         _ = df_style.set_properties(subset=large_font, **{'font-size': "120%"})
         return df_style

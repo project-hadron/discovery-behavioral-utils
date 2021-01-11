@@ -14,6 +14,7 @@ class SyntheticBuilder(AbstractComponent):
     CONNECTOR_SOURCE = 'primary_source'
     CONNECTOR_PERSIST = 'primary_persist'
     REPORT_CATALOG = 'catalog'
+    REPORT_FIELDS = 'field_description'
 
     DEFAULT_MODULE = 'ds_discovery.handlers.pandas_handlers'
     DEFAULT_SOURCE_HANDLER = 'PandasSourceHandler'
@@ -216,8 +217,7 @@ class SyntheticBuilder(AbstractComponent):
                                            inc_template=inc_template)
         df = pd.DataFrame.from_dict(data=report, orient='columns')
         if stylise:
-            SyntheticCommons.report(df, index_header='connector_name')
-        df.set_index(keys='connector_name', inplace=True)
+            return SyntheticCommons.report(df, index_header='connector_name')
         return df
 
     def report_run_book(self, stylise: bool = True):
@@ -228,8 +228,7 @@ class SyntheticBuilder(AbstractComponent):
         """
         df = pd.DataFrame.from_dict(data=self.pm.report_run_book(), orient='columns')
         if stylise:
-            SyntheticCommons.report(df, index_header='name')
-        df.set_index(keys='name', inplace=True)
+            return SyntheticCommons.report(df, index_header='name')
         return df
 
     def report_intent(self, levels: [str, int, list]=None, stylise: bool=True):
@@ -247,8 +246,7 @@ class SyntheticBuilder(AbstractComponent):
                 return df
         df = pd.DataFrame.from_dict(data=self.pm.report_intent(levels=levels), orient='columns')
         if stylise:
-            SyntheticCommons.report(df, index_header='level')
-        df.set_index(keys='level', inplace=True)
+            return SyntheticCommons.report(df, index_header='level')
         return df
 
     def report_notes(self, catalog: [str, list] = None, labels: [str, list] = None, regex: [str, list] = None,
@@ -267,8 +265,25 @@ class SyntheticBuilder(AbstractComponent):
                                       drop_dates=drop_dates)
         df = pd.DataFrame.from_dict(data=report, orient='columns')
         if stylise:
-            SyntheticCommons.report(df, index_header='section', bold='label')
-        df.set_index(keys='section', inplace=True)
+            return SyntheticCommons.report(df, index_header='section', bold='label')
+        return df
+
+    def report_attr_desc(self, canonical, stylise: bool=True):
+        """ generates a report on the attributes and any description provided
+
+        :param canonical: the canonical to report on
+        :param stylise: if True present the report stylised.
+        :return: pd.DataFrame
+        """
+        labels = [f'Attributes ({len(canonical.columns)})', 'dType', 'Description']
+        file = []
+        for c in canonical.columns.sort_values().values:
+            line = [c, str(canonical[c].dtype),
+                    ". ".join(self.pm.report_notes(catalog='intent', labels=c, drop_dates=True).get('text', []))]
+            file.append(line)
+        df = pd.DataFrame(file, columns=labels)
+        if stylise:
+            SyntheticCommons.report(df, index_header='Attributes')
         return df
 
     def report_column_catalog(self, column_name: [str, list]=None, stylise: bool=True):
@@ -287,8 +302,6 @@ class SyntheticBuilder(AbstractComponent):
             df_style = df.style.set_table_styles(style).set_properties(**{'text-align': 'left'})
             _ = df_style.set_properties(subset=['column_name'], **{'font-weight': 'bold'})
             return df_style
-        else:
-            df.set_index(keys='column_name', inplace=True)
         return df
 
     def setup_bootstrap(self, domain: str = None, project_name: str = None, path: str = None, file_type: str = None):

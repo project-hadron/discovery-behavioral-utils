@@ -1,6 +1,7 @@
 import unittest
 import os
 import shutil
+import pandas as pd
 from ds_behavioral import SyntheticBuilder
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 from aistac.properties.property_manager import PropertyManager
@@ -42,6 +43,18 @@ class SyntheticBuilderTest(unittest.TestCase):
         df = builder.load_synthetic_canonical()
         self.assertCountEqual(dist, df['gender'].value_counts().values)
         self.assertEqual(mean, df['age'].mean())
+
+    def test_report_attr_desc(self):
+        builder = SyntheticBuilder.from_env('tester', has_contract=False)
+        builder.set_persist()
+        tools: SyntheticIntentModel = builder.tools
+        df = pd.DataFrame()
+        df['gender'] = tools.get_category(selection=['M', 'F'], relative_freq=[4, 3], column_name='gender')
+        builder.add_column_description(column_name='gender', description='The gender of the persona')
+        df['age'] = tools.get_number(from_value=18, to_value=80, column_name='age')
+        builder.add_column_description(column_name='age', description='A one time age field')
+        result = builder.report_attr_desc(df, stylise=False)
+        self.assertEqual(['A one time age field', 'The gender of the persona'], result.iloc[:,2].to_list())
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:
