@@ -285,7 +285,7 @@ class MappedSample(AbstractSample):
         df_rtn['first_name'] = sample['Name'].iloc[forename_idx].values
         df_rtn['middle_name'] = sample['Name'].iloc[middle_idx].values
         df_rtn['gender'] = sample['Gender'].iloc[forename_idx].values
-        df_rtn['middle_name'].iloc[0:int(df_rtn.shape[0] * generator.uniform(low=-0.2, high=0.3))] = ''
+        df_rtn['middle_name'].iloc[0:int(df_rtn.shape[0] * generator.uniform(low=0.2, high=0.3))] = ''
         # set the surname
         df_rtn['family_name'] = Sample.us_surnames(size=size, shuffle=True, seed=seed)
         # set the email name
