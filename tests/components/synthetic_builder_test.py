@@ -44,17 +44,12 @@ class SyntheticBuilderTest(unittest.TestCase):
         self.assertCountEqual(dist, df['gender'].value_counts().values)
         self.assertEqual(mean, df['age'].mean())
 
-    def test_report_attr_desc(self):
-        builder = SyntheticBuilder.from_env('tester', has_contract=False)
-        builder.set_persist()
-        tools: SyntheticIntentModel = builder.tools
-        df = pd.DataFrame()
-        df['gender'] = tools.get_category(selection=['M', 'F'], relative_freq=[4, 3], column_name='gender')
-        builder.add_column_description(column_name='gender', description='The gender of the persona')
-        df['age'] = tools.get_number(from_value=18, to_value=80, column_name='age')
-        builder.add_column_description(column_name='age', description='A one time age field')
-        result = builder.report_attr_desc(df, stylise=False)
-        self.assertEqual(['A one time age field', 'The gender of the persona'], result.iloc[:,2].to_list())
+    def test_set_report_persist(self):
+        builder = SyntheticBuilder.from_env('tester', default_save=False, has_contract=False)
+        builder.setup_bootstrap(domain='domain', project_name='project_name', path=None)
+        report = builder.report_connectors(stylise=False)
+        _, file = os.path.split(report.uri.iloc[-1])
+        self.assertTrue(file.startswith('project_name'))
 
     def test_raise(self):
         with self.assertRaises(KeyError) as context:

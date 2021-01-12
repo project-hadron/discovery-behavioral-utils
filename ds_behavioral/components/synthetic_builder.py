@@ -110,7 +110,8 @@ class SyntheticBuilder(AbstractComponent):
                 self.set_persist()
         self.persist_canonical(connector_name=self.CONNECTOR_PERSIST, canonical=canonical, **kwargs)
 
-    def set_report_persist(self, connector_name: [str, list]=None, uri_file: str=None, save: bool=None, **kwargs):
+    def set_report_persist(self, connector_name: [str, list]=None, uri_file: str=None, project: str=None,
+                           path: str=None, file_type: str=None, save: bool=None, **kwargs):
         """sets the report persist using the TEMPLATE_PERSIST connector contract, there are preset constants that
         should be used. These constance can be found using Transition.REPORT_<NAME> or <instance>.REPORT_<NAME>
         where <name> is the name of the report. if no report connector name is given then all the report connectors
@@ -118,9 +119,13 @@ class SyntheticBuilder(AbstractComponent):
 
         :param connector_name: (optional) the name(s) of the report connector to set (see class REPORT constants)
         :param uri_file: (optional) the uri_file is appended to the template path
+        :param project: (optional) a project name that will replace the hadron naming, if no uri_file
+        :param path: (optional) a path added to the template path default, if no uri_file
+        :param file_type: (optional) a file type of the report, if no uri_file
         :param save: (optional) if True, save to file. Default is True
         """
         _default_reports = [self.REPORT_CATALOG] + self.REPORTS_BASE_LIST
+        project = project if isinstance(project, str) else 'hadron'
         if not isinstance(connector_name, (str, list)):
             connector_name = _default_reports
         for _report in self.pm.list_formatter(connector_name):
@@ -128,7 +133,9 @@ class SyntheticBuilder(AbstractComponent):
                 raise ValueError(f"Report name(s) {_report} must be from the report constants {_default_reports}")
             file_pattern = uri_file
             if not isinstance(uri_file, str):
-                file_pattern = self.pm.file_pattern(name=_report, file_type='csv', versioned=True)
+                file_type = file_type if isinstance(file_type, str) else 'csv'
+                file_pattern = self.pm.file_pattern(name=_report, project=project, path=path,
+                                                    file_type=file_type, versioned=True)
                 if 'orient' not in kwargs.keys():
                     kwargs.update({'orient': 'records'})
             self.add_connector_from_template(connector_name=_report, uri_file=file_pattern,
@@ -296,9 +303,9 @@ class SyntheticBuilder(AbstractComponent):
         """
         file_type = file_type if isinstance(file_type, str) else 'parquet'
         project_name = project_name if isinstance(project_name, str) else 'hadron'
-        file_name = self.pm.file_pattern(name='complete', project=project_name.lower(), path=path, file_type=file_type,
+        file_name = self.pm.file_pattern(name='complete', project=project_name, path=path, file_type=file_type,
                                          versioned=True)
         self.set_persist(uri_file=file_name)
-        self.set_report_persist(report_names=[self.REPORT_INTENT])
-        self.set_report_persist(report_names=[self.REPORT_CATALOG])
+        self.set_report_persist(connector_name=[self.REPORT_INTENT, self.REPORT_CATALOG], project=project_name,
+                                path=path)
         self.set_description(f"A domain specific {domain} simulated {project_name} dataset for {self.pm.task_name}")
