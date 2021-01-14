@@ -1121,7 +1121,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         Rows are filtered before the column filter so columns can be referenced even though they might not be included
         the final column list.
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param selection: a list of selections where conditions are filtered on, executed in list order
                 An example of a selection with the minimum requirements is: (see 'select2dict(...)')
                 [{'column': 'genre', 'condition': "=='Comedy'"}]
@@ -1144,6 +1144,24 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: pd.DataFrame
 
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
 
         Selections are a list of dictionaries of conditions and optional additional parameters to filter.
         To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
@@ -1185,7 +1203,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         An example of use might be a recommender generator where a cohort of unique users need to be selected, for
         different recommendation strategies but users can be repeated across recommendation strategy
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param marker_col: (optional) the marker column name for the action outcome. default is to not include
         :param starting_frame: (optional) a str referencing an existing connector contract name as the base DataFrame
         :param selection: (optional) a list of selections where conditions are filtered on, executed in list order
@@ -1207,6 +1225,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: pd.DataFrame
+
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
 
         Selections are a list of dictionaries of conditions and optional additional parameters to filter.
         To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
@@ -1281,7 +1319,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         These can be using in conjunction with 'list_choice' and 'list_size' allows control of the return values.
         if list_max is set to 1 then a single value is returned rather than a list of size 1.
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param headers: the column headers to apply the aggregation too
         :param group_by: the column headers to group by
         :param aggregator: (optional) the aggregator as a function of Pandas DataFrame 'groupby' or 'list' or 'set'
@@ -1304,6 +1342,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a pd.DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1355,8 +1413,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                     replace_intent: bool=None,  remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
-        :param other: a connector_name or action dict for the other canonical
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
+        :param other: a direct or generated pd.DataFrame. see context notes below
         :param left_on: the canonical key column(s) to join on
         :param right_on: the merging dataset key column(s) to join on
         :param how: (optional) One of 'left', 'right', 'outer', 'inner'. Defaults to inner. See below for more detailed
@@ -1384,6 +1442,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a pd.DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1403,15 +1481,15 @@ class SyntheticIntentModel(AbstractIntentModel):
                           suffixes=suffixes, indicator=indicator, validate=validate)
         return df_rtn
 
-    def model_concat(self, canonical: Any, connector_name: str, as_rows: bool=None, headers: [str, list]=None,
+    def model_concat(self, canonical: Any, other: Any, as_rows: bool=None, headers: [str, list]=None,
                      drop: bool=None, dtype: [str, list]=None, exclude: bool=None, regex: [str, list]=None,
                      re_ignore_case: bool=None, shuffle: bool=None, seed: int=None, save_intent: bool=None,
                      column_name: [int, str]=None, intent_order: int=None, replace_intent: bool=None,
                      remove_duplicates: bool=None) -> pd.DataFrame:
         """ returns the full column values directly from another connector data source.
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
-        :param connector_name: a connector_name for a connector to a data source
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
+        :param other: a direct or generated pd.DataFrame. see context notes below
         :param as_rows: (optional) how to concatenate, True adds the connector dataset as rows, False as columns
         :param headers: (optional) a list of headers to drop or filter on type
         :param drop: (optional) to drop or not drop the headers
@@ -1432,6 +1510,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a pd.DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1439,15 +1537,12 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
+        other = self._get_canonical(other)
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else False
         as_rows = as_rows if isinstance(as_rows, bool) else False
-        handler = self._pm.get_connector_handler(connector_name)
-        df = handler.load_canonical()
-        if isinstance(df, dict):
-            canonical = pd.DataFrame.from_dict(data=df, orient='columns')
         # Filter on the columns
-        df_rtn = SyntheticCommons.filter_columns(df=df, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+        df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                  regex=regex, re_ignore_case=re_ignore_case, copy=False)
         if shuffle:
             df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
@@ -1461,7 +1556,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                     replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ Generates multiple columns of noise in your dataset
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param num_columns: the number of columns of noise
         :param inc_targets: (optional) if a predictor target should be included. default is false
         :param seed: seed: (optional) a seed value for the random function: default to None
@@ -1476,6 +1571,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1512,7 +1627,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             > from ds_behavioral.sample.sample_data import MappedSample
             > MappedSample().__dir__()
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param sample_map: the sample map name. use MappedSample().__dir__() to get a list of available samples
         :param rename_columns: (optional) rename the columns 'City', 'Zipcode', 'State'
         :param selection: (optional) a list of selections where conditions are filtered on, executed in list order
@@ -1533,6 +1648,26 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :param kwargs: any additional parameters to pass to the sample map
         :return: a DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1564,7 +1699,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         value will be taken as the reference to the sub category and not the random value. This allows already
         constructed association to be used as reference for a sub category.
 
-        :param canonical: a pd.Dataframe or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param analytics_model: the analytics model from discovery-transition-ds discovery model train
         :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
         :param seed: seed: (optional) a seed value for the random function: default to None
@@ -1579,6 +1714,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
                                    column_name=column_name, intent_order=intent_order, replace_intent=replace_intent,
@@ -1636,7 +1791,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         If a DataFrame is not passed, the values column is referenced by the header '_default'
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param selection: a list of selections where conditions are filtered on, executed in list order
                 An example of a selection with the minimum requirements is: (see 'select2dict(...)')
                 [{'column': 'genre', 'condition': "=='Comedy'"}]
@@ -1657,6 +1812,25 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: value set based on the selection list and the action
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
 
         Selections are a list of dictionaries of conditions and optional additional parameters to filter.
         To help build conditions there is a static helper method called 'select2dict(...)' that has parameter
@@ -1726,7 +1900,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         the evaluation returns None. Note that if using the input dataframe in your action, it is internally referenced
         as it's parameter name 'canonical'.
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param code_str: an action on those column values
         :param use_exec: (optional) By default the code runs as eval if set to true exec would be used
         :param kwargs: a set of kwargs to include in any executable function
@@ -1743,6 +1917,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list or pandas.DataFrame
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1769,7 +1963,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         aggregation function names are limited to 'sum', 'prod', 'count', 'min', 'max' and 'mean' for numeric columns
         and a special 'list' function name to combine the columns as a list
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param headers: a list of headers to correlate
         :param agg: the aggregation function name enact. The available functions are:
                         'sum', 'prod', 'count', 'min', 'max', 'mean' and 'list' which combines the columns as a list
@@ -1787,6 +1981,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1826,7 +2040,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         In addition 'convert_str' allows lists that have been formatted as a string can be converted from a string
         to a list using 'ast.literal_eval(x)'
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: The header containing a list to chose from.
         :param list_size: (optional) the number of elements to return, if more than 1 then list
         :param random_choice: (optional) if the choice should be a random choice.
@@ -1846,6 +2060,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -1887,7 +2121,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                        replace_intent: bool=None, remove_duplicates: bool=None):
         """ correlate a column and join it with the result of the action
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: an ordered list of columns to join
         :param action: (optional) a string or a single action whose outcome will be joined to the header value
         :param sep: (optional) a separator between the values
@@ -1904,6 +2138,25 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
 
         Actions are the resulting outcome of the selection (or the default). An action can be just a value or a dict
         that executes a intent method such as get_number(). To help build actions there is a helper function called
@@ -1958,7 +2211,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         between (0,1) and is defined as
                                         f(x) = 1/(1+exp(-x)
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: the header in the DataFrame to correlate
         :param precision: (optional) how many decimal places. default to 3
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
@@ -1974,6 +2227,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: an equal length list of correlated values
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -2000,7 +2273,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
                   e.g  [6, -2, 0, 4] => f(x) = 4x**3 - 2x + 6
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: the header in the DataFrame to correlate
         :param coefficient: the reverse list of term coefficients
         :param quantity: (optional) a number between 0 and 1 representing the percentage quantity of the data
@@ -2017,6 +2290,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: an equal length list of correlated values
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -2053,7 +2346,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         """ returns a number that correlates to the value given. The jitter is based on a normal distribution
         with the correlated value being the mean and the jitter its standard deviation from that mean
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: the header in the DataFrame to correlate
         :param offset: (optional) how far from the value to offset. defaults to zero
         :param jitter: (optional) a perturbation of the value where the jitter is a std. defaults to 0
@@ -2077,6 +2370,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: an equal length list of correlated values
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -2144,7 +2457,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             you can also use the action to specify a specific value:
                 {0: 'F', 1: {'method': 'get_numbers', 'from_value': 0, to_value: 27}}
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: the header in the DataFrame to correlate
         :param correlations: a list of categories (can also contain lists for multiple correlations.
         :param actions: the correlated set of categories that should map to the index
@@ -2162,6 +2475,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal length to the one passed
+
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
 
         Actions are the resulting outcome of the selection (or the default). An action can be just a value or a dict
         that executes a intent method such as get_number(). To help build actions there is a helper function called
@@ -2219,7 +2552,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                         remove_duplicates: bool=None):
         """ correlates dates to an existing date or list of dates. The return is a list of pd
 
-        :param canonical: a pd.Dataframe (list, pd.Series) or str referencing an existing connector contract name
+        :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param header: the header in the DataFrame to correlate
         :param offset: (optional) and offset to the date. if int then assumed a 'days' offset
                 int or dictionary associated with pd. eg {'days': 1}
@@ -2246,6 +2579,26 @@ class SyntheticIntentModel(AbstractIntentModel):
                         False - leaves it untouched, disregarding the new intent
         :param remove_duplicates: (optional) removes any duplicate intent in any level that is identical
         :return: a list of equal size to that given
+
+        The canonical is a pd.DataFrame, a pd.Series or list, a connector contract str reference or a set of
+        parameter instructions on how to generate a pd.Dataframe. the description of each is:
+
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use canonical2dict(...) to help construct a dict with a 'method' to build a pd.DataFrame
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and parameters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
         """
         # intent persist options
         self._set_intend_signature(self._intent_builder(method=inspect.currentframe().f_code.co_name, params=locals()),
@@ -2711,9 +3064,35 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.seed(seed)
         return seed
 
-    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str, dict], header: str=None) -> pd.DataFrame:
+    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str, dict], deep_copy: bool=None,
+                       header: str=None) -> pd.DataFrame:
+        """ Used to return or generate a pandas Dataframe from a number of different methods.
+        The following can be passed and their returns
+        - pd.Dataframe -> a deep copy of the pd.DataFrame
+        - pd.Series or list -> creates a pd.DataFrameof one column with the 'header' name or 'default' if not given
+        - str -> instantiates a connector handler with the connector_name and loads the DataFrame from the connection
+        - dict -> use the canonical2dict(...) method to construct a dict with a method and related parameters
+            methods:
+                - model_*(...) -> one of the SyntheticBuilder model methods and paramters
+                - @empty -> generates an empty pd.DataFrame where size and headers can be passed
+                    :size sets the index size of the dataframe
+                    :headers any initial headers for the dataframe
+                - @generate -> generate a synthetic file from a remote Domain Contract
+                    :task_name the name of the SyntheticBuilder task to run
+                    :repo_uri the location of the Domain Product
+                    :size (optional) a size to generate
+                    :seed (optional) if a seed should be applied
+                    :run_book (optional) if specific intent should be run only
+
+        :param data: a dataframe or action event to generate a dataframe
+        :param header: (optional) used in conjunction with lists or pd.Series to give a header reference
+        :return: a pd.Dataframe
+        """
+        deep_copy = deep_copy if isinstance(deep_copy, bool) else True
         if isinstance(data, pd.DataFrame):
-            return deepcopy(data)
+            if deep_copy:
+                return deepcopy(data)
+            return data
         if isinstance(data, dict):
             method = data.pop('method', None)
             if method is None:
@@ -2743,7 +3122,9 @@ class SyntheticIntentModel(AbstractIntentModel):
                 raise ValueError(f"The data 'method' key {method} is not a recognised intent method")
         elif isinstance(data, (list, pd.Series)):
             header = header if isinstance(header, str) else 'default'
-            return pd.DataFrame(data=deepcopy(data), columns=[header])
+            if deep_copy:
+                data = deepcopy(data)
+            return pd.DataFrame(data=data, columns=[header])
         elif isinstance(data, str):
             if data == '@empty':
                 return pd.DataFrame()
