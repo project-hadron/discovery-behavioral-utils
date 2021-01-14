@@ -1469,15 +1469,15 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
+        other = self._get_canonical(other, size=canonical.shape[0])
         _seed = self._seed() if seed is None else seed
         how = how if isinstance(how, str) and how in ['left', 'right', 'outer', 'inner'] else 'inner'
         indicator = indicator if isinstance(indicator, bool) else False
         suffixes = suffixes if isinstance(suffixes, tuple) and len(suffixes) == 2 else ('', '_dup')
-        df = self._get_canonical(other)
-        if isinstance(df, dict):
-            canonical = pd.DataFrame.from_dict(data=df, orient='columns')
+        if isinstance(other, dict):
+            canonical = pd.DataFrame.from_dict(data=other, orient='columns')
         # Filter on the columns
-        df_rtn = pd.merge(left=canonical, right=df, how=how, left_on=left_on, right_on=right_on,
+        df_rtn = pd.merge(left=canonical, right=other, how=how, left_on=left_on, right_on=right_on,
                           suffixes=suffixes, indicator=indicator, validate=validate)
         return df_rtn
 
@@ -1537,7 +1537,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                    remove_duplicates=remove_duplicates, save_intent=save_intent)
         # Code block for intent
         canonical = self._get_canonical(canonical)
-        other = self._get_canonical(other)
+        other = self._get_canonical(other, size=canonical.shape[0])
         _seed = self._seed() if seed is None else seed
         shuffle = shuffle if isinstance(shuffle, bool) else False
         as_rows = as_rows if isinstance(as_rows, bool) else False
@@ -3064,8 +3064,8 @@ class SyntheticIntentModel(AbstractIntentModel):
         np.random.seed(seed)
         return seed
 
-    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str, dict], deep_copy: bool=None,
-                       header: str=None) -> pd.DataFrame:
+    def _get_canonical(self, data: [pd.DataFrame, pd.Series, list, str, dict], header: str=None, size: int=None,
+                       deep_copy: bool=None) -> pd.DataFrame:
         """ Used to return or generate a pandas Dataframe from a number of different methods.
         The following can be passed and their returns
         - pd.Dataframe -> a deep copy of the pd.DataFrame
@@ -3085,6 +3085,8 @@ class SyntheticIntentModel(AbstractIntentModel):
                     :run_book (optional) if specific intent should be run only
 
         :param data: a dataframe or action event to generate a dataframe
+        :param header: (optional) header for pd.Series or list
+        :param size: (optional) a size parameter for @empty of @generate
         :param header: (optional) used in conjunction with lists or pd.Series to give a header reference
         :return: a pd.Dataframe
         """
@@ -3108,13 +3110,13 @@ class SyntheticIntentModel(AbstractIntentModel):
                 repo_uri = data.pop('repo_uri', None)
                 module = HandlerFactory.get_module(module_name='ds_behavioral')
                 inst = module.SyntheticBuilder.from_env(task_name=task_name, uri_pm_repo=repo_uri, default_save=False)
-                size = data.pop('size', None)
+                size = size if isinstance(size, int) and 'size' not in data.keys() else data.pop('size', None)
                 seed = data.get('seed', None)
                 run_book = data.pop('run_book', None)
                 result = inst.tools.run_intent_pipeline(size=size, columns=run_book, seed=seed)
                 return self.frame_selection(canonical=result, save_intent=False, **data)
             elif str(method).startswith('@empty'):
-                size = data.pop('size', None)
+                size = size if isinstance(size, int) and 'size' not in data.keys() else data.pop('size', None)
                 headers = data.pop('headers', None)
                 size = range(size) if size else None
                 return pd.DataFrame(index=size, columns=headers)
