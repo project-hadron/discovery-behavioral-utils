@@ -84,6 +84,17 @@ class SyntheticGetCanonicalTest(unittest.TestCase):
         self.assertGreater(result.shape[0], 0)
         self.assertEqual(0, (result[result['gender'] == 'F']).shape[0])
 
+    def test_dict_generate_remote(self):
+        builder = SyntheticBuilder.from_memory()
+        tools: SyntheticIntentModel = builder.tools
+        canonical = tools.canonical2dict(method='@empty', size=1000)
+        other = tools.canonical2dict(method='@generate', task_name='members', uri_pm_repo='https://raw.githubusercontent.com/project-hadron/hadron-asset-bank/master/contracts/healthcare/factory/members/')
+        result = builder.intent_model.model_concat(canonical=canonical, other=other, as_rows=False,
+                                                   headers=['member_id', 'state', 'prev_flu_shot', 'age', 'channel_pref'],
+                                                   column_name='member_reference')
+        print(result.shape)
+
+
     def test_dict_method(self):
         builder = SyntheticBuilder.from_env('generator', has_contract=False)
         tools: SyntheticIntentModel = builder.tools

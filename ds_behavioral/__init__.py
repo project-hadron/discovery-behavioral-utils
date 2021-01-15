@@ -2,4 +2,4 @@
 from ds_behavioral.components.synthetic_builder import SyntheticBuilder
 
 # release version number picked up in the setup.py
-__version__ = "2.06.022"
+__version__ = "2.06.023"

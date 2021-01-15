@@ -1474,8 +1474,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         how = how if isinstance(how, str) and how in ['left', 'right', 'outer', 'inner'] else 'inner'
         indicator = indicator if isinstance(indicator, bool) else False
         suffixes = suffixes if isinstance(suffixes, tuple) and len(suffixes) == 2 else ('', '_dup')
-        if isinstance(other, dict):
-            canonical = pd.DataFrame.from_dict(data=other, orient='columns')
         # Filter on the columns
         df_rtn = pd.merge(left=canonical, right=other, how=how, left_on=left_on, right_on=right_on,
                           suffixes=suffixes, indicator=indicator, validate=validate)
@@ -1491,10 +1489,10 @@ class SyntheticIntentModel(AbstractIntentModel):
         :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param other: a direct or generated pd.DataFrame. see context notes below
         :param as_rows: (optional) how to concatenate, True adds the connector dataset as rows, False as columns
-        :param headers: (optional) a list of headers to drop or filter on type
-        :param drop: (optional) to drop or not drop the headers
-        :param dtype: (optional) the column types to include or excluse. Default None else int, float, bool, object
-        :param exclude: (optional) to exclude or include the dtypes
+        :param headers: (optional) a filter of headers from the 'other' dataset
+        :param drop: (optional) to drop or not drop the headers if specified
+        :param dtype: (optional) a filter on data type for the 'other' dataset. int, float, bool, object
+        :param exclude: (optional) to exclude or include the data types if specified
         :param regex: (optional) a regular expression to search the headers. example '^((?!_amt).)*$)' excludes '_amt'
         :param re_ignore_case: (optional) true if the regex should ignore case. Default is False
         :param shuffle: (optional) if the rows in the loaded canonical should be shuffled
@@ -1542,7 +1540,7 @@ class SyntheticIntentModel(AbstractIntentModel):
         shuffle = shuffle if isinstance(shuffle, bool) else False
         as_rows = as_rows if isinstance(as_rows, bool) else False
         # Filter on the columns
-        df_rtn = SyntheticCommons.filter_columns(df=canonical, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
+        df_rtn = SyntheticCommons.filter_columns(df=other, headers=headers, drop=drop, dtype=dtype, exclude=exclude,
                                                  regex=regex, re_ignore_case=re_ignore_case, copy=False)
         if shuffle:
             df_rtn.sample(frac=1, random_state=_seed).reset_index(drop=True)
@@ -3107,9 +3105,10 @@ class SyntheticIntentModel(AbstractIntentModel):
                 task_name = data.pop('task_name', None)
                 if task_name is None:
                     raise ValueError(f"The data method '@generate' requires a 'task_name' key.")
-                repo_uri = data.pop('repo_uri', None)
+                uri_pm_repo = data.pop('uri_pm_repo', None)
                 module = HandlerFactory.get_module(module_name='ds_behavioral')
-                inst = module.SyntheticBuilder.from_env(task_name=task_name, uri_pm_repo=repo_uri, default_save=False)
+                inst = module.SyntheticBuilder.from_env(task_name=task_name, uri_pm_repo=uri_pm_repo,
+                                                        default_save=False)
                 size = size if isinstance(size, int) and 'size' not in data.keys() else data.pop('size', None)
                 seed = data.get('seed', None)
                 run_book = data.pop('run_book', None)
