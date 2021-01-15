@@ -177,7 +177,9 @@ class SyntheticIntentModel(AbstractIntentModel):
         for idx in np.arange(1, len(bins)):
             low = bins[idx - 1]
             high = bins[idx]
-            if at_most > 0:
+            if low >= high:
+                continue
+            elif at_most > 0:
                 sample = []
                 for count in np.arange(at_most, dtype=dtype):
                     count_size = freq_dist_size[idx - 1] * generator.integers(2, 4, size=1)[0]

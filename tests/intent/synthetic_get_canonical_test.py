@@ -92,7 +92,7 @@ class SyntheticGetCanonicalTest(unittest.TestCase):
         result = builder.intent_model.model_concat(canonical=canonical, other=other, as_rows=False,
                                                    headers=['member_id', 'state', 'prev_flu_shot', 'age', 'channel_pref'],
                                                    column_name='member_reference')
-        print(result.shape)
+        print(result.columns)
 
 
     def test_dict_method(self):

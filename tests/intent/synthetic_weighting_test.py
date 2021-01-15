@@ -40,8 +40,15 @@ class SyntheticWeightingTest(unittest.TestCase):
         self.assertEqual(size, sum(result))
         self.assertEqual(other, result)
 
-
-
+    def test_negtive_dimentions(self):
+        selection = ["SydneyCare", "RCP", "Email", "SMS", "AgentAssist"]
+        relative_freq=[2,1,2,2,0.1]
+        size = 1000
+        result = 0
+        for i in range(10000):
+            select_index = self.tools.get_number(len(selection), relative_freq=relative_freq, size=size, save_intent=False)
+            result += len(select_index)
+        print(result/10000)
 
 
 
