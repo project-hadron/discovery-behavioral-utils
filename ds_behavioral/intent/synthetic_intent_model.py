@@ -3115,7 +3115,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                 seed = data.get('seed', None)
                 run_book = data.pop('run_book', None)
                 result = inst.tools.run_intent_pipeline(size=size, columns=run_book, seed=seed)
-                return self.frame_selection(canonical=result, save_intent=False, **data)
+                return inst.tools.frame_selection(canonical=result, save_intent=False, **data)
             elif str(method).startswith('@empty'):
                 size = size if isinstance(size, int) and 'size' not in data.keys() else data.pop('size', None)
                 headers = data.pop('headers', None)

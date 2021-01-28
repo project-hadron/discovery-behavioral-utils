@@ -21,7 +21,8 @@ class SyntheticBuilder(AbstractComponent):
     DEFAULT_PERSIST_HANDLER = 'PandasPersistHandler'
 
     def __init__(self, property_manager: SyntheticPropertyManager, intent_model: SyntheticIntentModel,
-                 default_save=None, reset_templates: bool = None, align_connectors: bool = None):
+                 default_save=None, reset_templates: bool=None, template_path: str=None, template_module: str=None,
+                 template_source_handler: str=None, template_persist_handler: str=None, align_connectors: bool=None):
         """ Encapsulation class for the discovery set of classes
 
         :param property_manager: The contract property manager instance for this components
@@ -37,9 +38,10 @@ class SyntheticBuilder(AbstractComponent):
     @classmethod
     def from_uri(cls, task_name: str, uri_pm_path: str, username: str, uri_pm_repo: str=None, pm_file_type: str=None,
                  pm_module: str=None, pm_handler: str=None, pm_kwargs: dict=None, default_save=None,
-                 reset_templates: bool=None, align_connectors: bool=None, default_save_intent: bool=None,
-                 default_intent_level: bool=None, order_next_available: bool=None, default_replace_intent: bool=None,
-                 has_contract: bool=None) -> SyntheticBuilder:
+                 reset_templates: bool=None, template_path: str=None, template_module: str=None,
+                 template_source_handler: str=None, template_persist_handler: str=None, align_connectors: bool=None,
+                 default_save_intent: bool=None, default_intent_level: bool=None, order_next_available: bool=None,
+                 default_replace_intent: bool=None, has_contract: bool=None) -> SyntheticBuilder:
         """ Class Factory Method to instantiates the components application. The Factory Method handles the
         instantiation of the Properties Manager, the Intent Model and the persistence of the uploaded properties.
         See class inline docs for an example method
@@ -55,6 +57,10 @@ class SyntheticBuilder(AbstractComponent):
          :param default_save: (optional) if the configuration should be persisted. default to 'True'
          :param reset_templates: (optional) reset connector templates from environ variables. Default True
                                 (see `report_environ()`)
+         :param template_path: (optional) a template path to use if the environment variable does not exist
+         :param template_module: (optional) a template module to use if the environment variable does not exist
+         :param template_source_handler: (optional) a template source handler to use if no environment variable
+         :param template_persist_handler: (optional) a template persist handler to use if no environment variable
          :param align_connectors: (optional) resets aligned connectors to the template. default Default True
          :param default_save_intent: (optional) The default action for saving intent in the property manager
          :param default_intent_level: (optional) the default level intent should be saved at
@@ -256,7 +262,7 @@ class SyntheticBuilder(AbstractComponent):
             return SyntheticCommons.report(df, index_header='level')
         return df
 
-    def report_notes(self, catalog: [str, list] = None, labels: [str, list] = None, regex: [str, list] = None,
+    def report_notes(self, catalog: [str, list]=None, labels: [str, list]=None, regex: [str, list]=None,
                      re_ignore_case: bool = False, stylise: bool = True, drop_dates: bool = False):
         """ generates a report on the notes
 
@@ -293,7 +299,7 @@ class SyntheticBuilder(AbstractComponent):
             return df_style
         return df
 
-    def setup_bootstrap(self, domain: str = None, project_name: str = None, path: str = None, file_type: str = None):
+    def setup_bootstrap(self, domain: str=None, project_name: str=None, path: str=None, file_type: str=None):
         """ Creates a bootstrap simulator with a SyntheticBuilder. Note this does not set the source
 
         :param domain: (optional) The domain this simulator sits within for example 'Healthcare' or 'Financial Services'

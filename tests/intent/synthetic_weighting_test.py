@@ -46,7 +46,7 @@ class SyntheticWeightingTest(unittest.TestCase):
         size = 1000
         result = 0
         for i in range(10000):
-            select_index = self.tools.get_number(len(selection), relative_freq=relative_freq, size=size, save_intent=False)
+            select_index = self.tools.get_number(len(selection), relative_freq=relative_freq, size=size, save_intent=dsFalse)
             result += len(select_index)
         print(result/10000)
 
