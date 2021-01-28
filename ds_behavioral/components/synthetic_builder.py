@@ -81,7 +81,9 @@ class SyntheticBuilder(AbstractComponent):
                                  uri_pm_repo=uri_pm_repo, pm_file_type=pm_file_type, pm_module=pm_module,
                                  pm_handler=pm_handler, pm_kwargs=pm_kwargs, has_contract=has_contract)
         return cls(property_manager=_pm, intent_model=_intent_model, default_save=default_save,
-                   reset_templates=reset_templates, align_connectors=align_connectors)
+                   reset_templates=reset_templates, template_path=template_path, template_module=template_module,
+                   template_source_handler=template_source_handler,template_persist_handler=template_persist_handler,
+                   align_connectors=align_connectors)
 
     @property
     def pm(self) -> SyntheticPropertyManager:
