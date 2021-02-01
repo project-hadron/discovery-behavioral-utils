@@ -36,8 +36,6 @@ class SyntheticCommons(AistacCommons):
         :param index_header:
         :param bold:
         :param large_font:
-        :param align_center:
-        :param align_right:
         :return:
         """
         index_header = SyntheticCommons.list_formatter(index_header)
