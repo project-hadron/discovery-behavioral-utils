@@ -3,7 +3,7 @@ import threading
 from copy import deepcopy
 import pandas as pd
 import numpy as np
-from aistac.components.aistac_commons import AistacCommons, AnalyticsCommons
+from aistac.components.aistac_commons import AistacCommons, AbstractAnalytics, AbstractSection
 
 __author__ = 'Darryl Oatridge'
 
@@ -384,17 +384,86 @@ class SyntheticCommons(AistacCommons):
         return 'background-color: %s' % color
 
 
-class DataAnalytics(AnalyticsCommons):
+class DataAnalytics(AbstractAnalytics):
+
+    class Intent(AbstractSection):
+
+        def __init__(self, section: dict):
+            super().__init__(section)
+
+        @property
+        def intent(self):
+            return super()._section
+
+    class Params(AbstractSection):
+
+        def __init__(self, section: dict):
+            super().__init__(section)
+
+        @property
+        def params(self):
+            return super()._section
+
+    class Patterns(AbstractSection):
+
+        def __init__(self, section: dict):
+            super().__init__(section)
+
+        @property
+        def patterns(self):
+            return super()._section
+
+    class Stats(AbstractSection):
+
+        def __init__(self, section: dict):
+            super().__init__(section)
+
+        @property
+        def stats(self):
+            return super()._section
+
+    def __init__(self, analysis: dict):
+        super().__init__(analysis=analysis)
+        if len(analysis) == 1:
+            analysis_label = list(self._analysis.keys())[0]
+            self._analysis = self._analysis.get(analysis_label, {})
+        if 'associate' in self._analysis.keys() or 'analysis' in self._analysis.keys():
+            self.associate = self._analysis.get('associate', 'n/a')
+            self._analysis = self._analysis.get('analysis', {})
+        else:
+            self.associate = 'n/a'
+        self._intent = self.Intent(section=self._analysis.get('intent', {}))
+        self._params = self.Params(section=self._analysis.get('params', {}))
+        self._patterns = self.Patterns(section=self._analysis.get('patterns', {}))
+        self._stats = self.Stats(section=self._analysis.get('stats', {}))
+
+    @property
+    def intent(self) -> Intent:
+        return self._intent
+
+    @property
+    def patterns(self) -> Patterns:
+        return self._patterns
+
+    @property
+    def params(self) -> Params:
+        return self._params
+
+    @property
+    def stats(self) -> Stats:
+        return self._stats
 
     @property
     def relative_freq_map(self):
-        return pd.Series(data=self.patterns.relative_freq, index=self.intent.selection, copy=True, dtype=float)
+        index = self.intent.categories if self.intent.dtype == 'category' else self.intent.intervals
+        return pd.Series(data=self.patterns.relative_freq, index=index, copy=True, dtype=float)
 
     @property
     def sample_map(self):
-        return pd.Series(data=self.stats.sample_distribution, index=self.intent.selection, copy=True, dtype=float)
+        index = self.intent.categories if self.intent.dtype == 'category' else self.intent.intervals
+        return pd.Series(data=self.patterns.sample_distribution, index=index, copy=True, dtype=float)
 
     @property
     def dominance_map(self):
-        return pd.Series(data=self.intent.dominance_weighting, index=self.intent.dominant_values,
-                         copy=True, dtype=float)
+        return pd.Series(data=self.patterns.dominance_weighting, index=self.patterns.dominant_values, copy=True,
+                         dtype=float)
