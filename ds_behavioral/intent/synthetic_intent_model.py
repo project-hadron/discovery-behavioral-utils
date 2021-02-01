@@ -83,7 +83,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                 if column in _get:
                                     _get.remove(column)
                                 _frame.append(column)
-                column_names = SyntheticCommons.unique_list(_get + _model + _correlate + _frame)
+                column_names = SyntheticCommons.list_unique(_get + _model + _correlate + _frame)
             for column in column_names:
                 level_key = self._pm.join(self._pm.KEY.intent_key, column)
                 for order in sorted(self._pm.get(level_key, {})):
@@ -1744,20 +1744,20 @@ class SyntheticIntentModel(AbstractIntentModel):
             for name, values in analysis.items():
                 if row_dict.get(name) is None:
                     row_dict[name] = list()
-                _analysis = DataAnalytics(label=name, analysis=values.get('analysis', {}))
+                _analysis = DataAnalytics(analysis=values.get('analysis', {}))
                 if str(_analysis.intent.dtype).startswith('cat'):
-                    row_dict[name] += self.get_category(selection=_analysis.intent.selection,
+                    row_dict[name] += self.get_category(selection=_analysis.intent.categories,
                                                         relative_freq=_analysis.patterns.relative_freq,
                                                         quantity=1-_analysis.stats.nulls_percent, seed=_seed,
                                                         size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('num'):
-                    row_dict[name] += self.get_intervals(intervals=_analysis.intent.selection,
+                    row_dict[name] += self.get_intervals(intervals=_analysis.intent.intervals,
                                                          relative_freq=_analysis.patterns.relative_freq,
                                                          precision=_analysis.intent.precision,
                                                          quantity=1 - _analysis.stats.nulls_percent,
                                                          seed=_seed, size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('date'):
-                    row_dict[name] += self.get_datetime(start=_analysis.intent.lower, until=_analysis.intent.upper,
+                    row_dict[name] += self.get_datetime(start=_analysis.intent.lowest, until=_analysis.intent.highest,
                                                         relative_freq=_analysis.patterns.relative_freq,
                                                         date_format=_analysis.intent.data_format,
                                                         day_first=_analysis.intent.day_first,
