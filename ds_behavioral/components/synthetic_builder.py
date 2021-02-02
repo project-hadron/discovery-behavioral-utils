@@ -314,7 +314,7 @@ class SyntheticBuilder(AbstractComponent):
         """
         file_type = file_type if isinstance(file_type, str) else 'parquet'
         project_name = project_name if isinstance(project_name, str) else 'hadron'
-        file_name = self.pm.file_pattern(name='complete', project=project_name, path=path, file_type=file_type,
+        file_name = self.pm.file_pattern(name='dataset', project=project_name, path=path, file_type=file_type,
                                          versioned=True)
         self.set_persist(uri_file=file_name)
         self.set_report_persist(connector_name=[self.REPORT_INTENT, self.REPORT_CATALOG], project=project_name,
