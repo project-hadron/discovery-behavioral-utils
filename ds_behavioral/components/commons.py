@@ -3,7 +3,7 @@ import threading
 from copy import deepcopy
 import pandas as pd
 import numpy as np
-from aistac.components.aistac_commons import AistacCommons
+from aistac.components.aistac_commons import AistacCommons, DataAnalytics
 
 __author__ = 'Darryl Oatridge'
 
@@ -169,28 +169,30 @@ class SyntheticCommons(AistacCommons):
         return df[column].apply(str).str.len().max(), df[column].apply(str).str.len().min()
 
     @staticmethod
-    def data_schema(report: dict, stylise: bool=True):
+    def data_schema(analysis: dict, stylise: bool=True):
         """ returns the schema dictionary as the canonical with optional style"""
-        df = pd.DataFrame.from_dict(data=report, orient='columns')
-        if stylise:
-            style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
-                     {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
-            pd.set_option('max_colwidth', 200)
-            df_style = df.style.set_table_styles(style)
-            _ = df_style.applymap(SyntheticCommons._highlight_null_dom, subset=['%_Null', '%_Dom'])
-            _ = df_style.applymap(lambda x: 'color: white' if x > 0.98 else 'color: black', subset=['%_Null', '%_Dom'])
-            if '%_Nxt' in df.columns:
-                _ = df_style.applymap(SyntheticCommons._highlight_next, subset=['%_Nxt'])
-                _ = df_style.applymap(lambda x: 'color: white' if x < 0.02 else 'color: black', subset=['%_Nxt'])
-            _ = df_style.applymap(SyntheticCommons._dtype_color, subset=['dType'])
-            _ = df_style.applymap(SyntheticCommons._color_unique, subset=['Unique'])
-            _ = df_style.applymap(lambda x: 'color: white' if x < 2 else 'color: black', subset=['Unique'])
-            _ = df_style.format({'%_Null': "{:.1%}", '%_Dom': '{:.1%}', '%_Nxt': '{:.1%}'})
-            _ = df_style.set_caption('%_Dom: The % most dominant element - %_Nxt: The % next most dominant element')
-            _ = df_style.set_properties(subset=[next(k for k in report.keys() if 'Attributes' in k)],
-                                        **{'font-weight': 'bold', 'font-size': "120%"})
-            return df_style
-        return df
+        return DataAnalytics(analysis=analysis)
+        # TODO
+        # df = pd.DataFrame.from_dict(data=report, orient='columns')
+        # if stylise:
+        #     style = [{'selector': 'th', 'props': [('font-size', "120%"), ("text-align", "center")]},
+        #              {'selector': '.row_heading, .blank', 'props': [('display', 'none;')]}]
+        #     pd.set_option('max_colwidth', 200)
+        #     df_style = df.style.set_table_styles(style)
+        #     _ = df_style.applymap(SyntheticCommons._highlight_null_dom, subset=['%_Null', '%_Dom'])
+        #     _ = df_style.applymap(lambda x: 'color: white' if x > 0.98 else 'color: black', subset=['%_Null', '%_Dom'])
+        #     if '%_Nxt' in df.columns:
+        #         _ = df_style.applymap(SyntheticCommons._highlight_next, subset=['%_Nxt'])
+        #         _ = df_style.applymap(lambda x: 'color: white' if x < 0.02 else 'color: black', subset=['%_Nxt'])
+        #     _ = df_style.applymap(SyntheticCommons._dtype_color, subset=['dType'])
+        #     _ = df_style.applymap(SyntheticCommons._color_unique, subset=['Unique'])
+        #     _ = df_style.applymap(lambda x: 'color: white' if x < 2 else 'color: black', subset=['Unique'])
+        #     _ = df_style.format({'%_Null': "{:.1%}", '%_Dom': '{:.1%}', '%_Nxt': '{:.1%}'})
+        #     _ = df_style.set_caption('%_Dom: The % most dominant element - %_Nxt: The % next most dominant element')
+        #     _ = df_style.set_properties(subset=[next(k for k in report.keys() if 'Attributes' in k)],
+        #                                 **{'font-weight': 'bold', 'font-size': "120%"})
+        #     return df_style
+        # return df
 
     @staticmethod
     def data_dictionary(df, stylise: bool=False, inc_next_dom: bool=False, report_header: str=None,

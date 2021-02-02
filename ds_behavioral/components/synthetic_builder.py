@@ -33,7 +33,9 @@ class SyntheticBuilder(AbstractComponent):
         :param align_connectors: (optional) resets aligned connectors to the template
         """
         super().__init__(property_manager=property_manager, intent_model=intent_model, default_save=default_save,
-                         reset_templates=reset_templates, align_connectors=align_connectors)
+                         reset_templates=reset_templates, template_path=template_path, template_module=template_module,
+                         template_source_handler=template_source_handler,
+                         template_persist_handler=template_persist_handler, align_connectors=align_connectors)
 
     @classmethod
     def from_uri(cls, task_name: str, uri_pm_path: str, username: str, uri_pm_repo: str=None, pm_file_type: str=None,
@@ -82,7 +84,7 @@ class SyntheticBuilder(AbstractComponent):
                                  pm_handler=pm_handler, pm_kwargs=pm_kwargs, has_contract=has_contract)
         return cls(property_manager=_pm, intent_model=_intent_model, default_save=default_save,
                    reset_templates=reset_templates, template_path=template_path, template_module=template_module,
-                   template_source_handler=template_source_handler,template_persist_handler=template_persist_handler,
+                   template_source_handler=template_source_handler, template_persist_handler=template_persist_handler,
                    align_connectors=align_connectors)
 
     @property
@@ -160,18 +162,22 @@ class SyntheticBuilder(AbstractComponent):
                 self.set_report_persist(connector_name=report_connector_name)
         self.persist_canonical(connector_name=report_connector_name, canonical=report, **kwargs)
 
-    def save_canonical_schema(self, schema_name: str=None, canonical: pd.DataFrame=None, save: bool=None):
+    def save_canonical_schema(self, schema_name: str=None, canonical: pd.DataFrame=None, schema_tree: list=None,
+                              save: bool=None):
         """ Saves the canonical schema to the Property contract. The default loads the clean canonical but optionally
         a canonical can be passed to base the schema on and optionally a name given other than the default
 
         :param schema_name: (optional) the name of the schema to save
         :param canonical: (optional) the canonical to base the schema on
+        :param schema_tree: (optional) an analytics dict (see Discovery.analyse_association(...)
         :param save: (optional) if True, save to file. Default is True
         """
         schema_name = schema_name if isinstance(schema_name, str) else self.REPORT_SCHEMA
         canonical = canonical if isinstance(canonical, pd.DataFrame) else self.load_synthetic_canonical()
-        report = self.canonical_report(canonical=canonical, stylise=False).to_dict()
-        self.pm.set_canonical_schema(name=schema_name, canonical_report=report)
+        schema_tree = schema_tree if isinstance(schema_tree, list) else canonical.columns.to_list()
+        # TODO: needs to get analytics
+        analytics = {}
+        self.pm.set_canonical_schema(name=schema_name, schema=analytics)
         self.pm_persist(save=save)
         return
 
@@ -212,11 +218,8 @@ class SyntheticBuilder(AbstractComponent):
         :return: pd.DataFrame
         """
         schema_name = schema_name if isinstance(schema_name, str) else self.REPORT_SCHEMA
-        report = self.pm.get_canonical_schema(name=schema_name)
-        if len(report) == 0:
-            report = {'Attributes (0)': {}, 'dType': {}, '%_Null': {}, '%_Dom': {}, 'Count': {}, 'Unique': {},
-                      'Observations': {}}
-        return SyntheticCommons.data_schema(report=report, stylise=stylise)
+        analytics = self.pm.get_canonical_schema(name=schema_name)
+        return SyntheticCommons.data_schema(analysis=analytics, stylise=stylise)
 
     def report_connectors(self, connector_filter: [str, list]=None, inc_pm: bool=None, inc_template: bool=None,
                           stylise: bool=True):
