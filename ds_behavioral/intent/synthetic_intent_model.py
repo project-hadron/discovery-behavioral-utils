@@ -14,7 +14,8 @@ from scipy import stats
 
 from aistac.intent.abstract_intent import AbstractIntentModel
 from aistac.handlers.abstract_handlers import HandlerFactory
-from ds_behavioral.components.commons import SyntheticCommons, DataAnalytics
+from aistac.components.aistac_commons import DataAnalytics
+from ds_behavioral.components.commons import SyntheticCommons
 from ds_behavioral.managers.synthetic_property_manager import SyntheticPropertyManager
 from ds_behavioral.sample.sample_data import MappedSample, Sample
 
