@@ -1745,7 +1745,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             for name, values in analysis.items():
                 if row_dict.get(name) is None:
                     row_dict[name] = list()
-                _analysis = DataAnalytics(analysis=values.get('analysis', {}))
+                _analysis = DataAnalytics(analysis=values.get('insight', {}))
                 if str(_analysis.intent.dtype).startswith('cat'):
                     row_dict[name] += self.get_category(selection=_analysis.intent.categories,
                                                         relative_freq=_analysis.patterns.relative_freq,
@@ -1754,23 +1754,23 @@ class SyntheticIntentModel(AbstractIntentModel):
                 if str(_analysis.intent.dtype).startswith('num'):
                     row_dict[name] += self.get_intervals(intervals=_analysis.intent.intervals,
                                                          relative_freq=_analysis.patterns.relative_freq,
-                                                         precision=_analysis.intent.precision,
+                                                         precision=_analysis.params.precision,
                                                          quantity=1 - _analysis.stats.nulls_percent,
                                                          seed=_seed, size=sample_size, save_intent=False)
                 if str(_analysis.intent.dtype).startswith('date'):
                     row_dict[name] += self.get_datetime(start=_analysis.intent.lowest, until=_analysis.intent.highest,
                                                         relative_freq=_analysis.patterns.relative_freq,
-                                                        date_format=_analysis.intent.data_format,
-                                                        day_first=_analysis.intent.day_first,
-                                                        year_first=_analysis.intent.year_first,
+                                                        date_format=_analysis.params.data_format,
+                                                        day_first=_analysis.params.day_first,
+                                                        year_first=_analysis.params.year_first,
                                                         quantity=1 - _analysis.stats.nulls_percent,
                                                         seed=_seed, size=sample_size, save_intent=False)
                 unit = sample_size / sum(_analysis.patterns.relative_freq)
                 if values.get('sub_category'):
-                    section_map = _analysis.relative_freq_map
-                    for i in section_map.index:
-                        section_size = int(round(_analysis.relative_freq_map.loc[i] * unit, 0)) + 1
-                        next_item = values.get('sub_category').get(i)
+                    leaves = values.get('branch', {}).get('leaves', {})
+                    for idx in range(len(leaves)):
+                        section_size = int(round(_analysis.patterns.relative_freq[idx] * unit, 0)) + 1
+                        next_item = values.get('sub_category').get(leaves[idx])
                         get_level(next_item, section_size, _seed)
             return
 
