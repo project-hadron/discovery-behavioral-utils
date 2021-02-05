@@ -1747,36 +1747,41 @@ class SyntheticIntentModel(AbstractIntentModel):
                     row_dict[name] = list()
                 _analysis = DataAnalytics(analysis=values.get('insight', {}))
                 if str(_analysis.intent.dtype).startswith('cat'):
-                    row_dict[name] += self.get_category(selection=_analysis.intent.categories,
-                                                        relative_freq=_analysis.patterns.relative_freq,
-                                                        quantity=1-_analysis.stats.nulls_percent, seed=_seed,
-                                                        size=sample_size, save_intent=False)
-                if str(_analysis.intent.dtype).startswith('num'):
-                    row_dict[name] += self.get_intervals(intervals=_analysis.intent.intervals,
-                                                         relative_freq=_analysis.patterns.relative_freq,
-                                                         precision=_analysis.params.precision,
-                                                         quantity=1 - _analysis.stats.nulls_percent,
-                                                         seed=_seed, size=sample_size, save_intent=False)
-                if str(_analysis.intent.dtype).startswith('date'):
-                    row_dict[name] += self.get_datetime(start=_analysis.intent.lowest, until=_analysis.intent.highest,
-                                                        relative_freq=_analysis.patterns.relative_freq,
-                                                        date_format=_analysis.params.data_format,
-                                                        day_first=_analysis.params.day_first,
-                                                        year_first=_analysis.params.year_first,
-                                                        quantity=1 - _analysis.stats.nulls_percent,
-                                                        seed=_seed, size=sample_size, save_intent=False)
+                    result = self.get_category(selection=_analysis.intent.categories,
+                                               relative_freq=_analysis.patterns.relative_freq,
+                                               quantity=1 - _analysis.stats.nulls_percent, seed=_seed,
+                                               size=sample_size, save_intent=False)
+                elif str(_analysis.intent.dtype).startswith('num'):
+                    result = self.get_intervals(intervals=_analysis.intent.intervals,
+                                                relative_freq=_analysis.patterns.relative_freq,
+                                                precision=_analysis.params.precision,
+                                                quantity=1 - _analysis.stats.nulls_percent,
+                                                seed=_seed, size=sample_size, save_intent=False)
+                elif str(_analysis.intent.dtype).startswith('date'):
+                    result = self.get_datetime(start=_analysis.intent.lowest, until=_analysis.intent.highest,
+                                               relative_freq=_analysis.patterns.relative_freq,
+                                               date_format=_analysis.params.data_format,
+                                               day_first=_analysis.params.day_first,
+                                               year_first=_analysis.params.year_first,
+                                               quantity=1 - _analysis.stats.nulls_percent,
+                                               seed=_seed, size=sample_size, save_intent=False)
+                else:
+                    result = []
                 # if the analysis was done with excluding dominance then se if they should be added back
                 if apply_bias and _analysis.patterns.is_attribute('dominant_excluded'):
                     _dom_percent = _analysis.patterns.dominant_percent/100
                     _dom_values = _analysis.patterns.dominant_excluded
                     if len(_dom_values) > 0:
-                        s_values = pd.Series(row_dict[name])
+                        s_values = pd.Series(result)
                         non_zero = s_values[~s_values.isin(_dom_values)].index
-                        choice_size = int((s_values.size*_dom_percent) - (s_values.size-len(non_zero)))
-                        generator = np.random.default_rng(_seed)
-                        _dom_choice = generator.choice(_dom_values, size=choice_size)
-                        s_values.iloc[generator.choice(non_zero, size=choice_size, replace=False)] = _dom_choice
-                        row_dict[name] = s_values.to_list()
+                        choice_size = int((s_values.size * _dom_percent) - (s_values.size - len(non_zero)))
+                        if choice_size > 0:
+                            generator = np.random.default_rng(_seed)
+                            _dom_choice = generator.choice(_dom_values, size=choice_size)
+                            s_values.iloc[generator.choice(non_zero, size=choice_size, replace=False)] = _dom_choice
+                            result = s_values.to_list()
+                # now add the result to the row_dict
+                row_dict[name] += result
                 unit = sample_size / sum(_analysis.patterns.relative_freq)
                 if values.get('sub_category'):
                     leaves = values.get('branch', {}).get('leaves', {})
@@ -1794,7 +1799,6 @@ class SyntheticIntentModel(AbstractIntentModel):
         get_level(analytics_model, sample_size=size, _seed=seed)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
-
         return pd.concat([canonical, pd.DataFrame.from_dict(data=row_dict)], axis=1)
 
     def correlate_selection(self, canonical: Any, selection: list, action: [str, int, float, dict],
