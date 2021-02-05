@@ -1692,7 +1692,7 @@ class SyntheticIntentModel(AbstractIntentModel):
             df_rtn = df_rtn.rename(columns=rename_columns)
         return pd.concat([canonical, df_rtn], axis=1)
 
-    def model_analysis(self, canonical: Any, analytics_model: dict, size: int=None, seed: int=None,
+    def model_analysis(self, canonical: Any, analytics_model: dict, apply_bias: bool=None, seed: int=None,
                        save_intent: bool=None, column_name: [int, str]=None, intent_order: int=None,
                        replace_intent: bool=None, remove_duplicates: bool=None) -> pd.DataFrame:
         """ builds a set of columns based on an analysis dictionary of weighting (see analyse_association)
@@ -1702,7 +1702,7 @@ class SyntheticIntentModel(AbstractIntentModel):
 
         :param canonical: a direct or generated pd.DataFrame. see context notes below
         :param analytics_model: the analytics model from discovery-transition-ds discovery model train
-        :param size: (optional) the size. should be greater than or equal to the analysis sample for best results.
+        :param apply_bias: (optional) if dominant values have been excluded, re-include to maintain bias
         :param seed: seed: (optional) a seed value for the random function: default to None
         :param save_intent (optional) if the intent contract should be saved to the property manager
         :param column_name: (optional) the column name that groups intent to create a column
@@ -1765,6 +1765,18 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                         year_first=_analysis.params.year_first,
                                                         quantity=1 - _analysis.stats.nulls_percent,
                                                         seed=_seed, size=sample_size, save_intent=False)
+                # if the analysis was done with excluding dominance then se if they should be added back
+                if apply_bias and _analysis.patterns.is_attribute('dominant_excluded'):
+                    _dom_percent = _analysis.patterns.dominant_percent/100
+                    _dom_values = _analysis.patterns.dominant_excluded
+                    if len(_dom_values) > 0:
+                        s_values = pd.Series(row_dict[name])
+                        non_zero = s_values[~s_values.isin(_dom_values)].index
+                        choice_size = int((s_values.size*_dom_percent) - (s_values.size-len(non_zero)))
+                        generator = np.random.default_rng(_seed)
+                        _dom_choice = generator.choice(_dom_values, size=choice_size)
+                        s_values.iloc[generator.choice(non_zero, size=choice_size, replace=False)] = _dom_choice
+                        row_dict[name] = s_values.to_list()
                 unit = sample_size / sum(_analysis.patterns.relative_freq)
                 if values.get('sub_category'):
                     leaves = values.get('branch', {}).get('leaves', {})
@@ -1775,12 +1787,14 @@ class SyntheticIntentModel(AbstractIntentModel):
             return
 
         canonical = self._get_canonical(canonical)
+        apply_bias = apply_bias if isinstance(apply_bias, bool) else False
         row_dict = dict()
         seed = self._seed() if seed is None else seed
         size = canonical.shape[0]
         get_level(analytics_model, sample_size=size, _seed=seed)
         for key in row_dict.keys():
             row_dict[key] = row_dict[key][:size]
+
         return pd.concat([canonical, pd.DataFrame.from_dict(data=row_dict)], axis=1)
 
     def correlate_selection(self, canonical: Any, selection: list, action: [str, int, float, dict],

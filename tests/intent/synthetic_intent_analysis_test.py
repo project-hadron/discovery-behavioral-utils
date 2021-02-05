@@ -44,6 +44,17 @@ class SyntheticIntentAnalysisTest(unittest.TestCase):
         for key in result.keys():
             self.assertEqual(sample_size, len(result.get(key)))
 
+    def test_associate_analysis_dominance(self):
+        sample = pd.DataFrame()
+        sample['values'] = [0,1,0,0,7,0,0,4,2,0,0,5,8,7,0,0]
+        discover: DataDiscovery = Transition.from_memory().discover
+        columns_list = [discover.analysis2dict(header='values', dtype='int', precision=0, exclude_dominant=True)]
+        analysis_blob = discover.analyse_association(sample, columns_list=columns_list)
+        builder = SyntheticBuilder.from_memory()
+        canonical = builder.tools.canonical2dict(method='@empty', size=1000)
+        df = builder.tools.model_analysis(canonical, analytics_model=analysis_blob, apply_bias=True)
+        self.assertAlmostEqual(df['values'].value_counts().iloc[0]/df.shape[0], sample['values'].value_counts().iloc[0]/sample.shape[0], places=2)
+
     def test_associate_analysis_complex(self):
         builder = SyntheticBuilder.from_memory()
         clinical_health = 'https://assets.datacamp.com/production/repositories/628/datasets/444cdbf175d5fbf564b564bd36ac21740627a834/diabetes.csv'
@@ -55,7 +66,7 @@ class SyntheticIntentAnalysisTest(unittest.TestCase):
         df_clinical = builder.load_canonical('clinical_health')
         analysis_blob = discover.analyse_association(df_clinical, columns_list=columns_list)
         canonical = builder.tools.canonical2dict(method='@empty', size=1973)
-        df = builder.tools.model_analysis(canonical, analytics_model=analysis_blob, size=1973, column_name='clinical')
+        df = builder.tools.model_analysis(canonical, analytics_model=analysis_blob, column_name='clinical')
         self.assertEqual((1973, 2), df.shape)
         pregnancies = SyntheticCommons.list_standardize(SyntheticCommons.list_formatter(df_clinical.pregnancies))
         low, high = discover.bootstrap_confidence_interval(pd.Series(pregnancies), func=np.mean)
