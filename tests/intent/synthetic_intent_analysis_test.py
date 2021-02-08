@@ -1,8 +1,11 @@
+import os
+import shutil
 from pprint import pprint
 import pandas as pd
 import numpy as np
 import unittest
-from aistac.properties.abstract_properties import AbstractPropertyManager
+
+from aistac.properties.property_manager import PropertyManager
 from ds_discovery import Transition
 from ds_discovery.components.discovery import DataDiscovery as Discovery, DataDiscovery
 
@@ -11,35 +14,45 @@ from ds_behavioral.components.commons import SyntheticCommons
 from ds_behavioral.intent.synthetic_intent_model import SyntheticIntentModel
 
 
-class ControlPropertyManager(AbstractPropertyManager):
-
-    def __init__(self, task_name: str):
-        # set additional keys
-        root_keys = []
-        knowledge_keys = []
-        super().__init__(task_name=task_name, root_keys=root_keys, knowledge_keys=knowledge_keys, username='default')
-
-
 class SyntheticIntentAnalysisTest(unittest.TestCase):
 
     def setUp(self):
-        self.pm = ControlPropertyManager('test_abstract_properties')
-        self.tools = SyntheticIntentModel(property_manager=self.pm, default_save_intent=False)
-        self.pm.reset_all()
+        os.environ['HADRON_PM_PATH'] = os.path.join('work', 'config')
+        os.environ['HADRON_DEFAULT_PATH'] = os.path.join('work', 'data')
+        try:
+            os.makedirs(os.environ['HADRON_PM_PATH'])
+            os.makedirs(os.environ['HADRON_DEFAULT_PATH'])
+        except:
+            pass
+        PropertyManager._remove_all()
+        self.builder: SyntheticBuilder = SyntheticBuilder.from_env('sample', has_contract=False)
+        self.builder.setup_bootstrap()
+        self.tools: SyntheticIntentModel = self.builder.tools
 
     def tearDown(self):
-        pass
+        try:
+            shutil.rmtree('work')
+        except:
+            pass
+
+    def test_run_pipeline_with_analytics(self):
+        builder: SyntheticBuilder = SyntheticBuilder.from_env('sample', has_contract=False)
+        tools: SyntheticIntentModel = builder.tools
+        # load the sample dataset to analyse and rename columns
+        clinical_health = 'https://assets.datacamp.com/production/repositories/628/datasets/444cdbf175d5fbf564b564bd36ac21740627a834/diabetes.csv'
+        builder.add_connector_uri('clinical_health', uri=clinical_health)
+        df_clinical = builder.load_canonical('clinical_health')
 
     def test_associate_analysis_from_discovery(self):
         df = pd.DataFrame()
-        df['cat'] = self.tools.get_category(selection=list('ABC'), quantity=0.9, size=100)
-        df['values'] = self.tools.get_number(from_value=20, size=100)
+        df['cat'] = self.tools.get_category(selection=list('ABC'), quantity=0.9, size=100, save_intent=False)
+        df['values'] = self.tools.get_number(from_value=20, size=100, save_intent=False)
         # discover
         associate = [{'cat': {'dtype': 'category'}, 'values': {'dtype': 'category','granularity': 5, 'precision': 3}}]
         analysis = Discovery.analyse_association(df, columns_list=associate)
         # build
-        sample_size=173
-        result = self.tools.model_analysis(pd.DataFrame(index=range(sample_size)), analysis)
+        empty_frame = self.tools.canonical2dict(method='@empty', size=1973)
+        result = self.tools.model_analysis(canonical=empty_frame, analytics_model=analysis, save_intent=False)
         self.assertCountEqual(['cat', 'values'], result.keys())
         for key in result.keys():
             self.assertEqual(sample_size, len(result.get(key)))

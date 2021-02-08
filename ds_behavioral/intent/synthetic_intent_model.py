@@ -1752,7 +1752,7 @@ class SyntheticIntentModel(AbstractIntentModel):
                                                quantity=1 - _analysis.stats.nulls_percent, seed=_seed,
                                                size=sample_size, save_intent=False)
                 elif str(_analysis.intent.dtype).startswith('num'):
-                    result = self.get_intervals(intervals=_analysis.intent.intervals,
+                    result = self.get_intervals(intervals=[tuple(x) for x in _analysis.intent.intervals],
                                                 relative_freq=_analysis.patterns.relative_freq,
                                                 precision=_analysis.params.precision,
                                                 quantity=1 - _analysis.stats.nulls_percent,
